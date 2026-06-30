@@ -75,6 +75,7 @@ table.ct tbody tr:hover{background:var(--accent-light);}
 .totals .v{font-weight:700;font-variant-numeric:tabular-nums;}
 .footnote{margin-top:11px;font-size:10px;color:var(--soft);line-height:1.5;border-top:1px solid var(--border);padding-top:8px;}
 /* shops tab */
+.layer-card{transition:border-color .2s;}
 .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
 .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-light);}
 .upload-zone .uz-icon{font-size:28px;margin-bottom:8px;}
@@ -237,13 +238,26 @@ function statusStyle(s){ return STATUS_STYLE[s]||STATUS_STYLE['default']; }
 
 /* ══ state ══ */
 let shops=[];          // dealer coverage pins (draggable)
-let bikeshopData=[];   // CSV candidate shops
-let statusFilters=new Set(); // which statuses are visible
-let showBikeshops=true;
+let csvLayers=[];      // [{id, name, color, data:[...shops], statusFilters:Set, visible:bool}]
+let activeLayerIds=new Set(); // which layers are shown on map
+let bikeshopData=[];   // flattened view of all visible layer shops
 let targetRadiusKm=10;
 let colorMode='density';
 let activeScenarioId=null;
 let clearArmed=false, clearArmTimer=null;
+
+// Layer colors (cycles)
+const LAYER_COLORS=['#0EA5A4','#E08E2C','#3B6FD9','#1FA67A','#8B5CF6','#E0584A','#D97706','#059669'];
+
+function rebuildBikeshopDataFromLayers(){
+  bikeshopData=[];
+  csvLayers.forEach(layer=>{
+    if(!activeLayerIds.has(layer.id))return;
+    layer.data.forEach(shop=>{
+      if(layer.statusFilters.has(shop.status))bikeshopData.push({...shop,_layerId:layer.id,_layerColor:layer.color});
+    });
+  });
+}
 
 /* ══ map refs ══ */
 let map, markersLayer, circlesLayer, bikeshopGroup;
@@ -384,12 +398,12 @@ function removeShop(id){
 /* ══ CSV bike shops layer ══ */
 function rebuildBikeshopMarkers(){
   bikeshopGroup.clearLayers();
-  if(!showBikeshops||bikeshopData.length===0)return;
+  if(csvLayers.length===0)return;
+  rebuildBikeshopDataFromLayers();
   bikeshopData.forEach(shop=>{
-    if(!statusFilters.has(shop.status))return;
-    const st=statusStyle(shop.status);
+    const fillColor=shop._layerColor||statusStyle(shop.status).color;
     const m=L.circleMarker([shop.lat,shop.lng],{
-      radius:7,color:'#fff',weight:1.8,fillColor:st.color,fillOpacity:0.9
+      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9
     }).addTo(bikeshopGroup);
     m.bindPopup(buildBikeshopPopup(shop),{maxWidth:220});
     m.on('click',e=>L.DomEvent.stopPropagation(e));
@@ -398,8 +412,10 @@ function rebuildBikeshopMarkers(){
 }
 function buildBikeshopPopup(shop){
   const st=statusStyle(shop.status);
+  const layer=csvLayers.find(l=>l.id===shop._layerId);
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
+    ${layer?`<div style="font-size:10px;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(layer.color)};margin-right:4px;vertical-align:middle;"></span>${esc(layer.name)}</div>`:''}
     <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>
     ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
     <a class="bs-gmaps" href="${gmapsPoint(shop.lat,shop.lng)}" target="_blank" rel="noopener">Google Maps ↗</a>
@@ -443,17 +459,21 @@ function handleCSVUpload(file){
     const result=parseCSV(e.target.result);
     if(result===null){toast('無法解析 CSV — 需要 lat/lng 欄位','err');return;}
     if(result.length===0){toast('CSV 沒有有效座標資料','err');return;}
-    bikeshopData=result;
-    const statuses=[...new Set(bikeshopData.map(s=>s.status))];
-    statusFilters=new Set(statuses);
-    showBikeshops=true;
+    const layerName=file.name.replace(/\.csv$/i,'').replace(/[-_]/g,' ');
+    const layerId='layer_'+Date.now().toString(36);
+    const layerColor=LAYER_COLORS[csvLayers.length % LAYER_COLORS.length];
+    const statuses=new Set(result.map(s=>s.status));
+    const newLayer={id:layerId,name:layerName,color:layerColor,data:result,statusFilters:statuses};
+    csvLayers.push(newLayer);
+    activeLayerIds.add(layerId);
+    rebuildBikeshopDataFromLayers();
     persistBikeshops();
     rebuildBikeshopMarkers();
     renderShopsTab();
     switchTab('shops');
     updateShopsLayerBtn();
     document.getElementById('toggleShopsBtn').style.display='';
-    toast(`載入 ${bikeshopData.length} 家候選店 · Loaded ${bikeshopData.length} shops`);
+    toast(`「${layerName}」載入 ${result.length} 家店 · Loaded ${result.length} shops`);
   };
   reader.readAsText(file,'utf-8');
 }
@@ -534,81 +554,98 @@ function legendHtml(){
 /* ══ shops tab ══ */
 function renderShopsTab(){
   const el=document.getElementById('tab-shops');
-  if(bikeshopData.length===0){
-    el.innerHTML=`<div class="upload-zone" id="uploadZone">
-      <div class="uz-icon">📋</div>
-      <div class="uz-title">上傳候選店名單 Upload shop list</div>
-      <div class="uz-sub">CSV 格式，需含 lat, lng 欄位<br>columns: name, address, lat, lng, status</div>
+  rebuildBikeshopDataFromLayers();
+  const badge=document.getElementById('shopTabBadge');
+  if(badge)badge.textContent=csvLayers.length>0?`(${bikeshopData.length})`:'';
+
+  let uploadHtml=csvLayers.length===0
+    ?`<div class="upload-zone" id="uploadZone">
+        <div class="uz-icon">📋</div>
+        <div class="uz-title">上傳候選店名單 Upload shop list</div>
+        <div class="uz-sub">CSV 格式，需含 lat, lng 欄位<br>columns: name, address, lat, lng, status</div>
+      </div>`
+    :`<button class="btn btn-teal" id="addLayerBtn" style="width:100%;margin-bottom:10px;">＋ 新增 CSV 圖層 Add CSV layer</button>`;
+
+  let layersHtml='';
+  csvLayers.forEach((layer,idx)=>{
+    const isActive=activeLayerIds.has(layer.id);
+    const visCount=layer.data.filter(s=>layer.statusFilters.has(s.status)).length;
+    const statChips=[...new Set(layer.data.map(s=>s.status))].map(st=>{
+      const style=statusStyle(st);
+      const cnt=layer.data.filter(s=>s.status===st).length;
+      const active=layer.statusFilters.has(st);
+      return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-status="${esc(st)}" style="--dot-color:${esc(style.color)};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(st)}<span class="sf-count">${cnt}</span></span>`;
+    }).join('');
+    layersHtml+=`<div class="layer-card" style="border:1.5px solid ${isActive?layer.color:'var(--border)'};border-radius:9px;padding:9px 11px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+        <span style="width:11px;height:11px;border-radius:50%;background:${esc(layer.color)};flex-shrink:0;display:inline-block;"></span>
+        <span style="font-weight:700;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(layer.name)}">${esc(layer.name)}</span>
+        <button class="btn layer-toggle-btn" data-lid="${esc(layer.id)}" style="font-size:10px;padding:2px 8px;${isActive?'background:var(--ink);color:#fff;border-color:var(--ink)':''}">${isActive?'ON':'OFF'}</button>
+        <button class="btn btn-red layer-del-btn" data-lid="${esc(layer.id)}" style="font-size:10px;padding:2px 8px;">✕</button>
+      </div>
+      <div style="font-size:10px;color:var(--soft);margin-bottom:6px;">${visCount} / ${layer.data.length} shops shown</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${statChips}</div>
     </div>`;
+  });
+
+  let tableHtml='';
+  if(bikeshopData.length>0){
+    const rows=bikeshopData.slice(0,300).map(shop=>{
+      const layer=csvLayers.find(l=>l.id===shop._layerId);
+      return`<tr data-lat="${shop.lat}" data-lng="${shop.lng}">
+        <td class="sh-name" title="${esc(shop.name)}">${esc(shop.name)}</td>
+        <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(shop._layerColor||'#888')};margin-right:4px;vertical-align:middle;"></span><span style="font-size:9.5px;color:var(--soft);">${esc(layer?layer.name:'')}</span></td>
+      </tr>`;
+    }).join('');
+    tableHtml=`<div class="shop-table-wrap" style="margin-top:8px;"><table class="sh-table"><thead><tr><th>店名</th><th>圖層</th></tr></thead><tbody>${rows}</tbody></table>${bikeshopData.length>300?`<div style="font-size:10px;color:var(--soft);padding:5px 0">顯示前300筆，共${bikeshopData.length}筆</div>`:''}</div>`;
+  }
+
+  el.innerHTML=uploadHtml+layersHtml+tableHtml;
+
+  if(csvLayers.length===0){
     document.getElementById('uploadZone').addEventListener('click',()=>document.getElementById('csvInput').click());
     setupDropzone(document.getElementById('uploadZone'));
-    return;
+  } else {
+    document.getElementById('addLayerBtn').addEventListener('click',()=>document.getElementById('csvInput').click());
   }
-  // Count by status
-  const counts={};
-  bikeshopData.forEach(s=>{counts[s.status]=(counts[s.status]||0)+1;});
-  const statuses=[...new Set(bikeshopData.map(s=>s.status))].sort();
-  // Chips
-  const chips=statuses.map(st=>{
-    const style=statusStyle(st);
-    const active=statusFilters.has(st);
-    return`<span class="sf-chip${active?' active':''}" data-status="${esc(st)}" style="--dot-color:${esc(style.color)}">
-      <span class="sf-dot"></span>${esc(style.label||st)}<span class="sf-count">${counts[st]||0}</span>
-    </span>`;
-  }).join('');
-  // Table (visible rows only)
-  const visible=bikeshopData.filter(s=>statusFilters.has(s.status));
-  const rows=visible.slice(0,200).map(shop=>{
-    const st=statusStyle(shop.status);
-    return`<tr data-lat="${shop.lat}" data-lng="${shop.lng}">
-      <td class="sh-name" title="${esc(shop.name)}">${esc(shop.name)}</td>
-      <td><span class="sh-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(shop.status)}</span></td>
-    </tr>`;
-  }).join('');
-  const badge=document.getElementById('shopTabBadge');
-  if(badge)badge.textContent=`(${bikeshopData.length})`;
-  el.innerHTML=`<div class="shop-layer-header">
-    <span class="slh-title">候選店 ${bikeshopData.length} 家</span>
-    <div class="slh-actions">
-      <button class="btn" id="reuploadBtn">↺ 重新上傳</button>
-      <button class="btn${showBikeshops?' btn-on':''}" id="inlineToggleBtn">${showBikeshops?'顯示中 ●':'隱藏 ○'}</button>
-    </div>
-  </div>
-  <div class="status-filters" id="statusFilters">${chips}</div>
-  <div class="shop-table-wrap">
-    <table class="sh-table">
-      <thead><tr><th>店名</th><th>狀態</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    ${visible.length>200?`<div style="font-size:10.5px;color:var(--soft);padding:6px 0">顯示前200筆，共${visible.length}筆 visible</div>`:''}
-  </div>`;
-  // Bind chips
-  el.querySelectorAll('.sf-chip').forEach(chip=>{
-    chip.addEventListener('click',()=>{
-      const st=chip.dataset.status;
-      if(statusFilters.has(st))statusFilters.delete(st);else statusFilters.add(st);
-      persistBikeshops();
-      rebuildBikeshopMarkers();
-      renderShopsTab();
+  el.querySelectorAll('.layer-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const lid=btn.dataset.lid;
+      if(activeLayerIds.has(lid))activeLayerIds.delete(lid);else activeLayerIds.add(lid);
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
     });
   });
-  // Bind table rows - fly to shop
+  el.querySelectorAll('.layer-del-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const lid=btn.dataset.lid;
+      csvLayers=csvLayers.filter(l=>l.id!==lid);
+      activeLayerIds.delete(lid);
+      rebuildBikeshopDataFromLayers();
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();updateShopsLayerBtn();
+    });
+  });
+  el.querySelectorAll('.sf-chip[data-lid]').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      const lid=chip.dataset.lid;const st=chip.dataset.status;
+      const layer=csvLayers.find(l=>l.id===lid);if(!layer)return;
+      if(layer.statusFilters.has(st))layer.statusFilters.delete(st);else layer.statusFilters.add(st);
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
+    });
+  });
   el.querySelectorAll('tr[data-lat]').forEach(tr=>{
     tr.addEventListener('click',()=>map.setView([parseFloat(tr.dataset.lat),parseFloat(tr.dataset.lng)],15));
   });
-  // Reupload
-  const reb=el.querySelector('#reuploadBtn');
-  if(reb)reb.addEventListener('click',()=>document.getElementById('csvInput').click());
-  // Inline toggle
-  const itb=el.querySelector('#inlineToggleBtn');
-  if(itb)itb.addEventListener('click',()=>{showBikeshops=!showBikeshops;rebuildBikeshopMarkers();renderShopsTab();persistBikeshops();});
 }
+
 function updateShopsLayerBtn(){
   const btn=document.getElementById('toggleShopsBtn');
-  if(!btn||bikeshopData.length===0){if(btn)btn.style.display='none';return;}
+  if(!btn)return;
+  rebuildBikeshopDataFromLayers();
+  if(csvLayers.length===0){btn.style.display='none';return;}
   btn.style.display='';
-  btn.className='btn'+(showBikeshops?' btn-on':'');
-  btn.textContent=`候選店 ${showBikeshops?'●':'○'}`;
+  const anyActive=activeLayerIds.size>0;
+  btn.className='btn'+(anyActive?' btn-on':'');
+  btn.textContent=`候選店 ${anyActive?'●':'○'} (${csvLayers.length})`;
 }
 function setupDropzone(zone){
   zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
@@ -617,10 +654,10 @@ function setupDropzone(zone){
 }
 
 /* ══ scenarios ══ */
-async function loadScenarios(){try{const r=await window.storage.get('nuvari_scenarios',false);return r&&r.value?JSON.parse(r.value):[];}catch{return[];}}
-async function saveScenarios(list){try{await window.storage.set('nuvari_scenarios',JSON.stringify(list),false);}catch(e){console.error(e);}}
-async function renderScenarios(){
-  const list=await loadScenarios();
+function loadScenarios(){try{const v=localStorage.getItem('nuvari_scenarios');return v?JSON.parse(v):[];}catch{return[];}}
+function saveScenarios(list){try{localStorage.setItem('nuvari_scenarios',JSON.stringify(list));}catch(e){console.error(e);}}
+function renderScenarios(){
+  const list=loadScenarios();
   const el=document.getElementById('scenarioList');
   if(list.length===0){el.innerHTML=`<div class="scenario-empty">目前沒有儲存的方案<br>Save your current state above.</div>`;return;}
   el.innerHTML=list.map(sc=>{
@@ -642,19 +679,19 @@ async function renderScenarios(){
     card.querySelector('.del-btn').addEventListener('click',()=>deleteScenario(card.dataset.id));
   });
 }
-async function saveCurrentScenario(){
+function saveCurrentScenario(){
   const inp=document.getElementById('scenarioNameInput');
   const name=inp.value.trim();
   if(!name){inp.focus();inp.style.borderColor='var(--red)';setTimeout(()=>inp.style.borderColor='',1600);return;}
-  const list=await loadScenarios();
+  const list=loadScenarios();
   const sc={id:'sc'+Date.now().toString(36),name,savedAt:Date.now(),shops:JSON.parse(JSON.stringify(shops)),targetRadiusKm,colorMode};
-  list.unshift(sc);await saveScenarios(list);
+  list.unshift(sc);saveScenarios(list);
   activeScenarioId=sc.id;inp.value='';
   toast(`方案「${name}」已儲存`);
   renderScenarios();
 }
-async function loadScenario(id){
-  const list=await loadScenarios();
+function loadScenario(id){
+  const list=loadScenarios();
   const sc=list.find(s=>s.id===id);if(!sc)return;
   shops=JSON.parse(JSON.stringify(sc.shops));
   targetRadiusKm=sc.targetRadiusKm;colorMode=sc.colorMode||'density';
@@ -664,11 +701,11 @@ async function loadScenario(id){
   renderAll();renderScenarios();persistShops();
   toast(`方案「${sc.name}」已載入`);
 }
-async function deleteScenario(id){
-  let list=await loadScenarios();
+function deleteScenario(id){
+  let list=loadScenarios();
   const sc=list.find(s=>s.id===id);
   list=list.filter(s=>s.id!==id);
-  await saveScenarios(list);
+  saveScenarios(list);
   if(activeScenarioId===id)activeScenarioId=null;
   if(sc)toast(`已刪除方案「${sc.name}」`);
   renderScenarios();
@@ -714,7 +751,11 @@ function bindControls(){
   document.getElementById('clearBtn').addEventListener('click',handleClearBtn);
   document.getElementById('csvInput').addEventListener('change',e=>{const f=e.target.files[0];if(f){handleCSVUpload(f);e.target.value='';}});
   document.getElementById('uploadCsvBtn').addEventListener('click',()=>document.getElementById('csvInput').click());
-  document.getElementById('toggleShopsBtn').addEventListener('click',()=>{showBikeshops=!showBikeshops;rebuildBikeshopMarkers();renderShopsTab();persistBikeshops();});
+  document.getElementById('toggleShopsBtn').addEventListener('click',()=>{
+    if(activeLayerIds.size>0){activeLayerIds.clear();}
+    else{csvLayers.forEach(l=>activeLayerIds.add(l.id));}
+    persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();updateShopsLayerBtn();
+  });
   document.querySelectorAll('.sidebar-tabs button').forEach(btn=>{
     btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
   });
@@ -727,25 +768,26 @@ function bindControls(){
 }
 
 /* ══ persistence ══ */
-async function persistShops(){try{await window.storage.set('nuvari_active_shops',JSON.stringify(shops),false);}catch(e){}}
-async function persistSettings(){try{await window.storage.set('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode}),false);}catch(e){}}
-async function persistBikeshops(){
+function persistShops(){try{localStorage.setItem('nuvari_active_shops',JSON.stringify(shops));}catch(e){}}
+function persistSettings(){try{localStorage.setItem('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode}));}catch(e){}}
+function persistBikeshops(){
   try{
-    await window.storage.set('nuvari_bikeshops',JSON.stringify({data:bikeshopData,filters:[...statusFilters],visible:showBikeshops}),false);
+    const serializableLayers=csvLayers.map(l=>({...l,statusFilters:[...l.statusFilters]}));
+    localStorage.setItem('nuvari_bikeshops',JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
     const badge=document.getElementById('shopTabBadge');if(badge&&bikeshopData.length>0)badge.textContent=`(${bikeshopData.length})`;
   }catch(e){}
 }
-async function loadSession(){
-  try{const r=await window.storage.get('nuvari_active_shops',false);if(r&&r.value)shops=JSON.parse(r.value);}catch{shops=[];}
-  try{const r=await window.storage.get('nuvari_settings',false);if(r&&r.value){const s=JSON.parse(r.value);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(2,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;}}catch{}
+function loadSession(){
+  try{const v=localStorage.getItem('nuvari_active_shops');if(v)shops=JSON.parse(v);}catch{shops=[];}
+  try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(2,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;}}catch{}
   try{
-    const r=await window.storage.get('nuvari_bikeshops',false);
-    if(r&&r.value){
-      const b=JSON.parse(r.value);
-      if(b.data&&b.data.length>0){
-        bikeshopData=b.data;
-        statusFilters=new Set(b.filters||[...new Set(bikeshopData.map(s=>s.status))]);
-        showBikeshops=b.visible!==false;
+    const v=localStorage.getItem('nuvari_bikeshops');
+    if(v){
+      const b=JSON.parse(v);
+      if(b.layers&&b.layers.length>0){
+        csvLayers=b.layers.map(l=>({...l,statusFilters:new Set(l.statusFilters||[])}));
+        activeLayerIds=new Set(b.activeLayerIds||csvLayers.map(l=>l.id));
+        rebuildBikeshopDataFromLayers();
         const badge=document.getElementById('shopTabBadge');if(badge)badge.textContent=`(${bikeshopData.length})`;
         document.getElementById('toggleShopsBtn').style.display='';
       }
@@ -754,10 +796,10 @@ async function loadSession(){
 }
 
 /* ══ boot ══ */
-(async function start(){
+(function start(){
   initMap();
   bindControls();
-  await loadSession();
+  loadSession();
   document.getElementById('radiusInput').value=targetRadiusKm;
   document.querySelectorAll('#colorModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===colorMode));
   renderAll();
