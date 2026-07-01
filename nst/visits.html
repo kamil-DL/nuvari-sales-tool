@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>拜訪計劃 Visits — NST</title>
+<link rel="stylesheet" href="css/nst-shared.css"/>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <header class="nst-header">
+    <div class="nst-header-left">
+      <img id="logo" class="nst-header-logo" alt="Nuvari"/>
+      <span class="nst-header-title">拜訪計劃 Visit Planner</span>
+    </div>
+    <div class="nst-header-right">
+      <span id="user-email" class="nst-user-email"></span>
+      <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
+    </div>
+  </header>
+
+  <nav class="nst-nav">
+    <a href="index.html">首頁 Home</a>
+    <a href="shops.html">店家資料庫 Shops</a>
+    <a href="visits.html" class="active">拜訪計劃 Visits</a>
+  </nav>
+
+  <div class="nst-page">
+    <div class="nst-page-heading">
+      <div>
+        <h1>拜訪計劃 Visit Planner</h1>
+        <div class="sub">排程與管理業務拜訪 Schedule and track visits</div>
+      </div>
+      <button id="add-visit-btn" class="nst-btn nst-btn-primary">＋ 排程拜訪 Schedule visit</button>
+    </div>
+
+    <div class="nst-filter-bar">
+      <select id="rep-filter" class="nst-select" style="width:auto;min-width:160px">
+        <option value="all">所有業務 All reps</option>
+        <option value="mine">我的拜訪 My visits</option>
+      </select>
+      <select id="status-filter" class="nst-select" style="width:auto;min-width:150px">
+        <option value="all">全部狀態 All status</option>
+        <option value="planned">已排程 Planned</option>
+        <option value="completed">已完成 Completed</option>
+        <option value="no_show">未赴約 No Show</option>
+        <option value="cancelled">已取消 Cancelled</option>
+      </select>
+      <input id="date-from" type="date" class="nst-input" style="width:auto" title="From date 起始日期"/>
+      <input id="date-to" type="date" class="nst-input" style="width:auto" title="To date 結束日期"/>
+      <button id="clear-dates" class="nst-btn nst-btn-ghost nst-btn-sm">清除日期 Clear</button>
+    </div>
+
+    <div id="error-banner" class="nst-error-banner" style="display:none"></div>
+    <div id="visits-list">
+      <div class="nst-loading"><div class="nst-spinner"></div>載入中 Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule visit modal -->
+<div id="visit-modal" class="nst-modal-backdrop" style="display:none">
+  <div class="nst-modal">
+    <div class="nst-modal-header">
+      <h3>排程拜訪 Schedule Visit</h3>
+      <button class="nst-modal-close" id="modal-close-btn">✕</button>
+    </div>
+    <div class="nst-modal-body">
+      <label class="nst-field-label">店家 Shop *</label>
+      <input id="shop-search" type="text" class="nst-input" placeholder="搜尋店家名稱 Search shop name…"/>
+      <div id="shop-results" style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid var(--nst-border);border-radius:9px;display:none"></div>
+      <input type="hidden" id="selected-shop-id"/>
+      <div id="selected-shop-display" style="display:none;font-size:13px;color:var(--nst-accent);padding:6px 0;font-weight:600"></div>
+
+      <label class="nst-field-label">拜訪日期 Visit date *</label>
+      <input id="vf-date" type="date" class="nst-input"/>
+
+      <label class="nst-field-label">業務代表 Sales rep</label>
+      <div style="font-size:13px;color:var(--nst-gray);padding:8px 0" id="visit-rep-display"></div>
+
+      <div id="modal-error" class="nst-auth-error" style="margin-top:10px"></div>
+    </div>
+    <div class="nst-modal-footer">
+      <button id="modal-cancel-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
+      <button id="modal-save-btn" class="nst-btn nst-btn-primary">建立 Create</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, signOut } from './js/auth.js';
+import { LOGO } from './js/logo.js';
+import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
+import { loadShops } from './js/shops.js';
+import { STATUS_LABELS } from './js/shops.js';
+
+document.getElementById('logo').src = LOGO;
+
+const user = await requireAuth();
+document.getElementById('app').style.display = '';
+document.getElementById('user-email').textContent = user.email;
+document.getElementById('sign-out-btn').addEventListener('click', signOut);
+document.getElementById('visit-rep-display').textContent = `${user.email} (你 / you)`;
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', weekday:'short' });
+}
+
+function visitStatusBadge(s) {
+  const info = VISIT_STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
+}
+function shopStatusBadge(s) {
+  const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}" style="font-size:10px">${info.zh}</span>`;
+}
+
+function renderVisits(visits) {
+  const list = document.getElementById('visits-list');
+  if (!visits.length) {
+    list.innerHTML = `<div class="nst-empty">
+      <div class="nst-empty-icon">📅</div>
+      <p>尚無拜訪記錄 No visits found</p>
+      <div class="sub">按「排程拜訪」建立第一次拜訪 Click "Schedule visit" to get started</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = visits.map(v => {
+    const shopName = v.shops ? v.shops.name : '—';
+    const shopStatus = v.shops ? v.shops.status : null;
+    return `<a class="nst-card nst-card-link" href="visit-detail.html?id=${v.id}">
+      <div class="nst-card-header">
+        <span class="nst-card-name">${esc(shopName)}</span>
+        ${shopStatus ? shopStatusBadge(shopStatus) : ''}
+        ${visitStatusBadge(v.status)}
+      </div>
+      <div class="nst-card-meta">
+        📅 ${fmtDate(v.scheduled_date)}
+        ${v.shops && v.shops.address ? ` · 📍 ${esc(v.shops.address)}` : ''}
+      </div>
+      ${v.review_notes ? `<div class="nst-card-meta" style="margin-top:3px">${esc(v.review_notes.slice(0,100))}${v.review_notes.length>100?'…':''}</div>` : ''}
+    </a>`;
+  }).join('');
+}
+
+async function refresh() {
+  const repFilter = document.getElementById('rep-filter').value;
+  const status = document.getElementById('status-filter').value;
+  const dateFrom = document.getElementById('date-from').value || undefined;
+  const dateTo = document.getElementById('date-to').value || undefined;
+  const repId = repFilter === 'mine' ? user.id : undefined;
+  try {
+    const visits = await loadVisits({ repId, status, dateFrom, dateTo });
+    renderVisits(visits);
+  } catch (e) {
+    document.getElementById('error-banner').textContent = e.message;
+    document.getElementById('error-banner').style.display = '';
+  }
+}
+
+document.getElementById('rep-filter').addEventListener('change', refresh);
+document.getElementById('status-filter').addEventListener('change', refresh);
+document.getElementById('date-from').addEventListener('change', refresh);
+document.getElementById('date-to').addEventListener('change', refresh);
+document.getElementById('clear-dates').addEventListener('click', () => {
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  refresh();
+});
+
+// Schedule visit modal
+let allShops = [];
+let shopSearchTimer;
+
+async function openModal() {
+  document.getElementById('shop-search').value = '';
+  document.getElementById('selected-shop-id').value = '';
+  document.getElementById('selected-shop-display').style.display = 'none';
+  document.getElementById('shop-results').style.display = 'none';
+  document.getElementById('vf-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('visit-modal').style.display = '';
+  // Load shops for search
+  try { allShops = await loadShops(); } catch(e) {}
+  setTimeout(() => document.getElementById('shop-search').focus(), 50);
+}
+
+function closeModal() { document.getElementById('visit-modal').style.display = 'none'; }
+
+document.getElementById('add-visit-btn').addEventListener('click', openModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+document.getElementById('visit-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+document.getElementById('shop-search').addEventListener('input', () => {
+  clearTimeout(shopSearchTimer);
+  shopSearchTimer = setTimeout(() => {
+    const q = document.getElementById('shop-search').value.trim().toLowerCase();
+    if (!q) { document.getElementById('shop-results').style.display = 'none'; return; }
+    const filtered = allShops.filter(s => s.name.toLowerCase().includes(q)).slice(0, 8);
+    const resultsEl = document.getElementById('shop-results');
+    if (!filtered.length) {
+      resultsEl.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--nst-gray)">找不到店家 No shops found</div>';
+    } else {
+      resultsEl.innerHTML = filtered.map(s => `
+        <div class="shop-result-item" data-id="${s.id}" data-name="${esc(s.name)}"
+             style="padding:10px 12px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--nst-border)">
+          <strong>${esc(s.name)}</strong>
+          ${s.address ? `<span style="color:var(--nst-gray);font-size:12px"> · ${esc(s.address)}</span>` : ''}
+        </div>`).join('');
+    }
+    resultsEl.style.display = '';
+  }, 200);
+});
+
+document.getElementById('shop-results').addEventListener('click', e => {
+  const item = e.target.closest('.shop-result-item');
+  if (!item) return;
+  document.getElementById('selected-shop-id').value = item.dataset.id;
+  const display = document.getElementById('selected-shop-display');
+  display.textContent = '✓ ' + item.dataset.name;
+  display.style.display = '';
+  document.getElementById('shop-search').value = item.dataset.name;
+  document.getElementById('shop-results').style.display = 'none';
+});
+
+document.getElementById('modal-save-btn').addEventListener('click', async () => {
+  const shopId = document.getElementById('selected-shop-id').value;
+  const date = document.getElementById('vf-date').value;
+  const errEl = document.getElementById('modal-error');
+  if (!shopId) { errEl.textContent = '請選擇店家 Please select a shop'; return; }
+  if (!date) { errEl.textContent = '請選擇日期 Please select a date'; return; }
+  const btn = document.getElementById('modal-save-btn');
+  btn.disabled = true; btn.textContent = '建立中…';
+  try {
+    const visit = await addVisit({ shop_id: shopId, scheduled_date: date, status: 'planned' }, user.id);
+    closeModal();
+    location.href = `visit-detail.html?id=${visit.id}`;
+  } catch (e) {
+    errEl.textContent = e.message;
+    btn.disabled = false; btn.textContent = '建立 Create';
+  }
+});
+
+await refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nuvari Sales Tool (NST)</title>
+<link rel="stylesheet" href="css/nst-shared.css"/>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <header class="nst-header">
+    <div class="nst-header-left">
+      <img id="logo" class="nst-header-logo" alt="Nuvari"/>
+      <span class="nst-header-title">業務管理工具 Sales Tool</span>
+    </div>
+    <div class="nst-header-right">
+      <span id="user-email" class="nst-user-email"></span>
+      <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
+    </div>
+  </header>
+
+  <nav class="nst-nav">
+    <a href="index.html" class="active">首頁 Home</a>
+    <a href="shops.html">店家資料庫 Shops</a>
+    <a href="visits.html">拜訪計劃 Visits</a>
+  </nav>
+
+  <div class="nst-page">
+    <div class="nst-page-heading">
+      <div>
+        <h1>Nuvari 業務管理工具</h1>
+        <div class="sub">Nuvari Sales Tool (NST) · Phase 1</div>
+      </div>
+    </div>
+
+    <div id="stats-row" class="nst-stats-row">
+      <div class="nst-stat-card">
+        <div class="num" id="stat-shops">—</div>
+        <div class="lbl">店家總數 Shops</div>
+      </div>
+      <div class="nst-stat-card">
+        <div class="num" id="stat-active">—</div>
+        <div class="lbl">合作中 Active</div>
+      </div>
+      <div class="nst-stat-card">
+        <div class="num" id="stat-visits-week">—</div>
+        <div class="lbl">本週拜訪 Visits this week</div>
+      </div>
+      <div class="nst-stat-card">
+        <div class="num" id="stat-visits-planned">—</div>
+        <div class="lbl">待拜訪 Planned</div>
+      </div>
+    </div>
+
+    <div class="nst-section-label">模組 Modules</div>
+    <div class="nst-module-grid">
+      <a class="nst-module-card" href="shops.html">
+        <div class="nst-module-icon">🏪</div>
+        <div class="nst-module-name">店家資料庫 Shop Database</div>
+        <div class="nst-module-desc">管理合作店家名單、聯絡資訊與合作狀態<br>Manage shops, contacts, and pipeline status</div>
+      </a>
+      <a class="nst-module-card" href="visits.html">
+        <div class="nst-module-icon">📅</div>
+        <div class="nst-module-name">拜訪計劃 Visit Planner</div>
+        <div class="nst-module-desc">排程與記錄業務拜訪、填寫拜訪記錄與照片<br>Schedule visits, write reviews, upload photos</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, signOut } from './js/auth.js';
+import { LOGO } from './js/logo.js';
+import { supabase } from './js/supabase-client.js';
+
+document.getElementById('logo').src = LOGO;
+
+const user = await requireAuth();
+document.getElementById('app').style.display = '';
+document.getElementById('user-email').textContent = user.email;
+document.getElementById('sign-out-btn').addEventListener('click', signOut);
+
+async function loadStats() {
+  const [shopsRes, visitsRes] = await Promise.all([
+    supabase.from('shops').select('status'),
+    supabase.from('visits').select('status, scheduled_date')
+  ]);
+  if (shopsRes.data) {
+    document.getElementById('stat-shops').textContent = shopsRes.data.length;
+    document.getElementById('stat-active').textContent = shopsRes.data.filter(s => s.status === 'active').length;
+  }
+  if (visitsRes.data) {
+    const today = new Date();
+    const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+    const ws = weekStart.toISOString().slice(0,10);
+    const we = weekEnd.toISOString().slice(0,10);
+    const weekVisits = visitsRes.data.filter(v => v.scheduled_date >= ws && v.scheduled_date <= we);
+    document.getElementById('stat-visits-week').textContent = weekVisits.length;
+    document.getElementById('stat-visits-planned').textContent = visitsRes.data.filter(v => v.status === 'planned').length;
+  }
+}
+
+loadStats();
+</script>
+</body>
+</html>

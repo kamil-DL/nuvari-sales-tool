@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>店家詳情 Shop Detail — NST</title>
+<link rel="stylesheet" href="css/nst-shared.css"/>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <header class="nst-header">
+    <div class="nst-header-left">
+      <img id="logo" class="nst-header-logo" alt="Nuvari"/>
+      <span class="nst-header-title">店家詳情 Shop Detail</span>
+    </div>
+    <div class="nst-header-right">
+      <span id="user-email" class="nst-user-email"></span>
+      <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
+    </div>
+  </header>
+
+  <nav class="nst-nav">
+    <a href="index.html">首頁 Home</a>
+    <a href="shops.html" class="active">店家資料庫 Shops</a>
+    <a href="visits.html">拜訪計劃 Visits</a>
+  </nav>
+
+  <div class="nst-page">
+    <div style="margin-bottom:14px">
+      <a href="shops.html" style="font-size:13px;color:var(--nst-gray)">← 返回店家列表 Back to shops</a>
+    </div>
+
+    <div id="error-banner" class="nst-error-banner" style="display:none"></div>
+    <div id="loading" class="nst-loading"><div class="nst-spinner"></div>載入中 Loading…</div>
+
+    <div id="content" style="display:none">
+      <div class="nst-page-heading">
+        <div>
+          <h1 id="shop-name"></h1>
+          <div style="margin-top:6px" id="shop-status-badge"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="edit-btn" class="nst-btn nst-btn-outline" style="display:none">✏️ 編輯 Edit</button>
+          <button id="add-visit-btn" class="nst-btn nst-btn-primary">＋ 排程拜訪 Schedule visit</button>
+        </div>
+      </div>
+
+      <div class="nst-detail-card">
+        <h2>基本資訊 Shop Info</h2>
+        <div class="nst-field-row"><span class="label">地址 Address</span><span class="value" id="f-address">—</span></div>
+        <div class="nst-field-row"><span class="label">聯絡人 Contact</span><span class="value" id="f-contact-name">—</span></div>
+        <div class="nst-field-row"><span class="label">聯絡電話 Phone</span><span class="value" id="f-contact-phone">—</span></div>
+        <div class="nst-field-row"><span class="label">建立時間 Created</span><span class="value" id="f-created-at">—</span></div>
+        <div id="notes-row" style="margin-top:10px;display:none">
+          <div class="nst-section-label" style="margin-bottom:6px">備註 Notes</div>
+          <div id="f-notes" style="font-size:13.5px;color:var(--nst-ink);white-space:pre-wrap;line-height:1.55"></div>
+        </div>
+      </div>
+
+      <div class="nst-detail-card">
+        <h2>拜訪記錄 Visit History</h2>
+        <div id="visits-list">
+          <div class="nst-loading"><div class="nst-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div id="edit-modal" class="nst-modal-backdrop" style="display:none">
+  <div class="nst-modal">
+    <div class="nst-modal-header">
+      <h3>編輯店家 Edit shop</h3>
+      <button class="nst-modal-close" id="edit-close-btn">✕</button>
+    </div>
+    <div class="nst-modal-body">
+      <label class="nst-field-label">店家名稱 Shop name *</label>
+      <input id="ef-name" type="text" class="nst-input"/>
+      <label class="nst-field-label">合作狀態 Status</label>
+      <select id="ef-status" class="nst-select">
+        <option value="lead">潛在客戶 Lead</option>
+        <option value="prospect">準客戶 Prospect</option>
+        <option value="active">合作中 Active</option>
+        <option value="churned">已流失 Churned</option>
+      </select>
+      <label class="nst-field-label">地址 Address</label>
+      <input id="ef-address" type="text" class="nst-input"/>
+      <label class="nst-field-label">聯絡人 Contact name</label>
+      <input id="ef-contact-name" type="text" class="nst-input"/>
+      <label class="nst-field-label">聯絡電話 Contact phone</label>
+      <input id="ef-contact-phone" type="tel" class="nst-input"/>
+      <label class="nst-field-label">備註 Notes</label>
+      <textarea id="ef-notes" class="nst-textarea"></textarea>
+      <div id="edit-modal-error" class="nst-auth-error" style="margin-top:10px"></div>
+    </div>
+    <div class="nst-modal-footer">
+      <button id="edit-delete-btn" class="nst-btn nst-btn-danger" style="margin-right:auto">刪除 Delete</button>
+      <button id="edit-cancel-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
+      <button id="edit-save-btn" class="nst-btn nst-btn-primary">儲存 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule visit modal -->
+<div id="visit-modal" class="nst-modal-backdrop" style="display:none">
+  <div class="nst-modal">
+    <div class="nst-modal-header">
+      <h3>排程拜訪 Schedule Visit</h3>
+      <button class="nst-modal-close" id="visit-close-btn">✕</button>
+    </div>
+    <div class="nst-modal-body">
+      <div class="nst-field-row" style="margin-bottom:14px">
+        <span class="label">店家 Shop</span>
+        <span class="value" id="visit-shop-name"></span>
+      </div>
+      <label class="nst-field-label">拜訪日期 Visit date *</label>
+      <input id="vf-date" type="date" class="nst-input"/>
+      <label class="nst-field-label">業務代表 Sales rep</label>
+      <div style="font-size:13px;color:var(--nst-gray);padding:8px 0" id="visit-rep-display"></div>
+      <div id="visit-modal-error" class="nst-auth-error" style="margin-top:10px"></div>
+    </div>
+    <div class="nst-modal-footer">
+      <button id="visit-cancel-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
+      <button id="visit-save-btn" class="nst-btn nst-btn-primary">建立 Create</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, signOut } from './js/auth.js';
+import { LOGO } from './js/logo.js';
+import { getShop, updateShop, deleteShop, STATUS_LABELS } from './js/shops.js';
+import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
+
+document.getElementById('logo').src = LOGO;
+
+const user = await requireAuth();
+document.getElementById('app').style.display = '';
+document.getElementById('user-email').textContent = user.email;
+document.getElementById('sign-out-btn').addEventListener('click', signOut);
+
+const params = new URLSearchParams(location.search);
+const shopId = params.get('id');
+if (!shopId) { location.href = 'shops.html'; }
+
+let shop = null;
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
+}
+
+function statusBadge(s) {
+  const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
+}
+
+function visitStatusBadge(s) {
+  const info = VISIT_STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
+}
+
+function renderShop() {
+  document.getElementById('shop-name').textContent = shop.name;
+  document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status);
+  document.getElementById('f-address').textContent = shop.address || '—';
+  document.getElementById('f-contact-name').textContent = shop.contact_name || '—';
+  document.getElementById('f-contact-phone').textContent = shop.contact_phone || '—';
+  document.getElementById('f-created-at').textContent = fmtDate(shop.created_at);
+  if (shop.notes) {
+    document.getElementById('f-notes').textContent = shop.notes;
+    document.getElementById('notes-row').style.display = '';
+  }
+  if (shop.created_by === user.id) {
+    document.getElementById('edit-btn').style.display = '';
+  }
+  document.getElementById('visit-shop-name').textContent = shop.name;
+}
+
+async function renderVisits() {
+  const list = document.getElementById('visits-list');
+  try {
+    const visits = await loadVisits({ shopId });
+    if (!visits.length) {
+      list.innerHTML = `<div class="nst-empty" style="padding:30px 0">
+        <p>尚無拜訪記錄 No visits yet</p>
+        <div class="sub">按「排程拜訪」建立第一次拜訪</div>
+      </div>`;
+      return;
+    }
+    list.innerHTML = visits.map(v => `
+      <a class="nst-card nst-card-link" href="visit-detail.html?id=${v.id}">
+        <div class="nst-card-header">
+          <span class="nst-card-name">📅 ${fmtDate(v.scheduled_date)}</span>
+          ${visitStatusBadge(v.status)}
+        </div>
+        ${v.review_notes ? `<div class="nst-card-meta" style="margin-top:4px">${esc(v.review_notes.slice(0,80))}${v.review_notes.length>80?'…':''}</div>` : ''}
+      </a>`).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="nst-error-banner">${e.message}</div>`;
+  }
+}
+
+// Load shop
+try {
+  shop = await getShop(shopId);
+  renderShop();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = '';
+  renderVisits();
+} catch (e) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-banner').textContent = e.message;
+  document.getElementById('error-banner').style.display = '';
+}
+
+// Edit modal
+document.getElementById('edit-btn').addEventListener('click', () => {
+  document.getElementById('ef-name').value = shop.name;
+  document.getElementById('ef-status').value = shop.status;
+  document.getElementById('ef-address').value = shop.address || '';
+  document.getElementById('ef-contact-name').value = shop.contact_name || '';
+  document.getElementById('ef-contact-phone').value = shop.contact_phone || '';
+  document.getElementById('ef-notes').value = shop.notes || '';
+  document.getElementById('edit-modal-error').textContent = '';
+  document.getElementById('edit-modal').style.display = '';
+});
+document.getElementById('edit-close-btn').addEventListener('click', () => document.getElementById('edit-modal').style.display = 'none');
+document.getElementById('edit-cancel-btn').addEventListener('click', () => document.getElementById('edit-modal').style.display = 'none');
+document.getElementById('edit-modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.style.display = 'none'; });
+
+document.getElementById('edit-save-btn').addEventListener('click', async () => {
+  const name = document.getElementById('ef-name').value.trim();
+  if (!name) { document.getElementById('edit-modal-error').textContent = '店家名稱為必填'; return; }
+  const btn = document.getElementById('edit-save-btn');
+  btn.disabled = true; btn.textContent = '儲存中…';
+  try {
+    shop = await updateShop(shopId, {
+      name,
+      status: document.getElementById('ef-status').value,
+      address: document.getElementById('ef-address').value.trim() || null,
+      contact_name: document.getElementById('ef-contact-name').value.trim() || null,
+      contact_phone: document.getElementById('ef-contact-phone').value.trim() || null,
+      notes: document.getElementById('ef-notes').value.trim() || null,
+    });
+    document.getElementById('edit-modal').style.display = 'none';
+    renderShop();
+  } catch (e) {
+    document.getElementById('edit-modal-error').textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '儲存 Save';
+  }
+});
+
+document.getElementById('edit-delete-btn').addEventListener('click', async () => {
+  if (!confirm('確定要刪除此店家嗎？所有相關拜訪記錄也會一併刪除。\nDelete this shop and all its visits?')) return;
+  try {
+    await deleteShop(shopId);
+    location.href = 'shops.html';
+  } catch (e) {
+    document.getElementById('edit-modal-error').textContent = e.message;
+  }
+});
+
+// Visit modal
+const today = new Date().toISOString().slice(0,10);
+document.getElementById('vf-date').value = today;
+document.getElementById('visit-rep-display').textContent = `${user.email} (你 / you)`;
+
+document.getElementById('add-visit-btn').addEventListener('click', () => {
+  document.getElementById('vf-date').value = today;
+  document.getElementById('visit-modal-error').textContent = '';
+  document.getElementById('visit-modal').style.display = '';
+});
+document.getElementById('visit-close-btn').addEventListener('click', () => document.getElementById('visit-modal').style.display = 'none');
+document.getElementById('visit-cancel-btn').addEventListener('click', () => document.getElementById('visit-modal').style.display = 'none');
+document.getElementById('visit-modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.style.display = 'none'; });
+
+document.getElementById('visit-save-btn').addEventListener('click', async () => {
+  const date = document.getElementById('vf-date').value;
+  if (!date) { document.getElementById('visit-modal-error').textContent = '請選擇日期 Please select a date'; return; }
+  const btn = document.getElementById('visit-save-btn');
+  btn.disabled = true; btn.textContent = '建立中…';
+  try {
+    const visit = await addVisit({ shop_id: shopId, scheduled_date: date, status: 'planned' }, user.id);
+    document.getElementById('visit-modal').style.display = 'none';
+    location.href = `visit-detail.html?id=${visit.id}`;
+  } catch (e) {
+    document.getElementById('visit-modal-error').textContent = e.message;
+    btn.disabled = false; btn.textContent = '建立 Create';
+  }
+});
+</script>
+</body>
+</html>

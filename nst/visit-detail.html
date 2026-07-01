@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>拜訪記錄 Visit Detail — NST</title>
+<link rel="stylesheet" href="css/nst-shared.css"/>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <header class="nst-header">
+    <div class="nst-header-left">
+      <img id="logo" class="nst-header-logo" alt="Nuvari"/>
+      <span class="nst-header-title">拜訪記錄 Visit Detail</span>
+    </div>
+    <div class="nst-header-right">
+      <span id="user-email" class="nst-user-email"></span>
+      <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
+    </div>
+  </header>
+
+  <nav class="nst-nav">
+    <a href="index.html">首頁 Home</a>
+    <a href="shops.html">店家資料庫 Shops</a>
+    <a href="visits.html" class="active">拜訪計劃 Visits</a>
+  </nav>
+
+  <div class="nst-page">
+    <div id="back-link" style="margin-bottom:14px">
+      <a href="visits.html" style="font-size:13px;color:var(--nst-gray)">← 返回拜訪列表 Back to visits</a>
+    </div>
+
+    <div id="error-banner" class="nst-error-banner" style="display:none"></div>
+    <div id="loading" class="nst-loading"><div class="nst-spinner"></div>載入中 Loading…</div>
+
+    <div id="content" style="display:none">
+      <!-- Visit info -->
+      <div class="nst-detail-card">
+        <h2 id="visit-heading"></h2>
+        <div class="nst-field-row"><span class="label">店家 Shop</span><span class="value" id="f-shop"></span></div>
+        <div class="nst-field-row"><span class="label">日期 Date</span><span class="value" id="f-date"></span></div>
+        <div class="nst-field-row"><span class="label">狀態 Status</span><span class="value" id="f-status"></span></div>
+        <div class="nst-field-row"><span class="label">負責人 Rep</span><span class="value" id="f-rep"></span></div>
+
+        <!-- Status actions (only for rep) -->
+        <div id="status-actions" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--nst-border)">
+          <div class="nst-section-label" style="margin-bottom:8px">更新狀態 Update status</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button data-status="completed" class="nst-btn nst-btn-outline nst-btn-sm status-btn">✅ 完成 Complete</button>
+            <button data-status="no_show"   class="nst-btn nst-btn-ghost  nst-btn-sm status-btn">🚫 未赴約 No Show</button>
+            <button data-status="planned"   class="nst-btn nst-btn-ghost  nst-btn-sm status-btn">📅 重設排程 Planned</button>
+            <button data-status="cancelled" class="nst-btn nst-btn-danger nst-btn-sm status-btn" style="opacity:.7">取消 Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review notes -->
+      <div class="nst-detail-card" id="notes-card">
+        <h2>拜訪備註 Visit Notes</h2>
+        <div id="notes-view">
+          <div id="notes-content" style="font-size:13.5px;color:var(--nst-ink);white-space:pre-wrap;line-height:1.6;min-height:40px"></div>
+          <button id="edit-notes-btn" class="nst-btn nst-btn-ghost nst-btn-sm" style="margin-top:12px;display:none">✏️ 編輯備註 Edit notes</button>
+        </div>
+        <div id="notes-edit" style="display:none">
+          <textarea id="notes-textarea" class="nst-textarea" style="min-height:120px" placeholder="在此填寫拜訪內容、討論重點、後續行動… Write visit notes, key points, next steps…"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+            <button id="notes-cancel-btn" class="nst-btn nst-btn-ghost nst-btn-sm">取消 Cancel</button>
+            <button id="notes-save-btn" class="nst-btn nst-btn-primary nst-btn-sm">儲存備註 Save notes</button>
+          </div>
+          <div id="notes-error" class="nst-auth-error"></div>
+        </div>
+      </div>
+
+      <!-- Photos -->
+      <div class="nst-detail-card" id="photos-card">
+        <h2>拜訪照片 Visit Photos</h2>
+        <div id="photos-grid" class="nst-photos-grid"></div>
+        <div id="photos-loading" class="nst-loading" style="padding:20px 0;display:none"><div class="nst-spinner"></div></div>
+
+        <div id="upload-area" class="nst-upload-area" style="display:none">
+          <label for="photo-input" style="cursor:pointer;display:block">
+            <div style="font-size:22px;margin-bottom:6px">📷</div>
+            <div>點擊上傳照片 Click to upload photos</div>
+            <div style="font-size:12px;margin-top:3px;color:var(--nst-gray)">JPG, PNG, HEIC · 多張同時上傳 Multiple files supported</div>
+            <input id="photo-input" type="file" accept="image/*" multiple/>
+          </label>
+        </div>
+        <div id="upload-progress" style="display:none;font-size:13px;color:var(--nst-gray);margin-top:8px"></div>
+        <div id="photos-error" class="nst-auth-error" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, signOut } from './js/auth.js';
+import { LOGO } from './js/logo.js';
+import { getVisit, updateVisit, deleteVisit, VISIT_STATUS_LABELS } from './js/visits.js';
+import { STATUS_LABELS } from './js/shops.js';
+import { uploadPhoto, listPhotos, getSignedUrl, deletePhoto } from './js/photos.js';
+
+document.getElementById('logo').src = LOGO;
+
+const user = await requireAuth();
+document.getElementById('app').style.display = '';
+document.getElementById('user-email').textContent = user.email;
+document.getElementById('sign-out-btn').addEventListener('click', signOut);
+
+const params = new URLSearchParams(location.search);
+const visitId = params.get('id');
+if (!visitId) { location.href = 'visits.html'; }
+
+let visit = null;
+const isRep = () => visit && visit.rep_id === user.id;
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+}
+
+function visitStatusBadge(s) {
+  const info = VISIT_STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
+}
+function shopStatusBadge(s) {
+  const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}" style="font-size:10px">${info.zh}</span>`;
+}
+
+function renderVisit() {
+  const shop = visit.shops;
+  document.getElementById('visit-heading').textContent = `${shop ? shop.name : '—'} · ${visit.scheduled_date}`;
+  // Back link → shop detail
+  if (shop) {
+    document.getElementById('back-link').innerHTML =
+      `<a href="shop-detail.html?id=${shop.id}" style="font-size:13px;color:var(--nst-gray)">← ${esc(shop.name)}</a>
+       <span style="color:var(--nst-border);margin:0 8px">|</span>
+       <a href="visits.html" style="font-size:13px;color:var(--nst-gray)">拜訪列表 Visits</a>`;
+  }
+  document.getElementById('f-shop').innerHTML = shop
+    ? `<a href="shop-detail.html?id=${shop.id}">${esc(shop.name)}</a> ${shopStatusBadge(shop.status)}`
+    : '—';
+  document.getElementById('f-date').textContent = fmtDate(visit.scheduled_date);
+  document.getElementById('f-status').innerHTML = visitStatusBadge(visit.status);
+  document.getElementById('f-rep').textContent = isRep() ? `${user.email} (你 / you)` : visit.rep_id;
+
+  if (isRep()) {
+    document.getElementById('status-actions').style.display = '';
+    document.getElementById('edit-notes-btn').style.display = '';
+    document.getElementById('upload-area').style.display = '';
+  }
+
+  // Highlight active status button
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.style.opacity = btn.dataset.status === visit.status ? '.4' : '';
+    btn.disabled = btn.dataset.status === visit.status;
+  });
+
+  // Notes
+  const notesContent = document.getElementById('notes-content');
+  if (visit.review_notes) {
+    notesContent.textContent = visit.review_notes;
+  } else {
+    notesContent.innerHTML = '<span style="color:var(--nst-gray);font-style:italic">尚無備註 No notes yet</span>';
+  }
+}
+
+// Load visit
+try {
+  visit = await getVisit(visitId);
+  renderVisit();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = '';
+  loadPhotos();
+} catch (e) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-banner').textContent = e.message;
+  document.getElementById('error-banner').style.display = '';
+}
+
+// Status actions
+document.querySelectorAll('.status-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const newStatus = btn.dataset.status;
+    btn.disabled = true;
+    try {
+      visit = await updateVisit(visitId, { status: newStatus });
+      renderVisit();
+    } catch (e) {
+      document.getElementById('error-banner').textContent = e.message;
+      document.getElementById('error-banner').style.display = '';
+      btn.disabled = false;
+    }
+  });
+});
+
+// Notes edit
+document.getElementById('edit-notes-btn').addEventListener('click', () => {
+  document.getElementById('notes-textarea').value = visit.review_notes || '';
+  document.getElementById('notes-view').style.display = 'none';
+  document.getElementById('notes-edit').style.display = '';
+  document.getElementById('notes-error').textContent = '';
+  document.getElementById('notes-textarea').focus();
+});
+document.getElementById('notes-cancel-btn').addEventListener('click', () => {
+  document.getElementById('notes-view').style.display = '';
+  document.getElementById('notes-edit').style.display = 'none';
+});
+document.getElementById('notes-save-btn').addEventListener('click', async () => {
+  const notes = document.getElementById('notes-textarea').value.trim();
+  const btn = document.getElementById('notes-save-btn');
+  btn.disabled = true; btn.textContent = '儲存中…';
+  try {
+    visit = await updateVisit(visitId, { review_notes: notes || null });
+    document.getElementById('notes-view').style.display = '';
+    document.getElementById('notes-edit').style.display = 'none';
+    renderVisit();
+  } catch (e) {
+    document.getElementById('notes-error').textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '儲存備註 Save notes';
+  }
+});
+
+// Photos
+async function loadPhotos() {
+  const grid = document.getElementById('photos-grid');
+  document.getElementById('photos-loading').style.display = '';
+  grid.innerHTML = '';
+  try {
+    const photos = await listPhotos(visitId);
+    document.getElementById('photos-loading').style.display = 'none';
+    if (!photos.length) {
+      grid.innerHTML = '<div style="color:var(--nst-gray);font-size:13px;padding:4px 0">尚無照片 No photos yet</div>';
+      return;
+    }
+    const signedItems = await Promise.all(photos.map(async p => {
+      try { return { ...p, url: await getSignedUrl(p.storage_path) }; }
+      catch { return { ...p, url: '' }; }
+    }));
+    grid.innerHTML = signedItems.map(p => `
+      <div class="nst-photo-thumb" data-id="${p.id}" data-path="${esc(p.storage_path)}">
+        ${p.url ? `<img src="${esc(p.url)}" alt="visit photo" loading="lazy"/>` : '<div style="height:100%;background:var(--nst-bg)"></div>'}
+        ${isRep() ? `<button class="delete-btn" title="刪除 Delete">✕</button>` : ''}
+      </div>`).join('');
+
+    if (isRep()) {
+      grid.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const thumb = btn.closest('.nst-photo-thumb');
+          if (!confirm('刪除此照片？\nDelete this photo?')) return;
+          btn.disabled = true;
+          try {
+            await deletePhoto(thumb.dataset.id, thumb.dataset.path);
+            thumb.remove();
+          } catch (err) {
+            document.getElementById('photos-error').textContent = err.message;
+          }
+        });
+      });
+    }
+
+    // Lightbox: open image on click
+    grid.querySelectorAll('.nst-photo-thumb img').forEach(img => {
+      img.addEventListener('click', () => window.open(img.src, '_blank'));
+      img.style.cursor = 'zoom-in';
+    });
+  } catch (e) {
+    document.getElementById('photos-loading').style.display = 'none';
+    document.getElementById('photos-error').textContent = e.message;
+  }
+}
+
+// Upload
+document.getElementById('photo-input').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const progress = document.getElementById('upload-progress');
+  const errEl = document.getElementById('photos-error');
+  errEl.textContent = '';
+  progress.style.display = '';
+  let done = 0;
+  for (const file of files) {
+    progress.textContent = `上傳中 Uploading… ${done}/${files.length}`;
+    try {
+      await uploadPhoto(visitId, file);
+      done++;
+    } catch (err) {
+      errEl.textContent = `上傳失敗 Upload failed: ${err.message}`;
+    }
+  }
+  progress.style.display = 'none';
+  e.target.value = '';
+  await loadPhotos();
+});
+</script>
+</body>
+</html>
