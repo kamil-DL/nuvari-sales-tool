@@ -11,11 +11,12 @@
 <div id="app" style="display:none">
   <header class="nst-header">
     <div class="nst-header-left">
-      <img id="logo" class="nst-header-logo" alt="Nuvari"/>
+      <a href="../index.html"><img id="logo" class="nst-header-logo" alt="Nuvari"/></a>
       <span class="nst-header-title">店家資料庫 Shop Database</span>
     </div>
     <div class="nst-header-right">
       <span id="user-email" class="nst-user-email"></span>
+      <a href="../index.html" class="nst-btn nst-btn-ghost nst-btn-sm">← Dashboard</a>
       <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
     </div>
   </header>
@@ -32,7 +33,10 @@
         <h1>店家資料庫 Shop Database</h1>
         <div class="sub">管理所有合作店家 Manage all shops</div>
       </div>
-      <button id="add-shop-btn" class="nst-btn nst-btn-primary">＋ 新增店家 Add shop</button>
+      <div style="display:flex;gap:8px">
+        <button id="import-csv-btn" class="nst-btn nst-btn-outline">↑ 匯入 CSV Import CSV</button>
+        <button id="add-shop-btn" class="nst-btn nst-btn-primary">＋ 新增店家 Add shop</button>
+      </div>
     </div>
 
     <div class="nst-filter-bar">
@@ -86,6 +90,35 @@
       <button id="modal-delete-btn" class="nst-btn nst-btn-danger" style="display:none;margin-right:auto">刪除 Delete</button>
       <button id="modal-cancel-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
       <button id="modal-save-btn" class="nst-btn nst-btn-primary">儲存 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV import modal -->
+<div id="csv-modal" class="nst-modal-backdrop" style="display:none">
+  <div class="nst-modal" style="max-width:520px">
+    <div class="nst-modal-header">
+      <h3>匯入 CSV Import CSV</h3>
+      <button class="nst-modal-close" id="csv-modal-close">✕</button>
+    </div>
+    <div class="nst-modal-body">
+      <div style="font-size:13px;color:var(--nst-gray);margin-bottom:14px;line-height:1.6">
+        CSV 欄位（首行為標題）：<br/>
+        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, notes, lat, lng</code><br/>
+        <span style="font-size:12px">status 可填：lead / prospect / active / churned（預設 lead）</span>
+      </div>
+      <label class="nst-field-label">選擇檔案 Choose file</label>
+      <input id="csv-file-input" type="file" accept=".csv,text/csv" class="nst-input" style="padding:8px"/>
+      <div id="csv-preview" style="display:none;margin-top:14px">
+        <div id="csv-preview-text" style="font-size:13px;color:var(--nst-ink);margin-bottom:8px"></div>
+        <div id="csv-warnings" style="font-size:12px;color:#E07A30;margin-bottom:4px"></div>
+      </div>
+      <div id="csv-progress" style="display:none;font-size:13px;color:var(--nst-gray);margin-top:10px"></div>
+      <div id="csv-error" class="nst-auth-error" style="margin-top:8px"></div>
+    </div>
+    <div class="nst-modal-footer">
+      <button id="csv-cancel-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
+      <button id="csv-import-btn" class="nst-btn nst-btn-primary" disabled>匯入 Import</button>
     </div>
   </div>
 </div>
@@ -239,6 +272,128 @@ document.getElementById('shops-list').addEventListener('click', e => {
 });
 
 await refresh();
+
+// ── CSV Import ──
+const VALID_STATUSES = new Set(['lead','prospect','active','churned']);
+let csvRows = [];
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[\s\-]+/g,'_'));
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    // Simple CSV parse (handles quoted fields)
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const row = {};
+    headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+    return row;
+  });
+}
+
+function normaliseRow(row) {
+  // Flexible column name mapping
+  const name = row.name || row['店家名稱'] || row['shop_name'] || '';
+  const status = (row.status || row['狀態'] || 'lead').toLowerCase().trim();
+  return {
+    name: name.trim(),
+    status: VALID_STATUSES.has(status) ? status : 'lead',
+    address: (row.address || row['地址'] || '').trim() || null,
+    contact_name: (row.contact_name || row['聯絡人'] || '').trim() || null,
+    contact_phone: (row.contact_phone || row['聯絡電話'] || row.phone || '').trim() || null,
+    notes: (row.notes || row['備註'] || '').trim() || null,
+    lat: parseFloat(row.lat || row.latitude || row['緯度']) || null,
+    lng: parseFloat(row.lng || row.lon || row.longitude || row['經度']) || null,
+  };
+}
+
+document.getElementById('import-csv-btn').addEventListener('click', () => {
+  csvRows = [];
+  document.getElementById('csv-file-input').value = '';
+  document.getElementById('csv-preview').style.display = 'none';
+  document.getElementById('csv-progress').style.display = 'none';
+  document.getElementById('csv-error').textContent = '';
+  document.getElementById('csv-import-btn').disabled = true;
+  document.getElementById('csv-modal').style.display = '';
+});
+
+function closeCsvModal() { document.getElementById('csv-modal').style.display = 'none'; }
+document.getElementById('csv-modal-close').addEventListener('click', closeCsvModal);
+document.getElementById('csv-cancel-btn').addEventListener('click', closeCsvModal);
+document.getElementById('csv-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCsvModal(); });
+
+document.getElementById('csv-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const raw = parseCSV(ev.target.result);
+      const normalised = raw.map(normaliseRow);
+      const skippedRows = normalised.filter(r => !r.name || !r.address || r.lat === null || r.lng === null);
+      csvRows = normalised.filter(r => r.name && r.address && r.lat !== null && r.lng !== null);
+      const skipped = skippedRows.length;
+      const noStatus = csvRows.filter(r => !VALID_STATUSES.has(r.status)).length;
+      document.getElementById('csv-preview-text').textContent =
+        `找到 ${csvRows.length} 筆店家資料 Found ${csvRows.length} shops to import.${skipped ? ` (${skipped} rows skipped — missing required fields)` : ''}`;
+      const warnParts = [];
+      if (noStatus) warnParts.push(`${noStatus} rows had invalid status → defaulted to "lead"`);
+      if (skipped) {
+        const reasons = [...new Set(skippedRows.map(r => {
+          const m = [];
+          if (!r.name) m.push('name');
+          if (!r.address) m.push('address');
+          if (r.lat === null) m.push('lat');
+          if (r.lng === null) m.push('lng');
+          return m.join('+');
+        }))];
+        warnParts.push(`Skipped rows missing: ${reasons.join(', ')}`);
+      }
+      document.getElementById('csv-warnings').textContent = warnParts.join(' · ');
+      document.getElementById('csv-preview').style.display = '';
+      document.getElementById('csv-error').textContent = '';
+      document.getElementById('csv-import-btn').disabled = csvRows.length === 0;
+    } catch (err) {
+      document.getElementById('csv-error').textContent = err.message;
+      document.getElementById('csv-preview').style.display = 'none';
+      document.getElementById('csv-import-btn').disabled = true;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+document.getElementById('csv-import-btn').addEventListener('click', async () => {
+  if (!csvRows.length) return;
+  const btn = document.getElementById('csv-import-btn');
+  const progress = document.getElementById('csv-progress');
+  btn.disabled = true;
+  progress.style.display = '';
+  document.getElementById('csv-error').textContent = '';
+  let done = 0, failed = 0;
+  for (const row of csvRows) {
+    progress.textContent = `匯入中 Importing… ${done + failed}/${csvRows.length}`;
+    try {
+      await addShop(row, user.id);
+      done++;
+    } catch {
+      failed++;
+    }
+  }
+  progress.style.display = 'none';
+  if (failed) {
+    document.getElementById('csv-error').textContent = `匯入完成 Done: ${done} 成功 / ${failed} 失敗 failed`;
+  } else {
+    closeCsvModal();
+  }
+  await refresh();
+});
 </script>
 </body>
 </html>

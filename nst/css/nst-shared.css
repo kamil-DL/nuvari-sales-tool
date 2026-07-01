@@ -1,9 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+/* Restrict PingFang TC to CJK codepoints so Latin letters stay in Outfit */
+@font-face {
+  font-family: "PingFang TC";
+  src: local("PingFang TC");
+  unicode-range: U+2E80-2EFF, U+2F00-2FDF, U+3000-303F, U+3040-309F,
+                 U+30A0-30FF, U+3100-312F, U+3200-32FF, U+3400-4DBF,
+                 U+4E00-9FFF, U+A000-A48F, U+A490-A4CF, U+F900-FAFF,
+                 U+FE10-FE1F, U+FE30-FE4F, U+FF00-FFEF;
+}
+@font-face {
+  font-family: "Microsoft JhengHei";
+  src: local("Microsoft JhengHei");
+  unicode-range: U+2E80-2EFF, U+2F00-2FDF, U+3000-303F, U+3040-309F,
+                 U+30A0-30FF, U+3100-312F, U+3200-32FF, U+3400-4DBF,
+                 U+4E00-9FFF, U+A000-A48F, U+A490-A4CF, U+F900-FAFF,
+                 U+FE10-FE1F, U+FE30-FE4F, U+FF00-FFEF;
+}
+
 /* ── Brand tokens ── */
 :root {
-  --nst-accent:      #0EA5A4;
-  --nst-accent-dark: #0B8584;
-  --nst-ink:         #1B2430;
-  --nst-gray:        #5B6472;
+  --nst-accent:      #137ECE;
+  --nst-accent-dark: #002850;
+  --nst-ink:         #282828;
+  --nst-gray:        #798BA5;
   --nst-border:      #E2E5EB;
   --nst-bg:          #F6F7FA;
   --nst-card:        #ffffff;
@@ -15,7 +35,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%;
-  font-family: Calibri, "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+  font-family: 'Outfit', "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
   font-size: 15px;
   background: var(--nst-bg);
   color: var(--nst-ink);
@@ -32,22 +52,22 @@ img { max-width: 100%; }
 .nst-auth-backdrop {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 100%;
-  background: rgba(27,36,48,0.5); backdrop-filter: blur(4px);
+  background: url('../../assets/bg.png') center/cover no-repeat;
 }
 .nst-auth-box {
-  background: var(--nst-card);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--nst-border);
   border-radius: 16px;
   padding: 40px 36px;
   width: 360px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.14);
 }
-.nst-auth-brand {
-  font-family: Cambria, Georgia, serif;
-  font-size: 22px; font-weight: 700;
-  color: var(--nst-accent);
+.nst-auth-logo {
+  height: 30px;
+  display: block;
   margin-bottom: 20px;
-  letter-spacing: -.02em;
 }
 .nst-auth-title {
   font-size: 16px; font-weight: 700;
@@ -207,8 +227,8 @@ img { max-width: 100%; }
   font-size: 11px; font-weight: 700; letter-spacing: .03em;
   white-space: nowrap;
 }
-.badge-gray   { background: #EDEFF2; color: #5B6472; }
-.badge-blue   { background: #E8F3FE; color: #2563EB; }
+.badge-gray   { background: #EDEFF2; color: #798BA5; }
+.badge-blue   { background: #E8F3FB; color: #137ECE; }
 .badge-green  { background: #E6F9F4; color: #0B8E6A; }
 .badge-red    { background: #FEE8E7; color: #D93025; }
 .badge-orange { background: #FFF3E0; color: #E65100; }
@@ -229,9 +249,9 @@ img { max-width: 100%; }
 .nst-btn-primary { background: var(--nst-accent); color: #fff; }
 .nst-btn-primary:hover:not(:disabled) { background: var(--nst-accent-dark); }
 .nst-btn-outline { background: transparent; color: var(--nst-accent); border-color: var(--nst-accent); }
-.nst-btn-outline:hover:not(:disabled) { background: #F0FBFB; }
-.nst-btn-ghost { background: transparent; color: var(--nst-gray); border-color: var(--nst-border); }
-.nst-btn-ghost:hover:not(:disabled) { background: var(--nst-bg); color: var(--nst-ink); }
+.nst-btn-outline:hover:not(:disabled) { background: #EEF6FD; }
+.nst-btn-ghost { background: transparent; color: var(--nst-accent); border-color: var(--nst-accent); }
+.nst-btn-ghost:hover:not(:disabled) { background: #EEF6FD; }
 .nst-btn-danger { background: #E0584A; color: #fff; }
 .nst-btn-danger:hover:not(:disabled) { background: #c94437; }
 .nst-btn-full { width: 100%; margin-top: 8px; }
@@ -421,7 +441,7 @@ img { max-width: 100%; }
   transition: border-color .15s, background .15s;
   margin-top: 12px;
 }
-.nst-upload-area:hover { border-color: var(--nst-accent); background: #F0FBFB; }
+.nst-upload-area:hover { border-color: var(--nst-accent); background: #EEF6FD; }
 .nst-upload-area input[type=file] { display: none; }
 
 /* ── Section label ── */
