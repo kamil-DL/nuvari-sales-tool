@@ -38,8 +38,11 @@ export async function deleteShop(id) {
 }
 
 export const STATUS_LABELS = {
-  lead:     { zh: '潛在客戶', en: 'Lead',      color: 'badge-gray' },
-  prospect: { zh: '準客戶',   en: 'Prospect',  color: 'badge-blue' },
-  active:   { zh: '合作中',   en: 'Active',    color: 'badge-green' },
-  churned:  { zh: '已流失',   en: 'Churned',   color: 'badge-red' },
+  '尚未開發':    { zh: '尚未開發',    en: 'Not Developed',             color: 'badge-gray' },
+  '電訪過':      { zh: '電訪過',      en: 'Phone Contacted',           color: 'badge-blue' },
+  '電訪過-拒絕': { zh: '電訪過-拒絕', en: 'Phone Contacted (Declined)', color: 'badge-orange' },
+  '拜訪過':      { zh: '拜訪過',      en: 'Visited',                   color: 'badge-teal' },
+  '拜訪過-拒絕': { zh: '拜訪過-拒絕', en: 'Visited (Declined)',        color: 'badge-red' },
+  '已合作':      { zh: '已合作',      en: 'Partnered',                 color: 'badge-green' },
+  '已合作-流失': { zh: '已合作-流失', en: 'Partnered (Churned)',       color: 'badge-purple' },
 };

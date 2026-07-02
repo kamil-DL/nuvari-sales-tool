@@ -33,7 +33,8 @@
         <h1>店家資料庫 Shop Database</h1>
         <div class="sub">管理所有合作店家 Manage all shops</div>
       </div>
-      <div style="display:flex;gap:8px">
+      <div id="normal-actions" style="display:flex;gap:8px">
+        <button id="select-mode-btn" class="nst-btn nst-btn-outline">☑ 選取 Select</button>
         <button id="import-csv-btn" class="nst-btn nst-btn-outline">↑ 匯入 CSV Import CSV</button>
         <button id="add-shop-btn" class="nst-btn nst-btn-primary">＋ 新增店家 Add shop</button>
       </div>
@@ -44,11 +45,25 @@
              placeholder="搜尋店家名稱 Search shop name…"/>
       <select id="status-filter" class="nst-select" style="width:auto;min-width:150px">
         <option value="all">全部狀態 All status</option>
-        <option value="lead">潛在客戶 Lead</option>
-        <option value="prospect">準客戶 Prospect</option>
-        <option value="active">合作中 Active</option>
-        <option value="churned">已流失 Churned</option>
+        <option value="尚未開發">尚未開發 Not Developed</option>
+        <option value="電訪過">電訪過 Phone Contacted</option>
+        <option value="電訪過-拒絕">電訪過-拒絕 Phone Contacted (Declined)</option>
+        <option value="拜訪過">拜訪過 Visited</option>
+        <option value="拜訪過-拒絕">拜訪過-拒絕 Visited (Declined)</option>
+        <option value="已合作">已合作 Partnered</option>
+        <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
       </select>
+    </div>
+
+    <div id="selection-bar" class="nst-filter-bar" style="display:none">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="select-all-checkbox"/> 全選 Select all
+      </label>
+      <span id="selection-count" style="font-size:12.5px;color:var(--nst-gray)"></span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button id="delete-selected-btn" class="nst-btn nst-btn-danger" disabled>刪除已選 Delete selected</button>
+        <button id="cancel-select-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
+      </div>
     </div>
 
     <div id="error-banner" class="nst-error-banner" style="display:none"></div>
@@ -71,10 +86,13 @@
       <input id="f-name" type="text" class="nst-input" placeholder="e.g. 單車工坊台北店"/>
       <label class="nst-field-label">合作狀態 Status</label>
       <select id="f-status" class="nst-select">
-        <option value="lead">潛在客戶 Lead</option>
-        <option value="prospect">準客戶 Prospect</option>
-        <option value="active">合作中 Active</option>
-        <option value="churned">已流失 Churned</option>
+        <option value="尚未開發">尚未開發 Not Developed</option>
+        <option value="電訪過">電訪過 Phone Contacted</option>
+        <option value="電訪過-拒絕">電訪過-拒絕 Phone Contacted (Declined)</option>
+        <option value="拜訪過">拜訪過 Visited</option>
+        <option value="拜訪過-拒絕">拜訪過-拒絕 Visited (Declined)</option>
+        <option value="已合作">已合作 Partnered</option>
+        <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
       </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="f-address" type="text" class="nst-input" placeholder="e.g. 台北市信義區松壽路 12 號"/>
@@ -103,9 +121,10 @@
     </div>
     <div class="nst-modal-body">
       <div style="font-size:13px;color:var(--nst-gray);margin-bottom:14px;line-height:1.6">
-        CSV 欄位（首行為標題）：<br/>
-        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, notes, lat, lng</code><br/>
-        <span style="font-size:12px">status 可填：lead / prospect / active / churned（預設 lead）</span>
+        CSV 欄位（首行為標題，與地圖規劃工具共用同一標準）：<br/>
+        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, notes, lat/GISY, lng/GISX</code><br/>
+        <span style="font-size:12px">status 可填：尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失（預設 尚未開發）</span><br/>
+        <span style="font-size:12px">也會儲存：地區、縣市、鄉鎮市區、座標狀態、category、google_* 等欄位 · Also stored: region/county/district/coord_status/category/google_* columns if present</span>
       </div>
       <label class="nst-field-label">選擇檔案 Choose file</label>
       <input id="csv-file-input" type="file" accept=".csv,text/csv" class="nst-input" style="padding:8px"/>
@@ -137,6 +156,8 @@ document.getElementById('sign-out-btn').addEventListener('click', signOut);
 
 let currentShops = [];
 let editingShopCreatedBy = null;
+let selectionMode = false;
+let selectedIds = new Set();
 
 function statusBadge(s) {
   const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
@@ -153,9 +174,16 @@ function renderShops(shops) {
     </div>`;
     return;
   }
-  list.innerHTML = shops.map(s => `
-    <a class="nst-card nst-card-link" href="shop-detail.html?id=${s.id}">
+  list.innerHTML = shops.map(s => {
+    const owned = s.created_by === user.id;
+    const checked = selectedIds.has(s.id);
+    const checkbox = selectionMode
+      ? `<span class="nst-card-check${checked ? ' checked' : ''}${owned ? '' : ' disabled'}" title="${owned ? '' : '只能刪除自己新增的店家 · Only shops you created can be deleted'}">${checked ? '✓' : ''}</span>`
+      : '';
+    return `
+    <a class="nst-card nst-card-link${selectionMode ? ' selection-mode' : ''}" href="shop-detail.html?id=${s.id}" data-id="${esc(s.id)}">
       <div class="nst-card-header">
+        ${checkbox}
         <span class="nst-card-name">${esc(s.name)}</span>
         ${statusBadge(s.status)}
       </div>
@@ -164,7 +192,46 @@ function renderShops(shops) {
         ${s.contact_phone ? ` · 📞 ${esc(s.contact_phone)}` : ''}
       </div>
       ${s.address ? `<div class="nst-card-meta" style="margin-top:2px">📍 ${esc(s.address)}</div>` : ''}
-    </a>`).join('');
+    </a>`;
+  }).join('');
+}
+
+function enterSelectionMode() {
+  selectionMode = true;
+  selectedIds.clear();
+  document.getElementById('selection-bar').style.display = '';
+  document.getElementById('normal-actions').style.display = 'none';
+  document.getElementById('select-all-checkbox').checked = false;
+  renderShops(currentShops);
+  updateSelectionBar();
+}
+
+function exitSelectionMode() {
+  selectionMode = false;
+  selectedIds.clear();
+  document.getElementById('selection-bar').style.display = 'none';
+  document.getElementById('normal-actions').style.display = '';
+  renderShops(currentShops);
+}
+
+function updateSelectionBar() {
+  const ownedShops = currentShops.filter(s => s.created_by === user.id);
+  const n = selectedIds.size;
+  document.getElementById('selection-count').textContent = n > 0 ? `已選 ${n} 筆 · ${n} selected` : '';
+  document.getElementById('delete-selected-btn').disabled = n === 0;
+  document.getElementById('delete-selected-btn').textContent = `刪除已選 Delete selected${n ? ` (${n})` : ''}`;
+  document.getElementById('select-all-checkbox').checked = ownedShops.length > 0 && ownedShops.every(s => selectedIds.has(s.id));
+}
+
+async function bulkDelete(ids) {
+  let failed = 0;
+  for (const id of ids) {
+    try { await deleteShop(id); } catch { failed++; }
+  }
+  selectedIds.clear();
+  await refresh();
+  exitSelectionMode();
+  if (failed) showError(`${failed} 筆刪除失敗 shop(s) failed to delete`);
 }
 
 function esc(s) {
@@ -201,7 +268,7 @@ function openModal(shop = null) {
   document.getElementById('modal-title').textContent = isEdit ? '編輯店家 Edit shop' : '新增店家 Add shop';
   document.getElementById('modal-shop-id').value = shop ? shop.id : '';
   document.getElementById('f-name').value = shop ? shop.name : '';
-  document.getElementById('f-status').value = shop ? shop.status : 'lead';
+  document.getElementById('f-status').value = shop ? shop.status : '尚未開發';
   document.getElementById('f-address').value = shop ? (shop.address || '') : '';
   document.getElementById('f-contact-name').value = shop ? (shop.contact_name || '') : '';
   document.getElementById('f-contact-phone').value = shop ? (shop.contact_phone || '') : '';
@@ -264,31 +331,61 @@ document.getElementById('modal-delete-btn').addEventListener('click', async () =
   }
 });
 
-// Click on a card opens edit if user is creator; otherwise navigates
+// Click on a card opens edit if user is creator; otherwise navigates.
+// In selection mode, clicking anywhere on the card toggles its checkbox instead.
 document.getElementById('shops-list').addEventListener('click', e => {
   const link = e.target.closest('.nst-card-link');
   if (!link) return;
-  // Navigate to detail page (default link behavior)
+  if (!selectionMode) return; // normal mode: default link navigation
+  e.preventDefault();
+  const id = link.dataset.id;
+  const shop = currentShops.find(s => s.id === id);
+  if (!shop || shop.created_by !== user.id) return; // can only select/delete shops you created
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderShops(currentShops);
+  updateSelectionBar();
+});
+
+document.getElementById('select-mode-btn').addEventListener('click', enterSelectionMode);
+document.getElementById('cancel-select-btn').addEventListener('click', exitSelectionMode);
+
+document.getElementById('select-all-checkbox').addEventListener('change', e => {
+  const ownedShops = currentShops.filter(s => s.created_by === user.id);
+  if (e.target.checked) ownedShops.forEach(s => selectedIds.add(s.id));
+  else selectedIds.clear();
+  renderShops(currentShops);
+  updateSelectionBar();
+});
+
+document.getElementById('delete-selected-btn').addEventListener('click', async () => {
+  const n = selectedIds.size;
+  if (!n) return;
+  if (!confirm(`確定要刪除已選取的 ${n} 家店家嗎？此操作無法復原。\nDelete ${n} selected shops? This cannot be undone.`)) return;
+  document.getElementById('delete-selected-btn').disabled = true;
+  await bulkDelete([...selectedIds]);
 });
 
 await refresh();
 
 // ── CSV Import ──
-const VALID_STATUSES = new Set(['lead','prospect','active','churned']);
+const VALID_STATUSES = new Set(['尚未開發','電訪過','電訪過-拒絕','拜訪過','拜訪過-拒絕','已合作','已合作-流失']);
 let csvRows = [];
 
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[\s\-]+/g,'_'));
+  // auto-detect delimiter: tab takes priority if present in header row (common when pasted/exported
+  // from Excel or Google Sheets), else comma — matches the map planner's parser
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/[\s\-]+/g,'_'));
   return lines.slice(1).filter(l => l.trim()).map(line => {
-    // Simple CSV parse (handles quoted fields)
+    // Simple CSV/TSV parse (handles quoted fields)
     const vals = [];
     let cur = '', inQ = false;
     for (let i = 0; i < line.length; i++) {
       const c = line[i];
       if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else if (c === delim && !inQ) { vals.push(cur.trim()); cur = ''; }
       else { cur += c; }
     }
     vals.push(cur.trim());
@@ -301,16 +398,28 @@ function parseCSV(text) {
 function normaliseRow(row) {
   // Flexible column name mapping
   const name = row.name || row['店家名稱'] || row['shop_name'] || '';
-  const status = (row.status || row['狀態'] || 'lead').toLowerCase().trim();
+  const status = (row.status || row['狀態'] || '尚未開發').trim();
   return {
     name: name.trim(),
-    status: VALID_STATUSES.has(status) ? status : 'lead',
+    status: VALID_STATUSES.has(status) ? status : '尚未開發',
     address: (row.address || row['地址'] || '').trim() || null,
     contact_name: (row.contact_name || row['聯絡人'] || '').trim() || null,
     contact_phone: (row.contact_phone || row['聯絡電話'] || row.phone || '').trim() || null,
     notes: (row.notes || row['備註'] || '').trim() || null,
-    lat: parseFloat(row.lat || row.latitude || row['緯度']) || null,
-    lng: parseFloat(row.lng || row.lon || row.longitude || row['經度']) || null,
+    // GISY = latitude, GISX = longitude (Chunghwa Post / 內政部 coordinate convention) — same aliases as the map planner's parser
+    lat: parseFloat(row.lat || row.latitude || row['緯度'] || row.gisy) || null,
+    lng: parseFloat(row.lng || row.lon || row.longitude || row['經度'] || row.gisx) || null,
+    region: (row['地區'] || row.region || '').trim() || null,
+    county: (row['縣市'] || row.county || '').trim() || null,
+    district: (row['鄉鎮市區'] || row.district || '').trim() || null,
+    coord_status: (row['座標狀態'] || row.coord_status || '').trim() || null,
+    category: (row.category || row['類別'] || '').trim() || null,
+    google_name: (row.google_name || '').trim() || null,
+    google_address: (row.google_address || '').trim() || null,
+    google_place_id: (row.google_place_id || '').trim() || null,
+    google_rating: parseFloat(row.google_rating) || null,
+    google_rating_count: parseInt(row.google_rating_count, 10) || null,
+    business_status: (row.business_status || '').trim() || null,
   };
 }
 
@@ -337,19 +446,18 @@ document.getElementById('csv-file-input').addEventListener('change', e => {
     try {
       const raw = parseCSV(ev.target.result);
       const normalised = raw.map(normaliseRow);
-      const skippedRows = normalised.filter(r => !r.name || !r.address || r.lat === null || r.lng === null);
-      csvRows = normalised.filter(r => r.name && r.address && r.lat !== null && r.lng !== null);
+      const skippedRows = normalised.filter(r => !r.name || r.lat === null || r.lng === null);
+      csvRows = normalised.filter(r => r.name && r.lat !== null && r.lng !== null);
       const skipped = skippedRows.length;
       const noStatus = csvRows.filter(r => !VALID_STATUSES.has(r.status)).length;
       document.getElementById('csv-preview-text').textContent =
         `找到 ${csvRows.length} 筆店家資料 Found ${csvRows.length} shops to import.${skipped ? ` (${skipped} rows skipped — missing required fields)` : ''}`;
       const warnParts = [];
-      if (noStatus) warnParts.push(`${noStatus} rows had invalid status → defaulted to "lead"`);
+      if (noStatus) warnParts.push(`${noStatus} rows had invalid status → defaulted to "尚未開發"`);
       if (skipped) {
         const reasons = [...new Set(skippedRows.map(r => {
           const m = [];
           if (!r.name) m.push('name');
-          if (!r.address) m.push('address');
           if (r.lat === null) m.push('lat');
           if (r.lng === null) m.push('lng');
           return m.join('+');

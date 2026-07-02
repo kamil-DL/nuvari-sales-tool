@@ -48,6 +48,16 @@ async function restoreClientSession() {
   }
 }
 
+// Supabase silently rotates the refresh token on every use (incl. its own background
+// auto-refresh ~hourly). Without this listener, SESSION_KEY/USER_KEY go stale after the
+// first rotation — restoreClientSession() above would then hand Supabase an already-used
+// refresh token, which it rejects, leaving the client unauthenticated (so RLS-gated writes
+// fail) even though the UI still shows the user as signed in. Keep the cache in sync with
+// whatever Supabase's client currently considers the live session.
+supabase.auth.onAuthStateChange((_event, session) => {
+  if (session) saveSession(session, session.user);
+});
+
 let _resolveAuth = null;
 
 function injectModal() {

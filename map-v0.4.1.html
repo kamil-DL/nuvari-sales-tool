@@ -44,6 +44,15 @@ header{flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--borde
 .radius-wrap input:focus{outline:none;border-color:var(--accent);}
 .radius-unit{font-size:10.5px;color:var(--soft);font-weight:600;}
 .sep{width:1px;height:22px;background:var(--border);flex-shrink:0;}
+/* display settings popover */
+.dp-wrap{position:relative;display:inline-flex;}
+.dp-panel{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 34px rgba(20,30,50,.14);padding:14px;z-index:1200;width:300px;}
+.dp-panel.open{display:block;}
+.dp-row{margin-bottom:13px;}
+.dp-row:last-child{margin-bottom:0;}
+.dp-label{display:block;font-size:10px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
+.dp-color-swatch{display:inline-block;width:18px;height:18px;border-radius:50%;margin-right:4px;cursor:pointer;border:2px solid transparent;vertical-align:middle;}
+.dp-color-swatch.active{border-color:var(--ink);}
 /* toast */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border-radius:20px;opacity:0;transition:all .25s;pointer-events:none;z-index:9999;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -58,6 +67,10 @@ header{flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--borde
 .sidebar-tabs button.active{color:var(--ink);border-bottom-color:var(--ink);}
 .tab-panel{display:none;overflow-y:auto;flex:1;padding:11px;}
 .tab-panel.active{display:block;}
+/* collapse all */
+.collapse-all-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+.collapse-all-btn{border:1px solid var(--border);background:var(--panel);color:var(--soft);font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:7px;cursor:pointer;font-family:inherit;}
+.collapse-all-btn:hover{border-color:var(--ink);color:var(--ink);}
 /* legend */
 .legend-box{border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:11px;background:#FAFBFC;}
 .ltitle{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--soft);margin-bottom:6px;}
@@ -129,6 +142,9 @@ table.sh-table tbody tr:hover{background:var(--accent-light);}
 .sc-actions .del-btn:hover{border-color:var(--red);color:var(--red);}
 .sc-badges{display:flex;flex-wrap:wrap;gap:4px;}
 .badge{font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid var(--border);color:var(--soft);}
+.badge-toggle{font-family:inherit;cursor:pointer;transition:border-color .15s,color .15s;}
+.badge-toggle:hover{border-color:var(--accent);color:var(--accent);}
+.sc-author{font-size:10px;color:var(--soft);margin-top:1px;}
 /* dealer pin marker */
 .dealer-pin{width:16px;height:16px;border-radius:50%;background:#282828;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);cursor:grab;}
 .dealer-pin:active{cursor:grabbing;}
@@ -152,6 +168,10 @@ table.sh-table tbody tr:hover{background:var(--accent-light);}
 .popup-btns button:hover{background:var(--red);color:#fff;border-color:var(--red);}
 .leaflet-popup-content-wrapper{border-radius:10px;}
 .leaflet-control-layers{font-size:11px;}
+/* Chromium/Safari draw a default focus ring as a rectangle around an SVG path's
+   bounding box (not its actual outline) when a clicked polygon receives focus —
+   this looks like a stray selection rectangle over the highlighted county/district. */
+.leaflet-interactive:focus{outline:none;}
 </style>
 </head>
 <body>
@@ -184,6 +204,19 @@ const SUPABASE_URL='https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';
 const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentUser=null; // {id,email}
+
+// Supabase silently rotates the refresh token on every use (incl. its own background
+// auto-refresh ~hourly). Without this, the nst-session-v1/nst-user-v1 cache shared with
+// NST goes stale after the first rotation — the setSession() fallback below would then
+// hand Supabase an already-used refresh token, which it rejects, leaving the client
+// unauthenticated (so RLS-gated writes silently fail) even though the UI still shows the
+// user as signed in. Keep the shared cache in sync with whatever Supabase currently has.
+sbClient.auth.onAuthStateChange((_event,session)=>{
+  if(session){
+    try{localStorage.setItem('nst-session-v1',JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));}catch(e){}
+    try{localStorage.setItem('nst-user-v1',JSON.stringify({id:session.user.id,email:session.user.email}));}catch(e){}
+  }
+});
 
 function showAcctGate(mode){
   document.getElementById('acct-gate').style.display='flex';
@@ -296,35 +329,63 @@ window.onPwGatePassed=async function(){
         <button data-mode="pin" class="active">📍 Pin Mode</button>
         <button data-mode="click">🖱️ Click Mode</button>
       </div>
-      <span class="clabel">層級</span>
-      <div class="seg" id="detailLevelSeg">
-        <button data-level="county" class="active">縣市</button>
-        <button data-level="district">鄉鎮區</button>
-      </div>
-      <span class="clabel">底圖</span>
-      <div class="seg" id="colorModeSeg">
-        <button data-mode="density" class="active">密度</button>
-        <button data-mode="region">分區</button>
-        <button data-mode="coverage">覆蓋</button>
-      </div>
-      <span class="clabel">半徑</span>
-      <div class="radius-wrap">
-        <input type="number" id="radiusInput" min="0.5" max="20" step="0.5" value="10"/>
-        <span class="radius-unit">km</span>
-      </div>
-      <span class="clabel">形狀</span>
-      <div class="seg" id="shapeSeg">
-        <button data-shape="circle" class="active">⬤ 圓</button>
-        <button data-shape="square">⬛ 方</button>
-      </div>
       <div class="sep"></div>
-      <button class="btn" id="basemapToggleBtn">🗺️ 隱藏底圖 Hide basemap</button>
+      <div class="dp-wrap" id="displaySettingsWrap">
+        <button class="btn" id="displaySettingsBtn">⚙️ 顯示設定 Display</button>
+        <div class="dp-panel" id="displaySettingsPanel">
+          <div class="dp-row">
+            <span class="dp-label">層級 Detail level</span>
+            <div class="seg" id="detailLevelSeg">
+              <button data-level="county" class="active">縣市</button>
+              <button data-level="district">鄉鎮區</button>
+              <button data-level="off">關閉 Off</button>
+            </div>
+          </div>
+          <div class="dp-row">
+            <span class="dp-label">底圖疊層 Overlay</span>
+            <div class="seg" id="colorModeSeg">
+              <button data-mode="density" class="active">密度</button>
+              <button data-mode="region">分區</button>
+              <button data-mode="coverage">覆蓋</button>
+              <button data-mode="off">關閉 Off</button>
+            </div>
+          </div>
+          <div class="dp-row">
+            <span class="dp-label">新店預設涵蓋模式 Default Pin Area Mode</span>
+            <div class="seg" id="shapeSeg">
+              <button data-shape="circle" class="active">⬤ 圓 Circle</button>
+              <button data-shape="square">⬛ 方 Square</button>
+              <button data-shape="isochrone">🚗 車程 Drive time</button>
+            </div>
+          </div>
+          <div class="dp-row" id="defaultRadiusRow">
+            <span class="dp-label">新店預設半徑 Default radius</span>
+            <div class="radius-wrap">
+              <input type="number" id="radiusInput" min="0.5" max="20" step="0.5" value="10"/>
+              <span class="radius-unit">km</span>
+            </div>
+          </div>
+          <div class="dp-row" id="defaultMinutesRow" style="display:none;">
+            <span class="dp-label">新店預設車程 Default drive time</span>
+            <div class="radius-wrap">
+              <input type="number" id="minutesInput" min="1" max="60" step="1" value="10"/>
+              <span class="radius-unit">分鐘 min</span>
+            </div>
+          </div>
+          <div class="dp-row">
+            <span class="dp-label">新店預設顏色 Default pin color</span>
+            <div id="defaultColorSwatches"></div>
+          </div>
+          <div class="dp-row" style="margin-bottom:0;">
+            <button class="btn" id="basemapToggleBtn" style="width:100%;">🗺️ 隱藏底圖 Hide basemap</button>
+          </div>
+        </div>
+      </div>
       <div class="sep"></div>
       <button class="btn btn-teal" id="gmapsBtn">📍 Google Maps ↗</button>
       <button class="btn btn-red" id="clearBtn">清除店點 Clear pins</button>
       <div class="sep"></div>
       <input type="file" id="csvInput" accept=".csv,.txt,.tsv" style="display:none"/>
-      <button class="btn" id="uploadCsvBtn">📂 Upload Shop CSV</button>
       <button class="btn" id="toggleShopsBtn" style="display:none">候選店 ●</button>
     </div>
   </header>
@@ -364,6 +425,12 @@ const COUNTY_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature"
 /* ══ static data ══ */
 const REGIONS={north:{label:'北部區',en:'Northern',color:'#3B6FD9'},central:{label:'中部區',en:'Central',color:'#E08E2C'},south:{label:'南部區',en:'Southern',color:'#1FA67A'},east:{label:'東部區',en:'Eastern',color:'#8B5CF6'}};
 const REGION_ORDER=['north','central','south','east'];
+/* explicit north→south geographic order, since COUNTY_DATA's insertion order is not geographic */
+const COUNTY_NS_ORDER=['Keelung City','Taipei City','New Taipei City','Taoyuan City','Hsinchu City','Hsinchu County','Yilan County','Miaoli County','Taichung City','Changhua County','Nantou County','Yunlin County','Chiayi County','Chiayi City','Tainan City','Kaohsiung City','Pingtung County','Hualien County','Taitung County'];
+function bynsOrder(a,b){
+  const ia=COUNTY_NS_ORDER.indexOf(a),ib=COUNTY_NS_ORDER.indexOf(b);
+  return(ia===-1?999:ia)-(ib===-1?999:ib);
+}
 const COUNTY_DATA={'Taipei City':{zh:'臺北市',region:'north',pop:2500000,area:271.80},'New Taipei City':{zh:'新北市',region:'north',pop:4002000,area:2052.57},'Keelung City':{zh:'基隆市',region:'north',pop:367000,area:132.76},'Taoyuan City':{zh:'桃園市',region:'north',pop:2300000,area:1220.95},'Hsinchu City':{zh:'新竹市',region:'north',pop:451000,area:104.15},'Hsinchu County':{zh:'新竹縣',region:'north',pop:580000,area:1427.51},'Yilan County':{zh:'宜蘭縣',region:'north',pop:451000,area:2143.62},'Taichung City':{zh:'臺中市',region:'central',pop:2816000,area:2214.90},'Miaoli County':{zh:'苗栗縣',region:'central',pop:538000,area:1820.31},'Changhua County':{zh:'彰化縣',region:'central',pop:1222000,area:1074.40},'Nantou County':{zh:'南投縣',region:'central',pop:480000,area:4106.43},'Yunlin County':{zh:'雲林縣',region:'central',pop:660000,area:1290.83},'Tainan City':{zh:'臺南市',region:'south',pop:1860000,area:2191.65},'Kaohsiung City':{zh:'高雄市',region:'south',pop:2765000,area:2951.85},'Pingtung County':{zh:'屏東縣',region:'south',pop:790000,area:2775.60},'Chiayi City':{zh:'嘉義市',region:'south',pop:264000,area:60.03},'Chiayi County':{zh:'嘉義縣',region:'south',pop:488000,area:1901.64},'Hualien County':{zh:'花蓮縣',region:'east',pop:313000,area:4628.57},'Taitung County':{zh:'臺東縣',region:'east',pop:209000,area:3515.25}};
 
 /* ══ DISTRICT (town-level) GEOJSON + lookup table (injected) ══ */
@@ -373,19 +440,30 @@ let detailLevel='county'; // 'county' | 'district'
 let basemapMode='light'; // 'light' | 'streets' | 'satellite' | 'none'
 let interactionMode='pin'; // 'pin' | 'click'
 let defaultPinShape='circle'; // 'circle' | 'square' — applies to NEW pins only, like radius
-const APP_VERSION='0.4.1';
-const BUILD_DATE='2026-07-01';
+let defaultPinColor='#282828'; // applies to NEW pins only, until changed again — like defaultPinShape
+let defaultIsochroneMinutes=10; // used for NEW pins when defaultPinShape==='isochrone'
+// Set in the capture phase (before Leaflet's own bubble-phase click/preclick handling
+// can auto-close and detach an open popup) so map.on('click') can reliably tell a click
+// originated inside a popup even after that popup's DOM is gone by the time it runs.
+let popupClickGuard=false;
+document.addEventListener('click',ev=>{
+  if(ev.target&&ev.target.closest&&ev.target.closest('.leaflet-popup'))popupClickGuard=true;
+},true);
+const APP_VERSION='0.4.2';
+const BUILD_DATE='2026-07-02';
 
 
 /* status styling — any string not in this map gets 'default' */
+/* same status vocabulary + colors as NST Shop DB (nst/js/shops.js STATUS_LABELS) — one shared standard across both tools */
 const STATUS_STYLE={
-  'potential':  {color:'#64748B',bg:'#F1F5F9',label:'候選 Potential'},
-  'visited':    {color:'#D97706',bg:'#FFFBEB',label:'已拜訪 Visited'},
-  'confirmed':  {color:'#059669',bg:'#ECFDF5',label:'確認合作 Confirmed'},
-  'rejected':   {color:'#DC2626',bg:'#FEF2F2',label:'不感興趣 Rejected'},
-  'interested': {color:'#137ECE',bg:'#E8F3FB',label:'有興趣 Interested'},
-  'contacted':  {color:'#7C3AED',bg:'#F5F3FF',label:'已聯繫 Contacted'},
-  'default':    {color:'#7C3AED',bg:'#F5F3FF',label:'其他 Other'},
+  '尚未開發':    {color:'#798BA5',bg:'#EDEFF2',label:'尚未開發 Not Developed'},
+  '電訪過':      {color:'#137ECE',bg:'#E8F3FB',label:'電訪過 Phone Contacted'},
+  '電訪過-拒絕': {color:'#E65100',bg:'#FFF3E0',label:'電訪過-拒絕 Phone Contacted (Declined)'},
+  '拜訪過':      {color:'#0F8A80',bg:'#E3F6F4',label:'拜訪過 Visited'},
+  '拜訪過-拒絕': {color:'#D93025',bg:'#FEE8E7',label:'拜訪過-拒絕 Visited (Declined)'},
+  '已合作':      {color:'#0B8E6A',bg:'#E6F9F4',label:'已合作 Partnered'},
+  '已合作-流失': {color:'#7C3AED',bg:'#F2ECFB',label:'已合作-流失 Partnered (Churned)'},
+  'default':     {color:'#798BA5',bg:'#EDEFF2',label:'其他 Other'},
 };
 function statusStyle(s){ return STATUS_STYLE[s]||STATUS_STYLE['default']; }
 
@@ -447,8 +525,8 @@ function avgDist(area,n){return n>0?0.5*Math.sqrt(area/n):Infinity;}
 function shopCount(key){return shops.filter(s=>s.county===key).length;}
 function shopCountDistrict(did){return shops.filter(s=>s.district===did).length;}
 function fillOpacity(){if(basemapMode==='none')return 0.85;const z=map.getZoom();return z>=12?0.08:z>=10.5?0.28:0.72;}
-function styleForCounty(key){const info=COUNTY_DATA[key];if(!info)return{color:'#AEB4BD',weight:1,fillColor:'#EDEFF2',fillOpacity:0.4};let fill;if(colorMode==='region')fill=REGIONS[info.region].color;else if(colorMode==='coverage')fill=coverageColor(peoplePerShop(info.pop,shopCount(key)));else fill=densityColor(info.pop/info.area);return{color:'#2A3140',weight:1,fillColor:fill,fillOpacity:fillOpacity()};}
-function styleForDistrict(did){const info=DISTRICT_DATA[did];if(!info)return{color:'#AEB4BD',weight:0.6,fillColor:'#EDEFF2',fillOpacity:0.4};let fill;if(colorMode==='region')fill=REGIONS[info.region]?REGIONS[info.region].color:'#AEB4BD';else if(colorMode==='coverage')fill=coverageColor(peoplePerShop(info.pop,shopCountDistrict(did)));else fill=densityColor(info.pop/info.area);return{color:'#2A3140',weight:0.6,fillColor:fill,fillOpacity:fillOpacity()};}
+function styleForCounty(key){const info=COUNTY_DATA[key];if(!info)return{color:'#AEB4BD',weight:1,fillColor:'#EDEFF2',fillOpacity:0.4};if(colorMode==='off')return{color:'#2A3140',weight:1,fillColor:'#000',fillOpacity:0};let fill;if(colorMode==='region')fill=REGIONS[info.region].color;else if(colorMode==='coverage')fill=coverageColor(peoplePerShop(info.pop,shopCount(key)));else fill=densityColor(info.pop/info.area);return{color:'#2A3140',weight:1,fillColor:fill,fillOpacity:fillOpacity()};}
+function styleForDistrict(did){const info=DISTRICT_DATA[did];if(!info)return{color:'#AEB4BD',weight:0.6,fillColor:'#EDEFF2',fillOpacity:0.4};if(colorMode==='off')return{color:'#2A3140',weight:0.6,fillColor:'#000',fillOpacity:0};let fill;if(colorMode==='region')fill=REGIONS[info.region]?REGIONS[info.region].color:'#AEB4BD';else if(colorMode==='coverage')fill=coverageColor(peoplePerShop(info.pop,shopCountDistrict(did)));else fill=densityColor(info.pop/info.area);return{color:'#2A3140',weight:0.6,fillColor:fill,fillOpacity:fillOpacity()};}
 function recolorCounties(){
   if(detailLevel==='district'){Object.keys(districtLayers).forEach(k=>districtLayers[k].setStyle(styleForDistrict(k)));}
   else{Object.keys(countyLayers).forEach(k=>countyLayers[k].setStyle(styleForCounty(k)));}
@@ -478,6 +556,96 @@ function makeCoverageShape(lat,lng,radiusKm,shape,color){
   });
 }
 function gmapsView(){const c=map.getCenter(),z=Math.min(21,Math.max(3,Math.round(map.getZoom())));return`https://www.google.com/maps/@${c.lat.toFixed(6)},${c.lng.toFixed(6)},${z}z`;}
+
+/* ══ drive-time isochrones (OpenRouteService) ══ */
+const ORS_API_KEY='eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjgyYWQyZTI1NTA0ZjQ0MjU4NzI4NTZlZTI4MmVlZTA2IiwiaCI6Im11cm11cjY0In0=';
+async function fetchIsochrone(lat,lng,minutes){
+  const res=await fetch('https://api.openrouteservice.org/v2/isochrones/driving-car',{
+    method:'POST',
+    headers:{'Authorization':ORS_API_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({locations:[[lng,lat]],range:[minutes*60],range_type:'time'})
+  });
+  if(!res.ok){
+    let msg=res.status;
+    try{const body=await res.json();if(body?.error?.message)msg=body.error.message;}catch(e){}
+    throw new Error(String(msg));
+  }
+  const data=await res.json();
+  if(!data.features||!data.features.length)throw new Error('no data');
+  return data.features[0];
+}
+/* build the Leaflet layer for a pin's coverage area — circle/square are instant,
+   isochrone needs an async fetch, so this returns a placeholder estimate until
+   the real polygon arrives (see maybeFetchIsochrone) */
+function shapeForShop(shop){
+  const pinColor=shop.color||'#282828';
+  const shape=shop.shape||'circle';
+  if(shape==='isochrone'){
+    if(shop.isochroneGeoJSON){
+      return L.geoJSON(shop.isochroneGeoJSON,{style:{color:pinColor,weight:1.4,fillColor:pinColor,fillOpacity:0.12}});
+    }
+    const estKm=(shop.isochroneMinutes||10)*0.5; // rough placeholder ~30km/h until the real polygon loads
+    const c=shop.isochroneError?'#E0584A':pinColor;
+    return L.circle([shop.lat,shop.lng],{radius:estKm*1000,color:c,weight:1,fillColor:c,fillOpacity:0.04,dashArray:'2,7'});
+  }
+  return makeCoverageShape(shop.lat,shop.lng,shop.radiusKm||targetRadiusKm,shape,pinColor);
+}
+function applyPinRadiusInput(shop,input){
+  let v=parseFloat(input.value);
+  if(isNaN(v)||v<0.5)v=0.5; if(v>20)v=20;
+  v=Math.round(v*2)/2;
+  input.value=v;
+  shop.radiusKm=v;
+  persistShops();
+  rebuildCircles();
+  renderStats();
+}
+function applyIsochroneMinutesInput(shop,input){
+  let v=parseInt(input.value,10);
+  if(isNaN(v)||v<1)v=1; if(v>60)v=60;
+  input.value=v;
+  shop.isochroneMinutes=v;
+  shop.isochroneGeoJSON=null;
+  shop.isochroneError=null;
+  persistShops();
+  rebuildCircles();
+}
+function refreshOpenPopup(shop){
+  const ref=markerRefs[shop.id];
+  if(ref&&ref.marker&&ref.marker.isPopupOpen())ref.marker.setPopupContent(buildDealerPopup(shop));
+}
+function isValidLatLng(lat,lng){
+  return typeof lat==='number'&&typeof lng==='number'&&!isNaN(lat)&&!isNaN(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180;
+}
+function maybeFetchIsochrone(shop){
+  // Once isochroneError is set, stop — do NOT auto-retry. rebuildCircles() runs inside the
+  // .catch() below (to refresh the placeholder/popup), and rebuildCircles() calls this for
+  // every isochrone-shaped pin — without this guard a persistent failure retries itself in
+  // a tight loop, burns through ORS's rate limit, and can cascade into failures on OTHER
+  // pins too. User-initiated changes (drag, duration edit) already clear isochroneError to
+  // allow a fresh attempt.
+  if(shop.shape!=='isochrone'||shop.isochroneGeoJSON||shop.isochroneFetching||shop.isochroneError)return;
+  if(!isValidLatLng(shop.lat,shop.lng)){
+    shop.isochroneError='座標無效 Invalid coordinates';
+    return;
+  }
+  shop.isochroneFetching=true;
+  shop.isochroneError=null;
+  fetchIsochrone(shop.lat,shop.lng,shop.isochroneMinutes||10).then(gj=>{
+    shop.isochroneFetching=false;
+    shop.isochroneGeoJSON=gj;
+    persistShops();
+    rebuildCircles();
+    refreshOpenPopup(shop);
+  }).catch(err=>{
+    shop.isochroneFetching=false;
+    shop.isochroneError=err.message||'error';
+    persistShops();
+    rebuildCircles();
+    refreshOpenPopup(shop);
+    toast(`車程範圍計算失敗 Drive-time failed (${shop.name}): ${err.message}`,'err');
+  });
+}
 
 /* ══ toast ══ */
 let toastTimer;
@@ -535,7 +703,18 @@ function initMap(){
   // Start with county level visible
   countyGeoLayer.addTo(map);
 
-  map.on('click',e=>{if(interactionMode==='pin')addShop(e.latlng.lat,e.latlng.lng);});
+  map.on('click',e=>{
+    // Belt-and-suspenders: disableClickPropagation on the popup is supposed to stop
+    // this reaching the map at all, but it can still leak through in some
+    // browsers/automation contexts. By the time this bubble-phase handler runs,
+    // Leaflet may have already auto-closed (and detached) the popup the click
+    // originated in, severing the DOM ancestry we'd otherwise check — so instead
+    // popupClickGuard is set in the capture phase (see below), before any of that
+    // teardown happens.
+    if(popupClickGuard){popupClickGuard=false;return;}
+    map.closePopup(); // popups are bound with autoClose:false (see above), so replicate "click elsewhere closes it" ourselves for genuine outside clicks
+    if(interactionMode==='pin')addShop(e.latlng.lat,e.latlng.lng);
+  });
   map.on('zoomend',recolorCounties);
   map.fitBounds(countyGeoLayer.getBounds(),{padding:[14,14]});
 }
@@ -546,6 +725,9 @@ function switchDetailLevel(level){
   if(level==='district'){
     if(map.hasLayer(countyGeoLayer))map.removeLayer(countyGeoLayer);
     if(!map.hasLayer(districtGeoLayer))districtGeoLayer.addTo(map);
+  } else if(level==='off'){
+    if(map.hasLayer(countyGeoLayer))map.removeLayer(countyGeoLayer);
+    if(map.hasLayer(districtGeoLayer))map.removeLayer(districtGeoLayer);
   } else {
     if(map.hasLayer(districtGeoLayer))map.removeLayer(districtGeoLayer);
     if(!map.hasLayer(countyGeoLayer))countyGeoLayer.addTo(map);
@@ -569,6 +751,15 @@ function setBasemap(mode){
 
 /* ══ dealer pin icon ══ */
 const PIN_COLORS=['#282828','#137ECE','#E08E2C','#3B6FD9','#1FA67A','#8B5CF6','#E0584A','#D97706','#059669','#DB2777'];
+function renderDefaultColorSwatches(){
+  const el=document.getElementById('defaultColorSwatches');
+  if(!el)return;
+  el.innerHTML=PIN_COLORS.map(c=>`<span class="dp-color-swatch${c===defaultPinColor?' active':''}" data-color="${c}" style="background:${c}"></span>`).join('');
+}
+function updateDefaultRangeRowVisibility(){
+  document.getElementById('defaultRadiusRow').style.display=defaultPinShape==='isochrone'?'none':'';
+  document.getElementById('defaultMinutesRow').style.display=defaultPinShape==='isochrone'?'':'none';
+}
 function dealerIcon(color){
   const c=color||'#282828';
   return L.divIcon({className:'',html:`<div class="dealer-pin" style="background:${c}"></div>`,iconSize:[16,16],iconAnchor:[8,8],popupAnchor:[0,-12]});
@@ -581,21 +772,21 @@ function renderShopsOnMap(){
   Object.keys(markerRefs).forEach(k=>delete markerRefs[k]);
   shops.forEach(shop=>{
     const pinColor=shop.color||'#282828';
-    const pinRadiusKm=shop.radiusKm||targetRadiusKm;
-    const pinShape=shop.shape||'circle';
-    // Coverage shape (independent per-pin radius + shape)
-    const circle=makeCoverageShape(shop.lat,shop.lng,pinRadiusKm,pinShape,pinColor).addTo(circlesLayer);
+    // Coverage shape (independent per-pin radius/duration + shape)
+    const circle=shapeForShop(shop).addTo(circlesLayer);
+    maybeFetchIsochrone(shop);
     // Draggable marker
     const marker=L.marker([shop.lat,shop.lng],{draggable:true,icon:dealerIcon(pinColor)}).addTo(markersLayer);
     markerRefs[shop.id]={marker,circle};
-    // Real-time drag: circle/square follows marker
+    // Real-time drag: circle/square follows marker. Isochrone polygons can't be cheaply
+    // translated, so they stay put until dragend triggers a refetch at the new position.
     marker.on('drag',e=>{
       const ll=e.target.getLatLng();
       const ref=markerRefs[shop.id];
       if(!ref)return;
       if(shop.shape==='square'){
         ref.circle.setLatLngs(squareLatLngs(ll.lat,ll.lng,shop.radiusKm||targetRadiusKm));
-      } else {
+      } else if(shop.shape==='circle'){
         ref.circle.setLatLng(ll);
       }
     });
@@ -605,58 +796,71 @@ function renderShopsOnMap(){
       shop.lat=ll.lat; shop.lng=ll.lng;
       shop.county=findCounty(ll.lat,ll.lng);
       shop.district=findDistrict(ll.lat,ll.lng);
+      if(shop.shape==='isochrone'){shop.isochroneGeoJSON=null;shop.isochroneError=null;}
       renderStats(); recolorCounties(); persistShops();
+      if(shop.shape==='isochrone')rebuildCircles();
     });
-    marker.bindPopup(buildDealerPopup(shop),{maxWidth:230});
+    marker.bindPopup(buildDealerPopup(shop),{maxWidth:230,closeOnClick:false});
     marker.on('click',e=>L.DomEvent.stopPropagation(e));
+    // Delegated listeners on the (stable) popup container — survives setPopupContent()
+    // swapping the inner HTML, e.g. when switching pin area mode or when an isochrone
+    // fetch resolves and refreshes the popup while it's still open.
     marker.on('popupopen',e=>{
+      // Always regenerate content on open — the marker's bound popup otherwise still
+      // shows whatever was last rendered (e.g. "Calculating…") if it was closed while
+      // an isochrone fetch resolved in the background, since nothing updates a closed
+      // popup's content until it's reopened.
+      marker.setPopupContent(buildDealerPopup(shop));
       const el=e.popup.getElement();
-      el.querySelector('.pi').addEventListener('change',ev=>{shop.name=ev.target.value||shop.name;persistShops();});
-      el.querySelector('.pd').addEventListener('click',()=>{map.closePopup();removeShop(shop.id);});
-      el.querySelectorAll('.pc-swatch').forEach(sw=>{
-        sw.addEventListener('click',()=>{
-          shop.color=sw.dataset.color;
-          persistShops();
-          renderShopsOnMap();
-        });
-      });
-      const prInput=el.querySelector('.pr-input');
-      if(prInput){
-        const applyPinRadius=()=>{
-          let v=parseFloat(prInput.value);
-          if(isNaN(v)||v<0.5)v=0.5; if(v>20)v=20;
-          v=Math.round(v*2)/2;
-          prInput.value=v;
-          shop.radiusKm=v;
-          persistShops();
-          rebuildCircles();
-          renderStats();
-        };
-        prInput.addEventListener('change',applyPinRadius);
-        prInput.addEventListener('keydown',ev=>{if(ev.key==='Enter')applyPinRadius();});
-      }
-      el.querySelectorAll('.ps-btn').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          shop.shape=btn.dataset.shape;
+      if(el._boundOnce)return;
+      el._boundOnce=true;
+      // Leaflet only disables click-propagation-to-map on non-touch browsers by
+      // default; force it here so popup clicks never also register as a map click
+      // (which — in Pin Mode — would otherwise silently drop an extra pin).
+      L.DomEvent.disableClickPropagation(el);
+      el.addEventListener('click',ev=>{
+        if(ev.target.closest('.pd')){map.closePopup();removeShop(shop.id);return;}
+        const sw=ev.target.closest('.pc-swatch');
+        if(sw){shop.color=sw.dataset.color;persistShops();renderShopsOnMap();return;}
+        const modeBtn=ev.target.closest('.ps-btn');
+        if(modeBtn){
+          shop.shape=modeBtn.dataset.shape;
+          if(shop.shape==='isochrone'&&!shop.isochroneMinutes)shop.isochroneMinutes=10;
           persistShops();
           rebuildCircles();
           marker.setPopupContent(buildDealerPopup(shop));
-        });
+          return;
+        }
+        if(ev.target.closest('.iso-retry')){
+          shop.isochroneError=null;
+          shop.isochroneGeoJSON=null;
+          persistShops();
+          rebuildCircles();
+          marker.setPopupContent(buildDealerPopup(shop));
+        }
+      });
+      el.addEventListener('change',ev=>{
+        if(ev.target.classList.contains('pi')){shop.name=ev.target.value||shop.name;persistShops();}
+        else if(ev.target.classList.contains('pr-input'))applyPinRadiusInput(shop,ev.target);
+        else if(ev.target.classList.contains('pr-input-min'))applyIsochroneMinutesInput(shop,ev.target);
+      });
+      el.addEventListener('keydown',ev=>{
+        if(ev.key!=='Enter')return;
+        if(ev.target.classList.contains('pr-input'))applyPinRadiusInput(shop,ev.target);
+        else if(ev.target.classList.contains('pr-input-min'))applyIsochroneMinutesInput(shop,ev.target);
       });
     });
   });
 }
 
-/* only rebuild circles — preserves drag state. Each pin keeps its OWN radius; the global
-   radius input only sets the default for NEWLY created pins (see addShop). */
+/* only rebuild circles — preserves drag state. Each pin keeps its OWN radius/duration; the
+   global radius input only sets the default for NEWLY created pins (see addShop). */
 function rebuildCircles(){
   circlesLayer.clearLayers();
   shops.forEach(shop=>{
-    const pinColor=shop.color||'#282828';
-    const pinRadiusKm=shop.radiusKm||targetRadiusKm;
-    const pinShape=shop.shape||'circle';
-    const circle=makeCoverageShape(shop.lat,shop.lng,pinRadiusKm,pinShape,pinColor).addTo(circlesLayer);
+    const circle=shapeForShop(shop).addTo(circlesLayer);
     if(markerRefs[shop.id])markerRefs[shop.id].circle=circle;
+    maybeFetchIsochrone(shop);
   });
 }
 
@@ -666,20 +870,37 @@ function buildDealerPopup(shop){
   const swatches=PIN_COLORS.map(c=>`<span class="pc-swatch" data-color="${c}" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${c};margin:2px;cursor:pointer;border:2px solid ${shop.color===c?'#282828':'transparent'};"></span>`).join('');
   const curRadius=shop.radiusKm||targetRadiusKm;
   const curShape=shop.shape||'circle';
+  const curMinutes=shop.isochroneMinutes||10;
+  const isIso=curShape==='isochrone';
+  const modeRow=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:11px;color:#798BA5;flex-wrap:wrap;">
+    <span>涵蓋模式 Pin Area Mode</span>
+    <span class="ps-btn" data-shape="circle" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1.5px solid ${curShape==='circle'?'#282828':'#E2E5EB'};background:${curShape==='circle'?'#282828':'#fff'};color:${curShape==='circle'?'#fff':'#282828'};">⬤ 圓 Circle</span>
+    <span class="ps-btn" data-shape="square" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1.5px solid ${curShape==='square'?'#282828':'#E2E5EB'};background:${curShape==='square'?'#282828':'#fff'};color:${curShape==='square'?'#fff':'#282828'};">⬛ 方 Square</span>
+    <span class="ps-btn" data-shape="isochrone" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1.5px solid ${curShape==='isochrone'?'#282828':'#E2E5EB'};background:${curShape==='isochrone'?'#282828':'#fff'};color:${curShape==='isochrone'?'#fff':'#282828'};">🚗 車程 Drive time</span>
+  </div>`;
+  let rangeRow;
+  if(isIso){
+    let statusNote='';
+    if(shop.isochroneFetching)statusNote='<div style="font-size:10.5px;color:#798BA5;margin-top:2px;">計算中… Calculating…</div>';
+    else if(shop.isochroneError)statusNote=`<div style="font-size:10.5px;color:#E0584A;margin-top:2px;">失敗 Failed: ${esc(shop.isochroneError)} · <span class="iso-retry" style="cursor:pointer;text-decoration:underline;">重試 Retry</span></div>`;
+    rangeRow=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;font-size:11px;color:#798BA5;">
+      <span>車程 Drive time</span>
+      <input class="pr-input-min" type="number" min="1" max="60" step="1" value="${curMinutes}" style="width:52px;padding:3px 5px;border:1px solid #E2E5EB;border-radius:6px;font-size:11px;font-family:inherit;"/>
+      <span>分鐘 min</span>
+    </div>${statusNote}<div style="margin-bottom:9px;"></div>`;
+  } else {
+    rangeRow=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;font-size:11px;color:#798BA5;">
+      <span>半徑 Radius</span>
+      <input class="pr-input" type="number" min="0.5" max="20" step="0.5" value="${curRadius}" style="width:52px;padding:3px 5px;border:1px solid #E2E5EB;border-radius:6px;font-size:11px;font-family:inherit;"/>
+      <span>km</span>
+    </div>`;
+  }
   return`<div class="shop-popup">
     <input class="pi" type="text" value="${esc(shop.name)}"/>
     <div class="shop-meta">${esc(loc)}</div>
     <div style="margin-bottom:7px;">${swatches}</div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:11px;color:#798BA5;">
-      <span>半徑 Radius</span>
-      <input class="pr-input" type="number" min="0.5" max="20" step="0.5" value="${curRadius}" style="width:52px;padding:3px 5px;border:1px solid #E2E5EB;border-radius:6px;font-size:11px;font-family:inherit;"/>
-      <span>km</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px;font-size:11px;color:#798BA5;">
-      <span>形狀 Shape</span>
-      <span class="ps-btn" data-shape="circle" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1.5px solid ${curShape==='circle'?'#282828':'#E2E5EB'};background:${curShape==='circle'?'#282828':'#fff'};color:${curShape==='circle'?'#fff':'#282828'};">⬤ 圓</span>
-      <span class="ps-btn" data-shape="square" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1.5px solid ${curShape==='square'?'#282828':'#E2E5EB'};background:${curShape==='square'?'#282828':'#fff'};color:${curShape==='square'?'#fff':'#282828'};">⬛ 方</span>
-    </div>
+    ${modeRow}
+    ${rangeRow}
     <div class="popup-btns">
       <a href="${gmapsPoint(shop.lat,shop.lng)}" target="_blank" rel="noopener">在 Google Maps 開啟 ↗</a>
       <button class="pd">移除 Remove pin</button>
@@ -692,7 +913,8 @@ function addShop(lat,lng){
   const county=findCounty(lat,lng);
   const district=findDistrict(lat,lng);
   const id='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-  shops.push({id,lat,lng,name:`店 ${shops.length+1}`,county,district,color:'#282828',radiusKm:targetRadiusKm,shape:defaultPinShape});
+  shops.push({id,lat,lng,name:`店 ${shops.length+1}`,county,district,color:defaultPinColor,radiusKm:targetRadiusKm,shape:defaultPinShape,
+    ...(defaultPinShape==='isochrone'?{isochroneMinutes:defaultIsochroneMinutes}:{})});
   renderAll(); persistShops();
 }
 function removeShop(id){
@@ -778,19 +1000,45 @@ function parseCSV(text){
   const lngI=detectCol(headers,'lng','lon','longitude','long','經度','gisx');
   const nameI=detectCol(headers,'name','名稱','店名','shop_name','shopname','title');
   const addrI=detectCol(headers,'address','addr','地址','location','address1');
-  const stI=detectCol(headers,'status','狀態','狀況','state','type','category');
+  const stI=detectCol(headers,'status','狀態','狀況','state');
   const ratingI=detectCol(headers,'rating','等級','評級','評等','grade','tier','rank');
+  // unified CSV standard (shared with NST Shop DB) — optional reference/CRM columns, carried
+  // through on import even though this tool doesn't surface all of them in the UI yet
+  const catI=detectCol(headers,'category','類別','type');
+  const contactNameI=detectCol(headers,'contact_name','聯絡人');
+  const contactPhoneI=detectCol(headers,'contact_phone','聯絡電話','phone');
+  const notesI=detectCol(headers,'notes','備註');
+  const coordStatusI=detectCol(headers,'座標狀態','coord_status');
+  const gNameI=detectCol(headers,'google_name');
+  const gAddrI=detectCol(headers,'google_address');
+  const gPlaceIdI=detectCol(headers,'google_place_id');
+  const gRatingI=detectCol(headers,'google_rating');
+  const gRatingCountI=detectCol(headers,'google_rating_count');
+  const bizStatusI=detectCol(headers,'business_status');
   if(latI<0||lngI<0)return null;
   return lines.slice(1).map(line=>{
     const vals=parseCSVLine(line,delim).map(v=>v.trim().replace(/^"|"$/g,''));
     const lat=parseFloat(vals[latI]),lng=parseFloat(vals[lngI]);
     if(isNaN(lat)||isNaN(lng))return null;
-    const rawStatus=stI>=0?(vals[stI]||'').toLowerCase().trim():'potential';
-    const status=rawStatus||'potential';
+    const rawStatus=stI>=0?(vals[stI]||'').trim():'尚未開發';
+    const status=rawStatus||'尚未開發';
     const rawRating=ratingI>=0?(vals[ratingI]||'').trim():'';
     const rating=rawRating||null; // e.g. "A+", "B", "C" — exact text as uploaded
     const ratingGroup=ratingTier(rawRating); // grouped: "A", "B", "C"...
-    return{name:nameI>=0?vals[nameI]:'Unnamed',address:addrI>=0?vals[addrI]:'',lat,lng,status,rating,ratingGroup};
+    return{
+      name:nameI>=0?vals[nameI]:'Unnamed',address:addrI>=0?vals[addrI]:'',lat,lng,status,rating,ratingGroup,
+      category:catI>=0?(vals[catI]||null):null,
+      contact_name:contactNameI>=0?(vals[contactNameI]||null):null,
+      contact_phone:contactPhoneI>=0?(vals[contactPhoneI]||null):null,
+      notes:notesI>=0?(vals[notesI]||null):null,
+      coord_status:coordStatusI>=0?(vals[coordStatusI]||null):null,
+      google_name:gNameI>=0?(vals[gNameI]||null):null,
+      google_address:gAddrI>=0?(vals[gAddrI]||null):null,
+      google_place_id:gPlaceIdI>=0?(vals[gPlaceIdI]||null):null,
+      google_rating:gRatingI>=0?(vals[gRatingI]||null):null,
+      google_rating_count:gRatingCountI>=0?(vals[gRatingCountI]||null):null,
+      business_status:bizStatusI>=0?(vals[bizStatusI]||null):null
+    };
   }).filter(Boolean);
 }
 function handleCSVUpload(file){
@@ -841,7 +1089,7 @@ async function loadFromShopDB(){
       address:s.address||'',
       lat:s.lat,
       lng:s.lng,
-      status:s.status||'lead',
+      status:s.status||'尚未開發',
       ratingGroup:null,
       _layerId:'shopdb',
       _layerColor:layerColor,
@@ -880,14 +1128,24 @@ let collapsedRegions=new Set(); // region/county keys collapsed by the user (per
 function densityDot(popPerArea){
   return`<span class="density-dot" style="background:${densityColor(popPerArea)}" title="人口密度 ${Math.round(popPerArea).toLocaleString()} /km²"></span>`;
 }
+function toggleCollapseAllKeys(keys){
+  const allCollapsed=keys.every(k=>collapsedRegions.has(k));
+  if(allCollapsed)keys.forEach(k=>collapsedRegions.delete(k));
+  else keys.forEach(k=>collapsedRegions.add(k));
+  renderStats();
+}
+function collapseAllBtnHtml(keys){
+  const allCollapsed=keys.length>0&&keys.every(k=>collapsedRegions.has(k));
+  return`<div class="collapse-all-row"><button class="collapse-all-btn" id="collapseAllBtn">${allCollapsed?'▸ 全部展開 Expand all':'▾ 全部收合 Collapse all'}</button></div>`;
+}
 function renderStats(){
   if(detailLevel==='district'){renderStatsDistrict();return;}
   const el=document.getElementById('tab-stats');
-  let html=`<div class="legend-box">${legendHtml()}</div>`;
+  let html=collapseAllBtnHtml(REGION_ORDER)+`<div class="legend-box">${legendHtml()}</div>`;
   let gPop=0,gArea=0,gShops=0;
   REGION_ORDER.forEach(rk=>{
     const reg=REGIONS[rk];
-    const counties=Object.entries(COUNTY_DATA).filter(([,v])=>v.region===rk);
+    const counties=Object.entries(COUNTY_DATA).filter(([,v])=>v.region===rk).sort((a,b)=>bynsOrder(a[0],b[0]));
     let rPop=0,rArea=0,rShops=0,rows='';
     counties.forEach(([key,info])=>{
       const n=shopCount(key),pps=peoplePerShop(info.pop,n);
@@ -941,21 +1199,23 @@ function renderStats(){
     let b=null;keys.forEach(k=>{const l=countyLayers[k];if(l)b=b?b.extend(l.getBounds()):l.getBounds();});
     if(b)map.fitBounds(b,{padding:[28,28]});
   }));
+  const collapseAllBtn=document.getElementById('collapseAllBtn');
+  if(collapseAllBtn)collapseAllBtn.addEventListener('click',()=>toggleCollapseAllKeys(REGION_ORDER));
   applySelectionHighlight();
 }
 
 /* ══ stats sidebar — district level ══ */
 function renderStatsDistrict(){
   const el=document.getElementById('tab-stats');
-  let html=`<div class="legend-box">${legendHtml()}</div>`;
   // Group districts by county
   const byCounty={};
   Object.entries(DISTRICT_DATA).forEach(([did,info])=>{
     if(!byCounty[info.countyEng])byCounty[info.countyEng]=[];
     byCounty[info.countyEng].push([did,info]);
   });
+  const countyNames=Object.keys(byCounty).sort(bynsOrder);
+  let html=collapseAllBtnHtml(countyNames.map(c=>'d_'+c))+`<div class="legend-box">${legendHtml()}</div>`;
   let gPop=0,gArea=0,gShops=0;
-  const countyNames=Object.keys(byCounty).sort();
   countyNames.forEach(countyEng=>{
     const districts=byCounty[countyEng];
     let cPop=0,cArea=0,cShops=0,rows='';
@@ -1012,10 +1272,15 @@ function renderStatsDistrict(){
     let b=null;dids.forEach(did=>{const l=districtLayers[did];if(l)b=b?b.extend(l.getBounds()):l.getBounds();});
     if(b)map.fitBounds(b,{padding:[28,28]});
   }));
+  const collapseAllBtn=document.getElementById('collapseAllBtn');
+  if(collapseAllBtn)collapseAllBtn.addEventListener('click',()=>toggleCollapseAllKeys(countyNames.map(c=>'d_'+c)));
   applySelectionHighlight();
 }
 
 function legendHtml(){
+  if(colorMode==='off'){
+    return`<div class="ltitle">底圖疊層 Overlay</div><div class="lrow" style="color:var(--soft)">已關閉，僅顯示邊界 Off — outlines only</div>`;
+  }
   if(colorMode==='region'){
     return`<div class="ltitle">分區 Region</div>`+REGION_ORDER.map(k=>`<div class="lrow"><span class="swatch" style="background:${REGIONS[k].color}"></span>${REGIONS[k].label}</div>`).join('');
   }
@@ -1048,7 +1313,7 @@ function renderShopsTab(){
     ?`<div class="upload-zone" id="uploadZone">
         <div class="uz-icon">📋</div>
         <div class="uz-title">上傳候選店名單 Upload shop list</div>
-        <div class="uz-sub">CSV 格式，需含 lat, lng 欄位<br>columns: name, address, lat, lng, status, rating</div>
+        <div class="uz-sub">CSV 格式，需含 lat/GISY, lng/GISX 欄位（與 Shop DB 共用標準）<br>columns: name, status, address, category, contact_name, contact_phone, notes, rating, lat, lng<br>status: 尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失</div>
       </div>${dbBtn}`
     :`<button class="btn btn-teal" id="addLayerBtn" style="width:100%;margin-bottom:8px;">＋ 新增 CSV 圖層 Add CSV layer</button>${dbBtn}`;
 
@@ -1181,11 +1446,15 @@ async function renderScenarios(){
     const shopsArr=p.shops||[];
     const d=new Date(sc.created_at);
     const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    const visBadge=sc.is_shared?`<span class="badge" style="border-color:var(--accent);color:var(--accent);">🌐 共用${isOwner?'':' · '+esc((sc.created_by_email||'').split('@')[0])}</span>`:`<span class="badge">🔒 私人</span>`;
+    const visBadge=isOwner
+      ?`<button class="badge badge-toggle vis-toggle-btn" data-shared="${sc.is_shared?'1':'0'}" style="${sc.is_shared?'border-color:var(--accent);color:var(--accent);':''}" title="點擊切換公開/私人 Click to toggle visibility">${sc.is_shared?'🌐 共用':'🔒 私人'}</button>`
+      :`<span class="badge" style="${sc.is_shared?'border-color:var(--accent);color:var(--accent);':''}">${sc.is_shared?'🌐 共用':'🔒 私人'}</span>`;
+    const authorLine=sc.is_shared?`<div class="sc-author">${esc((sc.created_by_email||'').split('@')[0])}</div>`:'';
     return`<div class="scenario-card" data-id="${esc(sc.id)}">
       <div class="sc-top"><div>
         <div class="sc-name">${esc(sc.name)}${isActive?` <span style="font-size:10px;color:var(--accent)">● 已載入</span>`:''}</div>
         <div class="sc-meta">${ds} · ${shopsArr.length} pins · ${p.targetRadiusKm||''}km</div>
+        ${authorLine}
       </div><div class="sc-actions">
         <button class="load-btn">載入</button>${isOwner?'<button class="del-btn">刪除</button>':''}
       </div></div>
@@ -1196,6 +1465,8 @@ async function renderScenarios(){
     card.querySelector('.load-btn').addEventListener('click',()=>loadScenario(card.dataset.id));
     const delBtn=card.querySelector('.del-btn');
     if(delBtn)delBtn.addEventListener('click',()=>deleteScenario(card.dataset.id));
+    const visBtn=card.querySelector('.vis-toggle-btn');
+    if(visBtn)visBtn.addEventListener('click',()=>toggleScenarioVisibility(card.dataset.id,visBtn.dataset.shared==='1'));
   });
 }
 async function saveCurrentScenario(){
@@ -1232,6 +1503,15 @@ async function deleteScenario(id){
   if(error){console.error(error);toast('刪除失敗 Delete failed','err');return;}
   if(activeScenarioId===id)activeScenarioId=null;
   if(sc)toast(`已刪除方案「${sc.name}」`);
+  renderScenarios();
+}
+async function toggleScenarioVisibility(id,currentlyShared){
+  const sc=scenarioCache.find(s=>s.id===id);
+  const newVal=!currentlyShared;
+  const{error}=await sbClient.from('scenarios').update({is_shared:newVal}).eq('id',id);
+  if(error){console.error(error);toast('更新失敗 Update failed','err');return;}
+  if(sc)sc.is_shared=newVal;
+  toast(newVal?`「${sc?sc.name:''}」已設為共用 Now shared`:`「${sc?sc.name:''}」已設為私人 Now private`);
   renderScenarios();
 }
 
@@ -1348,7 +1628,33 @@ function bindControls(){
     const btn=e.target.closest('button');if(!btn)return;
     defaultPinShape=btn.dataset.shape;
     document.querySelectorAll('#shapeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.shape===defaultPinShape));
+    updateDefaultRangeRowVisibility();
     persistSettings();
+  });
+  const minutesInput=document.getElementById('minutesInput');
+  function applyDefaultMinutes(){
+    let v=parseInt(minutesInput.value,10);
+    if(isNaN(v)||v<1)v=1; if(v>60)v=60;
+    minutesInput.value=v;
+    defaultIsochroneMinutes=v;
+    persistSettings();
+  }
+  minutesInput.addEventListener('change',applyDefaultMinutes);
+  minutesInput.addEventListener('keydown',e=>{if(e.key==='Enter')applyDefaultMinutes();});
+  renderDefaultColorSwatches();
+  document.getElementById('defaultColorSwatches').addEventListener('click',e=>{
+    const sw=e.target.closest('.dp-color-swatch');if(!sw)return;
+    defaultPinColor=sw.dataset.color;
+    renderDefaultColorSwatches();
+    persistSettings();
+  });
+  document.getElementById('displaySettingsBtn').addEventListener('click',e=>{
+    e.stopPropagation();
+    document.getElementById('displaySettingsPanel').classList.toggle('open');
+  });
+  document.getElementById('displaySettingsPanel').addEventListener('click',e=>e.stopPropagation());
+  document.addEventListener('click',()=>{
+    document.getElementById('displaySettingsPanel').classList.remove('open');
   });
   document.getElementById('basemapToggleBtn').addEventListener('click',()=>{
     setBasemap(basemapMode==='none'?'light':'none');
@@ -1361,7 +1667,6 @@ function bindControls(){
   document.getElementById('gmapsBtn').addEventListener('click',()=>window.open(gmapsView(),'_blank','noopener'));
   document.getElementById('clearBtn').addEventListener('click',handleClearBtn);
   document.getElementById('csvInput').addEventListener('change',e=>{const f=e.target.files[0];if(f){handleCSVUpload(f);e.target.value='';}});
-  document.getElementById('uploadCsvBtn').addEventListener('click',()=>document.getElementById('csvInput').click());
   document.getElementById('toggleShopsBtn').addEventListener('click',()=>{
     if(activeLayerIds.size>0){activeLayerIds.clear();}
     else{csvLayers.forEach(l=>activeLayerIds.add(l.id));}
@@ -1385,7 +1690,7 @@ function bindControls(){
 
 /* ══ persistence ══ */
 function persistShops(){try{localStorage.setItem('nuvari_active_shops',JSON.stringify(shops));}catch(e){}}
-function persistSettings(){try{localStorage.setItem('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode,detailLevel,basemapMode,interactionMode,defaultPinShape}));}catch(e){}}
+function persistSettings(){try{localStorage.setItem('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode,detailLevel,basemapMode,interactionMode,defaultPinShape,defaultPinColor,defaultIsochroneMinutes}));}catch(e){}}
 function persistBikeshops(){
   try{
     const serializableLayers=csvLayers.map(l=>({...l,statusFilters:[...l.statusFilters],ratingFilters:l.ratingFilters?[...l.ratingFilters]:[]}));
@@ -1395,7 +1700,8 @@ function persistBikeshops(){
 }
 function loadSession(){
   try{const v=localStorage.getItem('nuvari_active_shops');if(v)shops=JSON.parse(v);}catch{shops=[];}
-  try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.interactionMode)interactionMode=s.interactionMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;}}catch{}
+  shops.forEach(s=>{if(s.shape==='isochrone')s.isochroneFetching=false;}); // a reload can interrupt an in-flight fetch — clear so it can retry
+  try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.interactionMode)interactionMode=s.interactionMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;if(s.defaultPinColor)defaultPinColor=s.defaultPinColor;if(s.defaultIsochroneMinutes)defaultIsochroneMinutes=s.defaultIsochroneMinutes;}}catch{}
   try{
     const v=localStorage.getItem('nuvari_bikeshops');
     if(v){
@@ -1419,11 +1725,13 @@ function loadSession(){
   document.getElementById('radiusInput').value=targetRadiusKm;
   document.querySelectorAll('#colorModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===colorMode));
   document.querySelectorAll('#detailLevelSeg button').forEach(b=>b.classList.toggle('active',b.dataset.level===detailLevel));
-  if(detailLevel==='district')switchDetailLevel('district');
+  if(detailLevel!=='county')switchDetailLevel(detailLevel);
   if(basemapMode!=='light')setBasemap(basemapMode);
   document.querySelectorAll('#interactionModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===interactionMode));
   document.getElementById('map').style.cursor=interactionMode==='click'?'pointer':'';
   document.querySelectorAll('#shapeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.shape===defaultPinShape));
+  document.getElementById('minutesInput').value=defaultIsochroneMinutes;
+  updateDefaultRangeRowVisibility();
   renderAll();
   renderShopsTab();
   rebuildBikeshopMarkers();
