@@ -1295,16 +1295,34 @@ async function refreshShopDbDatasets(){
   if(document.getElementById('tab-shops'))renderShopsTab();
 }
 
+const SHOP_FETCH_COLUMNS='id,name,address,lat,lng,status,contact_name,contact_phone,notes,region,county,district,coord_status,category,sales_rep,google_name,google_address,google_place_id,google_rating,google_rating_count,business_status,dataset_id';
+/* PostgREST caps rows per request at a server-configured max (1000 by default on Supabase) —
+   a single query silently truncates instead of erroring, which is how "Taiwan Bike Shops"
+   (2,550 rows) previously showed as exactly 1000/1000. Page through with .range() until a
+   page comes back shorter than the page size. */
+async function fetchAllShopsForDataset(datasetFilter){
+  const PAGE_SIZE=1000;
+  let offset=0,all=[];
+  while(true){
+    let q=sbClient.from('shops').select(SHOP_FETCH_COLUMNS);
+    if(datasetFilter==='unassigned')q=q.is('dataset_id',null);
+    else if(datasetFilter&&datasetFilter!=='all')q=q.eq('dataset_id',datasetFilter);
+    q=q.range(offset,offset+PAGE_SIZE-1);
+    const{data,error}=await q;
+    if(error)throw error;
+    if(!data||data.length===0)break;
+    all=all.concat(data);
+    if(data.length<PAGE_SIZE)break;
+    offset+=PAGE_SIZE;
+  }
+  return all;
+}
 async function loadFromShopDB(datasetFilter='all'){
   if(!currentUser){toast('請先登入 Please sign in first','err');return;}
   const btn=document.getElementById('loadDbBtn');
   if(btn){btn.disabled=true;btn.textContent='載入中… Loading…';}
   try{
-    let query=sbClient.from('shops').select('id,name,address,lat,lng,status,contact_name,contact_phone,notes,region,county,district,coord_status,category,sales_rep,google_name,google_address,google_place_id,google_rating,google_rating_count,business_status,dataset_id');
-    if(datasetFilter==='unassigned')query=query.is('dataset_id',null);
-    else if(datasetFilter&&datasetFilter!=='all')query=query.eq('dataset_id',datasetFilter);
-    const{data,error}=await query;
-    if(error)throw error;
+    const data=await fetchAllShopsForDataset(datasetFilter);
     if(!data||data.length===0){toast('Shop DB 尚無店家資料 No shops in Shop DB yet','err');return;}
     const mappable=data.filter(s=>s.lat!=null&&s.lng!=null);
     if(mappable.length===0){
