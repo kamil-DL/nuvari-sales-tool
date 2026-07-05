@@ -3,9 +3,9 @@
 
 Two outputs:
   output/ALL_TAIWAN_bikeshops.csv — same filtering as crawl.py's per-county CSV
-  output/ALL_TAIWAN_youbike.csv   — bike_sharing_station entries, incidentally
-                                     captured by the same searches, that the
-                                     bikeshop CSV discards
+  output/ALL_TAIWAN_youbike.csv   — public bike-share docks (YouBike, iBike, MOOVO,
+                                     etc.), incidentally captured by the same searches,
+                                     that the bikeshop CSV discards
 
 Dedupes by place_id across all counties (border townships can get the same
 place from two counties' grid points).
@@ -16,11 +16,14 @@ import sys
 from pathlib import Path
 
 import geo
-from crawl import CACHE_DIR, CSV_HEADER, OUTPUT_DIR, is_bikeshop
+from crawl import (
+    CACHE_DIR, CSV_HEADER, OUTPUT_DIR, google_maps_url, is_bikeshare_station, is_bikeshop,
+    is_operational,
+)
 
 YOUBIKE_HEADER = [
     "name", "address", "縣市", "鄉鎮市區", "地區", "lat", "lng",
-    "google_place_id", "google_primary_type",
+    "google_place_id", "google_primary_type", "google_maps_url",
 ]
 
 
@@ -43,7 +46,7 @@ def write_bikeshops(places, output_path):
         writer.writerow(CSV_HEADER)
         for pid, entry in places.items():
             place = entry["raw"]
-            if not is_bikeshop(place):
+            if not is_bikeshop(place) or not is_operational(place):
                 continue
             name = place.get("displayName", {}).get("text", "")
             loc = place.get("location", {})
@@ -70,6 +73,7 @@ def write_bikeshops(places, output_path):
                 entry.get("phone") or "",
                 "Imported from Google Places crawl",
                 place.get("primaryType", ""),
+                google_maps_url(place, pid),
             ])
             written += 1
     print(f"Wrote {written} bike shops to {output_path}")
@@ -82,7 +86,7 @@ def write_youbike(places, output_path):
         writer.writerow(YOUBIKE_HEADER)
         for pid, entry in places.items():
             place = entry["raw"]
-            if place.get("primaryType") != "bike_sharing_station":
+            if not is_bikeshare_station(place):
                 continue
             name = place.get("displayName", {}).get("text", "")
             loc = place.get("location", {})
@@ -98,6 +102,7 @@ def write_youbike(places, output_path):
                 lng if lng is not None else "",
                 pid,
                 place.get("primaryType", ""),
+                google_maps_url(place, pid),
             ])
             written += 1
     print(f"Wrote {written} YouBike stations to {output_path}")

@@ -18,6 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 import geo
+from crawl import google_maps_url
 from places_client import PlacesClient
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -30,7 +31,7 @@ CSV_HEADER = [
     "google_name", "google_address", "google_place_id",
     "google_rating", "google_rating_count", "business_status",
     "contact_name", "contact_phone", "notes",
-    "google_primary_type",
+    "google_primary_type", "google_maps_url",
 ]
 
 EST_SEARCH_COST_PER_CALL = 0.032
@@ -118,15 +119,33 @@ def enrich_phones(client, scope, cache, skip_phone):
     return cache
 
 
+# Not a customer-facing retail location — warehouse, HQ back-office, internal union,
+# a parking lot, etc.
+NON_RETAIL_TYPES = {"storage", "corporate_office", "point_of_interest", "association_or_organization", "parking_lot"}
+
+
 def write_csv(cache, query, category_label, output_path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     written = 0
+    skipped = 0
     with output_path.open("w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
         writer.writerow(CSV_HEADER)
         for pid, entry in cache["places"].items():
             place = entry["raw"]
             name = place.get("displayName", {}).get("text", "")
+            # Text Search's fuzzy matching lets through a different business that just
+            # mentions this chain's branch name as a location reference (e.g. a furniture
+            # factory next to a store) — require the name to actually start with the chain.
+            if not name.startswith(query):
+                skipped += 1
+                continue
+            if place.get("primaryType", "") in NON_RETAIL_TYPES:
+                skipped += 1
+                continue
+            if place.get("businessStatus", "") != "OPERATIONAL":
+                skipped += 1
+                continue
             loc = place.get("location", {})
             lat, lng = loc.get("latitude"), loc.get("longitude")
             geo_info = geo.lookup_geo_from_coords(lat, lng) or {}
@@ -151,9 +170,10 @@ def write_csv(cache, query, category_label, output_path):
                 entry.get("phone") or "",
                 f"Imported from Google Places chain crawl ({query})",
                 place.get("primaryType", ""),
+                google_maps_url(place, pid),
             ])
             written += 1
-    print(f"Wrote {written} locations to {output_path}")
+    print(f"Wrote {written} locations to {output_path} ({skipped} filtered out as non-retail or mismatched name)")
 
 
 def main():

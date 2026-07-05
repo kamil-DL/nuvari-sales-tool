@@ -32,7 +32,8 @@ CSV_HEADER = [
     "google_name", "google_address", "google_place_id",
     "google_rating", "google_rating_count", "business_status",
     "contact_name", "contact_phone", "notes",
-    "google_primary_type",  # extra QA column, not part of the unified standard — importers ignore unknown columns
+    # extra QA columns, not part of the unified standard — importers ignore unknown columns
+    "google_primary_type", "google_maps_url",
 ]
 
 # Google's primaryType turned out to be a poor discriminator: it's "service"/"store" for a
@@ -59,15 +60,32 @@ MOTORCYCLE_BRANDS = ("Gogoro", "KYMCO", "SYM", "光陽", "三陽", "宏佳騰", 
 # intersection name, not a business) — plus the generic Chinese term some POIs use.
 YOUBIKE_TERMS = (
     "YouBike", "Youbike", "youbike", "YOUBIKE", "微笑單車", "U-bike", "Ubike", "U bike",
-    "iBike", "IBike", "公共自行車", "公共腳踏車",
+    "iBike", "IBike", "公共自行車", "公共腳踏車", "共享單車", "MOOVO", "oBike", "OBike",
 )
-# "自行車道"/"腳踏車道"/"單車道" (bicycle path/lane), riverside-park greenways, and practice
-# tracks are infrastructure, not shops — but some real shop names also contain these
-# characters, so only exclude when there's no shop-like suffix too.
-INFRA_PATH_TERMS = ("自行車道", "腳踏車道", "單車道", "河濱公園", "練習場", "綠廊", "自行車綠廊")
+# "自行車道"/"腳踏車道"/"單車道" (bicycle path/lane), riverside-park greenways, practice
+# tracks, parking areas, and scenic-route signage are infrastructure, not shops — but some
+# real shop names also contain these characters, so only exclude when there's no shop-like
+# suffix too.
+INFRA_PATH_TERMS = (
+    "自行車道", "腳踏車道", "單車道", "河濱公園", "練習場", "綠廊", "自行車綠廊", "鐵馬道",
+    "牽引道", "停車場", "停車區", "停放區", "停車處", "公園", "廣場", "天橋", "路線看板",
+    "漫遊", "起點", "步道",
+)
 # Deliberately "車行" not bare "行" — "行" alone is the middle character of "自行車"
 # itself, so it would match every "自行車道" bike-path name and defeat this check.
 SHOP_SUFFIX_TERMS = ("館", "車行", "店", "坊", "社", "工作室", "專賣", "保修站", "維修站", "車業", "工坊")
+# Categorically not a retail shop regardless of what's in the name — checked empirically:
+# auto_parts_store here was 100% VESPA/scooter parts dealers, parking/parking_lot and
+# tourist_attraction were 100% bike-parking infra or scenic-route signage that slipped past
+# the name-based infra check above, manufacturer is mostly brand HQs/factories (e.g.
+# GIANT/MERIDA corporate entities) rather than a storefront worth selling to or visiting, and
+# bridge/scenic_spot/rest_stop/bed_and_breakfast/lodging are cycling-tourism infrastructure or
+# guesthouses. Deliberately NOT denying car_rental/finance even though those samples were all
+# bike-rental businesses — rental shops are a potential customer, not noise.
+HARD_DENY_TYPES = {
+    "auto_parts_store", "parking", "parking_lot", "tourist_attraction", "manufacturer",
+    "bridge", "scenic_spot", "rest_stop", "bed_and_breakfast", "lodging", "park",
+}
 
 
 def looks_like_motorcycle_dealer(name):
@@ -82,12 +100,25 @@ def looks_like_infrastructure(name):
     return not any(term in name for term in SHOP_SUFFIX_TERMS)
 
 
+def is_bikeshare_station(place):
+    """True for public bike-share docks (YouBike, iBike, MOOVO, etc.) — Google's own
+    primaryType is unreliable for these (often "service" instead of "bike_sharing_station"),
+    so the name-based brand/generic-term check is the primary signal, same as it is for
+    excluding these from is_bikeshop().
+    """
+    primary_type = place.get("primaryType", "")
+    name = place.get("displayName", {}).get("text", "")
+    return primary_type == "bike_sharing_station" or any(term in name for term in YOUBIKE_TERMS)
+
+
 def is_bikeshop(place):
     """Applied before phone enrichment (to avoid paying for Place Details on shops we'll
     discard anyway) and again at CSV write time."""
     primary_type = place.get("primaryType", "")
     name = place.get("displayName", {}).get("text", "")
-    if primary_type == "bike_sharing_station" or any(term in name for term in YOUBIKE_TERMS):
+    if primary_type in HARD_DENY_TYPES:
+        return False
+    if is_bikeshare_station(place):
         return False
     if looks_like_infrastructure(name):
         return False
@@ -98,6 +129,18 @@ def is_bikeshop(place):
     if looks_like_motorcycle_dealer(name):
         return False
     return True
+
+
+def is_operational(place):
+    return place.get("businessStatus", "") == "OPERATIONAL"
+
+
+def google_maps_url(place, place_id):
+    loc = place.get("location", {})
+    lat, lng = loc.get("latitude"), loc.get("longitude")
+    if lat is None or lng is None:
+        return ""
+    return f"https://www.google.com/maps/search/?api=1&query={lat},{lng}&query_place_id={place_id}"
 
 # Rough public list-price estimate for Places API (New), Basic-tier search calls
 # and Contact-Data-tier details calls. Confirm current pricing in the Google
@@ -204,7 +247,7 @@ def write_csv(cache, output_path):
         writer.writerow(CSV_HEADER)
         for pid, entry in cache["places"].items():
             place = entry["raw"]
-            if not is_bikeshop(place):
+            if not is_bikeshop(place) or not is_operational(place):
                 skipped += 1
                 continue
             primary_type = place.get("primaryType", "")
@@ -233,9 +276,10 @@ def write_csv(cache, output_path):
                 entry.get("phone") or "",
                 "Imported from Google Places crawl",
                 primary_type,
+                google_maps_url(place, pid),
             ])
             written += 1
-    print(f"Wrote {written} shops to {output_path} ({skipped} filtered out as non-bikeshop primary types)")
+    print(f"Wrote {written} shops to {output_path} ({skipped} filtered out as non-bikeshop or non-operational)")
 
 
 def main():
