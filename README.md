@@ -2,7 +2,7 @@
 
 Internal sales tooling for Nuvari's bike shop dealer network: a coverage-planning map and a shop database with visit tracking. Static HTML/JS front end backed by Supabase (Postgres + Auth + Storage), no build step.
 
-**Live entry point:** `index.html` — links to the map planner and the Shop DB, and keeps the 2-3 most recent versions of the map on the dashboard for quick rollback/comparison.
+**Live entry point:** `index.html` — links to the map planner and the Shop DB, each shown as a Stable and a Beta card (both point at the same build until an actual diverging beta exists).
 
 ## Contents
 
@@ -18,7 +18,7 @@ Internal sales tooling for Nuvari's bike shop dealer network: a coverage-plannin
 
 ## Tools
 
-### Dealer Coverage Map (`map-v0.4.1.html`)
+### Dealer Coverage Map (`map.html`)
 
 A single-file Leaflet.js application for planning dealer/retail coverage across Taiwan.
 
@@ -30,7 +30,7 @@ A single-file Leaflet.js application for planning dealer/retail coverage across 
 - CSV export for both pins and location datasets, respecting active filters
 - Supabase Auth login shared with the Shop DB (same `localStorage` session cache), so signing into one signs you into the other
 
-Older versions (`map-v0.1.html` … `map-v0.4.0.html`) are kept in the repo root as a lightweight changelog/rollback mechanism — see [Versioning](#versioning).
+Older versions (`map-v0.1.html` … `map-v0.4.0.html`) are left in the repo root as historical artifacts from before the versioning scheme changed — no longer linked from the dashboard. See [Versioning](#versioning).
 
 ### Shop DB & Visit Planner (`nst/`)
 
@@ -48,14 +48,14 @@ A small multi-page app for managing the shop database and sales visit records.
 - **No build step.** Everything is plain HTML/CSS/JS loaded via `<script type="module">` and ES module imports from `esm.sh`/`jsdelivr` CDN builds of `@supabase/supabase-js`. Open the files directly through any static file server.
 - **Backend is entirely Supabase**: Postgres tables + Row-Level Security, Supabase Auth (email/password), and Supabase Storage for visit photos.
 - **Shared standard**: the map planner's candidate-shop CSV import and the Shop DB's CSV import parse the same column set and status vocabulary (see [CSV standard](#csv-standard)), so one export from either tool re-imports cleanly into the other.
-- **`/shared/`** holds logic genuinely reused by both tools: the low-level CSV/TSV tokenizer (`csv-parser.js`), the region color palette (`region-colors.js`), and the Taiwan township boundary data + point-in-polygon lookup (`taiwan-towns.js`, `geo.js`) used to auto-assign region/county/district from coordinates. `nst/` imports these as normal ES modules; `map-v0.4.1.html`'s main script is a classic (non-module) script, so it pulls them in via dynamic `import()` instead. Each tool still builds its own higher-level row/shop objects on top of the shared tokenizer — those aren't unified, only the parsing primitive is.
+- **`/shared/`** holds logic genuinely reused by both tools: the low-level CSV/TSV tokenizer (`csv-parser.js`), the region color palette (`region-colors.js`), and the Taiwan township boundary data + point-in-polygon lookup (`taiwan-towns.js`, `geo.js`) used to auto-assign region/county/district from coordinates. `nst/` imports these as normal ES modules; `map.html`'s main script is a classic (non-module) script, so it pulls them in via dynamic `import()` instead. Each tool still builds its own higher-level row/shop objects on top of the shared tokenizer — those aren't unified, only the parsing primitive is.
 
 ## Project structure
 
 ```
-index.html                 Landing dashboard (links to map + Shop DB, shows recent versions)
-map-v0.4.1.html             Current dealer coverage map (single-file app)
-map-v0.4.0.html, ...        Older map versions, kept for rollback/reference
+index.html                  Landing dashboard (links to map + Shop DB, Stable/Beta per module)
+map.html                    Current dealer coverage map (single-file app)
+map-v0.4.0.html, ...        Older map versions, left as historical artifacts, not linked anymore
 assets/                     Shared images (logo, background)
 
 shared/                     Logic reused by both the map planner and nst/ (see Architecture)
@@ -92,7 +92,7 @@ npx serve -l 5566 .
 
 Then open `http://localhost:5566/` for the dashboard, or `http://localhost:5566/nst/shops.html` directly.
 
-There is no environment-variable setup: the Supabase project URL and **publishable** (anon) key are hardcoded in `nst/js/supabase-client.js` and inline in `map-v0.4.1.html`. This is safe by design — the anon key only grants access allowed by Row-Level Security policies. If you point this at a different Supabase project, update the key/URL in both places.
+There is no environment-variable setup: the Supabase project URL and **publishable** (anon) key are hardcoded in `nst/js/supabase-client.js` and inline in `map.html`. This is safe by design — the anon key only grants access allowed by Row-Level Security policies. If you point this at a different Supabase project, update the key/URL in both places.
 
 ## Database schema
 
@@ -131,25 +131,27 @@ Only `name` + lat + lng are required; everything else is optional. Delimiter (co
         → 已合作-流失 (Partnered – Churned, purple)
 ```
 
-If you add a status or column, update it in three places: `nst/js/shops.js` (`STATUS_LABELS`), `map-v0.4.1.html` (`STATUS_STYLE`, matching hex colors), and both tools' CSV parsers/dropdowns.
+If you add a status or column, update it in three places: `nst/js/shops.js` (`STATUS_LABELS`), `map.html` (`STATUS_STYLE`, matching hex colors), and both tools' CSV parsers/dropdowns.
 
 ## Auth model
 
 - Supabase Auth (email/password) with real user accounts (`Vic.Chen`, `Kamil.Wysocki`, `Cathy.Kuo`, etc.)
 - The map planner and NST share a login session via a hand-rolled cache in `localStorage` (`nst-session-v1` / `nst-user-v1`), separate from the Supabase SDK's own storage, so signing into one signs you into the other without a shared domain/cookie
-- Supabase silently rotates the refresh token on every use (including its own background auto-refresh). Both `nst/js/auth.js` and `map-v0.4.1.html` register `supabase.auth.onAuthStateChange` listeners that re-sync the shared cache on every change — **do not remove these**, it's the only thing keeping the cached session from going stale and silently breaking every RLS-gated write
+- Supabase silently rotates the refresh token on every use (including its own background auto-refresh). Both `nst/js/auth.js` and `map.html` register `supabase.auth.onAuthStateChange` listeners that re-sync the shared cache on every change — **do not remove these**, it's the only thing keeping the cached session from going stale and silently breaking every RLS-gated write
 - `requireAuth()`'s fallback path **awaits** re-establishing the Supabase client session (`setSession`) before resolving, so callers never query the DB as `anon` right after sign-in
 
 ## Versioning
 
-The map planner keeps its last few released versions as separate files (`map-v0.4.0.html`, `map-v0.4.1.html`, …) rather than relying purely on git history, so the dashboard (`index.html`) can link directly to a specific past version for comparison or rollback. When cutting a new version:
+As of v0.5.1, there is a single whole-suite version (not one per tool/file) — shown once in the dashboard header (`index.html`) and in the map's own footer. Older releases used a "keep every past version as its own `map-vX.Y.Z.html` file" convention; that's been dropped in favor of git history for past versions, since it required renaming/copying a file on every release and had already drifted out of sync once (a file named `map.html` internally reporting `APP_VERSION` `0.4.2`). The map planner now lives at `map.html` with no version in its filename, matching how `nst/` was never file-versioned either.
 
-1. Copy the current file to a new `map-vX.Y.Z.html`
-2. Bump `APP_VERSION` / `BUILD_DATE` constants near the top of the script
-3. Add a new card to `index.html`'s version list (and trim the oldest if there are more than ~3)
+The dashboard shows two entries per module — **Stable** and **Beta** — both currently pointing at the same file/URL until an actual diverging beta build exists. When cutting a new release:
+
+1. Bump the version string in `index.html`'s `.hl` header span
+2. Bump `APP_VERSION` / `BUILD_DATE` constants near the top of `map.html`'s script
+3. Update each module's `v-meta`/`v-changelog` text in `index.html` to describe what changed
 
 ## Known gaps / next steps
 
 - No automated tests — verification has been manual, via a local static server and live Supabase calls. The most valuable next step here is probably a separate dev/test Supabase project, since that's what would make automated smoke tests (and just general experimentation) safe to run without risking production data.
 - "Only mine" is the only creator-based filter on the Shop DB; filtering to a *specific other* teammate's created shops isn't built (would need a small UI addition on top of the existing `user_directory` view)
-- The two tools still build their own higher-level CSV row/shop objects on top of the shared tokenizer in `/shared/csv-parser.js` — only the low-level parsing is unified, not the full column-mapping logic. `map-v0.4.1.html` also still keeps its own copy of the region color palette (see the comment above its `REGIONS` object) since it's a classic script and the tradeoff of converting it to an ES module hasn't been worth it yet.
+- The two tools still build their own higher-level CSV row/shop objects on top of the shared tokenizer in `/shared/csv-parser.js` — only the low-level parsing is unified, not the full column-mapping logic. `map.html` also still keeps its own copy of the region color palette (see the comment above its `REGIONS` object) since it's a classic script and the tradeoff of converting it to an ES module hasn't been worth it yet.

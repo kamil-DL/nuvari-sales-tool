@@ -7,13 +7,13 @@ A snapshot of how Nuvari Sales Tool is put together as of 2026-07-05 — what ta
 ```
 Browser
   ├── index.html ................ root dashboard, links to both tools
-  ├── map-v0.4.1.html ............ Dealer Coverage Map (single file, classic <script>)
+  ├── map.html ............ Dealer Coverage Map (single file, classic <script>)
   └── nst/ ....................... Shop DB & Visit Planner (multi-page, ES modules)
         ├── index.html, shops.html, shop-detail.html, visits.html, visit-detail.html
         ├── css/nst-shared.css
         └── js/ (auth.js, shops.js, visits.js, photos.js, logo.js, supabase-client.js)
 
-shared/ .......................... logic used by BOTH map-v0.4.1.html and nst/
+shared/ .......................... logic used by BOTH map.html and nst/
   ├── csv-parser.js ............... low-level CSV/TSV tokenizer
   ├── region-colors.js ............ canonical region color palette
   ├── geo.js + taiwan-towns.js .... point-in-polygon region/county/district lookup
@@ -39,7 +39,7 @@ As of 2026-07-05 there are **two separate Supabase projects**, fully isolated fr
 | Used when | app is opened on the real deployed domain | app is opened via `localhost`/`127.0.0.1` (i.e. the local static server) |
 | Data | real shops, visits, team accounts | empty/test data, safe to break |
 
-**The switch is automatic, not a setting you toggle.** Both `nst/js/supabase-client.js` and `map-v0.4.1.html` check `window.location.hostname` at startup (`shared/supabase-env.js` is the canonical version; the map keeps its own copy since it's a classic script and can't import synchronously). Anyone visiting the real deployed site always hits production — this only affects local development.
+**The switch is automatic, not a setting you toggle.** Both `nst/js/supabase-client.js` and `map.html` check `window.location.hostname` at startup (`shared/supabase-env.js` is the canonical version; the map keeps its own copy since it's a classic script and can't import synchronously). Anyone visiting the real deployed site always hits production — this only affects local development.
 
 **Login sessions are also environment-tagged.** A cached session now records which Supabase project it was issued by (`nst-session-project-v1` in `localStorage`). If you switch between testing prod and dev locally, a mismatched cached session is detected and cleared automatically, forcing a clean re-login instead of silently failing every write with an RLS error (this bit us once already — see `nst/js/auth.js`'s `isCachedSessionStale()`).
 
@@ -68,7 +68,7 @@ The full schema (every column, every RLS policy) is reconstructable from `supaba
 
 ## What's *not* shared (known duplication)
 
-- `map-v0.4.1.html`'s own `REGIONS` object (colors for the choropleth) is a manually-kept-in-sync copy of `shared/region-colors.js` — the map is a classic script and can't import synchronously where that object is defined and immediately used.
+- `map.html`'s own `REGIONS` object (colors for the choropleth) is a manually-kept-in-sync copy of `shared/region-colors.js` — the map is a classic script and can't import synchronously where that object is defined and immediately used.
 - Each tool still has its own higher-level CSV row-to-shop-object mapping, on top of the one shared tokenizer.
 
 Both are called out with a comment at the point of duplication in the code, so future changes know to update both sides.
