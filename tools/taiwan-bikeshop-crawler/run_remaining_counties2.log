@@ -1,0 +1,778 @@
+=== Taichung City ===
+/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+Skipping phone lookup for 1108 non-bikeshop candidates
+[1286/1457] phone lookup: 捷安特馳展單車生活館
+[1287/1457] phone lookup: 永光車行
+[1288/1457] phone lookup: 福光單車
+[1289/1457] phone lookup: 臺中市北區北興街59號
+[1290/1457] phone lookup: KEEP RIDING 單車館
+[1291/1457] phone lookup: Zerorh+台中直營門市
+[1292/1457] phone lookup: UBike
+[1293/1457] phone lookup: Superfast Lab 台中店 電單車工作室/電輔車/電動自行車/E-BIKE
+[1294/1457] phone lookup: BETO Taiwan 雙餘實業
+[1295/1457] phone lookup: 功學社 單車
+[1296/1457] phone lookup: Fan!s單車/釩偲單車
+[1297/1457] phone lookup: 群旭單車館
+[1298/1457] phone lookup: 安利達單車館
+[1299/1457] phone lookup: eMOVING電動二輪車 台中山西店 精輪車業
+[1300/1457] phone lookup: 阿迪電車-台中店
+[1301/1457] phone lookup: 台中電動車 | 電動三輪車 | 電動四輪車 | 老人代步車 | 環球電動代步車有限公司
+[1302/1457] phone lookup: 安昱電動工具專賣 / 鋰電池修理 (安昱)
+[1303/1457] phone lookup: 中華電動二輪車(精輪昌輪電動車行店)
+[1304/1457] phone lookup: 中華電動二輪車(精輪雍興車行店)
+[1305/1457] phone lookup: 亞仕大科技股份有限公司
+[1306/1457] phone lookup: 老蔡的好工藝
+[1307/1457] phone lookup: 富士自行車
+[1308/1457] phone lookup: ibike山西太原路口
+[1309/1457] phone lookup: 鐘友體育用品社
+[1310/1457] phone lookup: 鐵馬賽克有限公司
+[1311/1457] phone lookup: Sandman Bikes
+[1312/1457] phone lookup: 勝珈國際有限公司
+[1313/1457] phone lookup: 香港商比馳亞洲有限公司台灣分公司
+[1314/1457] phone lookup: 擎歐企業股份有限公司 Castello Cycle Co., Ltd.
+[1315/1457] phone lookup: 移動美學
+[1316/1457] phone lookup: 新億貿易有限公司
+[1317/1457] phone lookup: 泓輪國際企業有限公司
+[1318/1457] phone lookup: 筏子溪自行車道
+[1319/1457] phone lookup: 逢甲大學單車社-單騎風輪社
+[1320/1457] phone lookup: ORCA台中旗艦店
+[1321/1457] phone lookup: 澤橋動能科技股份有限公司 Zephyr
+[1322/1457] phone lookup: 中華電動二輪車(精輪SQ車行店)
+[1323/1457] phone lookup: oloo共享電動滑板車 - 綠之心站
+[1324/1457] phone lookup: evelox
+[1325/1457] phone lookup: oloo電動滑板車『東海大學-二校宿舍站』
+[1326/1457] phone lookup: 東記協力車出租
+[1327/1457] phone lookup: oloo共享電動滑板車 - 管院站
+[1328/1457] phone lookup: 春日部玩具批發超市
+[1329/1457] phone lookup: 金鼎機械有限公司 - 電動油壓拖板車 / 堆高機領導品牌
+[1330/1457] phone lookup: GOGORO 電池交換站 7-ELEVEN逢喜門市站
+[1331/1457] phone lookup: 銳能智慧科技股份有限公司 - 中區營運處
+[1332/1457] phone lookup: 天豪車業
+[1333/1457] phone lookup: 正五傑機械(股)公司 伍傑牌天車/電動鋼索吊車/鍊條吊車/移動式起重機/固定式起重機設計-製造-安裝-維修
+[1334/1457] phone lookup: 巨大集團全球營運總部
+[1335/1457] phone lookup: YB_騎士補給 人身部品專賣店 （YB's Pit Stop）
+[1336/1457] phone lookup: Dr. Color 玩色專業汽車包膜
+[1337/1457] phone lookup: 捷安特旅行社GIANT ADVENTURE
+[1338/1457] phone lookup: 3T Revo
+[1339/1457] phone lookup: iBike朝馬國民運動中心
+[1340/1457] phone lookup: Ambition Worldwide Co.
+[1341/1457] phone lookup: YouBike 福順停車場
+[1342/1457] phone lookup: Youbike 福科永福路口
+[1343/1457] phone lookup: 旱溪自行車道
+[1344/1457] phone lookup: YouBike2.0東山腳踏停車場站
+[1345/1457] phone lookup: 大坑單車橋
+[1346/1457] phone lookup: 忠明腳踏車
+[1347/1457] phone lookup: ibike太和六街建和路口
+[1348/1457] phone lookup: i bike 南興北ㄧ路站
+[1349/1457] phone lookup: 聯華自行車行
+[1350/1457] phone lookup: 傑克牌自行車
+[1351/1457] phone lookup: 佛曼斯實業有限公司
+[1352/1457] phone lookup: 智聯歐尚電動腳踏車(來店請先至32-12號)請先來電預約，謝謝
+[1353/1457] phone lookup: 東東單車公園 Don Don Bike Park
+[1354/1457] phone lookup: You bike建和東山
+[1355/1457] phone lookup: 露宿山林路營用品 專營:THULE YAKIMA&WHISPBAR INNO 秋野地車頂帳 車邊帳 帳篷露營用品出租
+[1356/1457] phone lookup: I bike 水景玫瑰公園
+[1357/1457] phone lookup: SUYA 車庫 (舒壓車庫)
+[1358/1457] phone lookup: 振宇五金 台中東山店
+[1359/1457] phone lookup: 文心崇德路口(西北側)
+[1360/1457] phone lookup: 潭子單車
+[1361/1457] phone lookup: 鶴輪單車工作室
+[1362/1457] phone lookup: 單車停靠站（綠空廊道）潭秀巷
+[1363/1457] phone lookup: 亞洲精工複材有限公司
+[1364/1457] phone lookup: i bike 頭家厝站
+[1365/1457] phone lookup: I bike 綠空廊道（祥和路）
+[1366/1457] phone lookup: 振宇五金 台中潭子店
+[1367/1457] phone lookup: iBike 潭子聯合辦公大樓
+[1368/1457] phone lookup: 單車停靠站（綠空廊道）環中路
+[1369/1457] phone lookup: 綠空廊道滑輪遊戲場（小pump場）
+[1370/1457] phone lookup: 潭子墘自行車電動車店
+[1371/1457] phone lookup: iBike 崇德崇德路四段183巷口
+[1372/1457] phone lookup: iBike大新路機車停車場
+[1373/1457] phone lookup: 大明高中(潭子藝術校區) YouBike 2.0
+[1374/1457] phone lookup: YouBike(潭子頭家公園)
+[1375/1457] phone lookup: YAMAHA 正全宏輪業行 YSP
+[1376/1457] phone lookup: 唐采·文具·玩具·禮品·批發 潭子店｜潭子火車站寶熊漁樂碼頭一日遊必逛超便宜玩具店｜20年在地文具批發
+[1377/1457] phone lookup: 樂橙舒食早餐店
+[1378/1457] phone lookup: 潭子車站
+[1379/1457] phone lookup: 潭子兒童交通公園-小栗子交通工程隊
+[1380/1457] phone lookup: 臺中市潭子國民暨兒童運動中心
+[1381/1457] phone lookup: 潭子運動公園
+[1382/1457] phone lookup: 大盤商五金百貨 雅潭店日
+[1383/1457] phone lookup: 咯馬可
+[1384/1457] phone lookup: 長安電動車
+[1385/1457] phone lookup: 小瓶子玩具坊
+[1386/1457] phone lookup: 電動車、無障礙電動車、電動接駁車、電動搬運車、金龍電動車、金鑨國際開發股份有限公司、金鑨電動車
+[1387/1457] phone lookup: 銳泉電機有限公司
+[1388/1457] phone lookup: 源大竹有限公司（農業機械）
+[1389/1457] phone lookup: 力富搬運設備/電動拖板車/堆高機/倉儲設備
+[1390/1457] phone lookup: 臺中市北區輔具資源中心
+[1391/1457] phone lookup: 潭子豐原神岡五金行 | 量具 | 鑽頭 | 絲攻 | 銑刀 | 虎鉗 | 筒夾 | 刀桿 | 手工具 | 益田行(鑫榮五金) | LINE ID:@yitian
+[1392/1457] phone lookup: 台祐電機股份有限公司
+[1393/1457] phone lookup: 德國馬牌輪胎BestDrive宏益旗艦店
+[1394/1457] phone lookup: i bike 栗林車站
+[1395/1457] phone lookup: 單車停靠站（綠空廊道）大新路
+[1396/1457] phone lookup: 單車停靠站（綠空廊道）潭豐路
+[1397/1457] phone lookup: TREEWALKER(萊茂)露營運動生活體驗館
+[1398/1457] phone lookup: 源通車行有限公司
+[1399/1457] phone lookup: Bryan.kuo
+[1400/1457] phone lookup: 智暉綠能車業
+[1401/1457] phone lookup: 晴樺電動車行 東區店
+[1402/1457] phone lookup: SWAGKID潮孩滑步車運動用品 / 童裝 / 韓國童裝
+[1403/1457] phone lookup: 美利達旱溪店
+[1404/1457] phone lookup: ibike東門兒童公園
+[1405/1457] phone lookup: ibike臺中車站(大智北路)
+[1406/1457] phone lookup: YouBike自由南京路口
+[1407/1457] phone lookup: You Bike
+[1408/1457] phone lookup: ibike建德東光園路口
+[1409/1457] phone lookup: YouBike 綠空廊道(精武東光路口)
+[1410/1457] phone lookup: 真多貿易有限公司-氣動工具 | 自行車工具 | 電動工具 | 五金工具製造商(Air Tools | Pneumatic Tools | hardware tools | electrical tools)
+[1411/1457] phone lookup: YouBike樂成宮
+[1412/1457] phone lookup: Youbike精武
+[1413/1457] phone lookup: ibike育英公園
+[1414/1457] phone lookup: 永福腳踏車行
+[1415/1457] phone lookup: 建國市場
+[1416/1457] phone lookup: YouBike帝國製糖廠
+[1417/1457] phone lookup: i bike 泉源街站（綠空廊道）
+[1418/1457] phone lookup: 啓全五金百貨大賣場
+[1419/1457] phone lookup: 鄔教練休閒運動（滑步車、直排輪、游泳）
+[1420/1457] phone lookup: YouBike忠孝公園
+[1421/1457] phone lookup: VESPA台中東區專賣店-安順輪業（和祥）
+[1422/1457] phone lookup: 貝力科技實業有限公司
+[1423/1457] phone lookup: 飛輪社自行車店
+[1424/1457] phone lookup: 勇進五金行
+[1425/1457] phone lookup: 星展電動工具有限公司
+[1426/1457] phone lookup: 宏信五金行
+[1427/1457] phone lookup: 興冠
+[1428/1457] phone lookup: 益佃五金行有限公司
+[1429/1457] phone lookup: 聯金開發有限公司
+[1430/1457] phone lookup: 台中天車-全揚機械-天車工程|電動吊車
+[1431/1457] phone lookup: 庭宇鋼索有限公司（全發五金行）
+[1432/1457] phone lookup: Mitsui Shopping Park LaLaport 台中
+[1433/1457] phone lookup: 振宇五金 台中十甲店
+[1434/1457] phone lookup: Youbik2.0進德國小站
+[1435/1457] phone lookup: 漢克先生 Mr.H motor beauty&coffee&tea
+[1436/1457] phone lookup: YouBike立德停車場
+[1437/1457] phone lookup: 新坪自行車道
+[1438/1457] phone lookup: Youbike光興路1352巷口
+[1439/1457] phone lookup: Youbike光華高工
+[1440/1457] phone lookup: youbike 永義太平路口
+[1441/1457] phone lookup: ibike太平宜佳公園
+[1442/1457] phone lookup: 祥順新平路一段口
+[1443/1457] phone lookup: 臺中市太平區新高國民小學
+[1444/1457] phone lookup: 寶島騎跡自行車協會（會所）
+[1445/1457] phone lookup: 佳穩電動車
+[1446/1457] phone lookup: 總太綠能電動車
+[1447/1457] phone lookup: 長億電動車
+[1448/1457] phone lookup: JJ PRETTY藝術美學館
+[1449/1457] phone lookup: 合勝自行車
+[1450/1457] phone lookup: 安爵國際 RYSTAR - Bicycle parts, Bicycle tools, Push bike
+[1451/1457] phone lookup: 赤崁頂
+[1452/1457] phone lookup: 白龍工作室
+[1453/1457] phone lookup: ibike中山路28巷中山路口(東北側)
+[1454/1457] phone lookup: STARBIKE TAIWAN 星百克 台中展銷/保固中心
+[1455/1457] phone lookup: 德明路428巷口
+[1456/1457] phone lookup: 太平新高國小
+[1457/1457] phone lookup: Vespa 太平 專賣店-安順輪業
+API calls made this run: {'nearby_calls': 0, 'text_calls': 0, 'details_calls': 172}
+Wrote 1457 shops to /Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/output/Taichung_City.csv (1108 filtered out as non-bikeshop primary types)
+=== Miaoli County ===
+/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+[1/18] 苗栗縣三灣鄉: crawling...
+[2/18] 苗栗縣南庄鄉: crawling...
+[3/18] 苗栗縣苗栗市: crawling...
+[4/18] 苗栗縣卓蘭鎮: crawling...
+[5/18] 苗栗縣大湖鄉: crawling...
+[6/18] 苗栗縣公館鄉: crawling...
+[7/18] 苗栗縣銅鑼鄉: crawling...
+[8/18] 苗栗縣頭屋鄉: crawling...
+[9/18] 苗栗縣三義鄉: crawling...
+[10/18] 苗栗縣西湖鄉: crawling...
+[11/18] 苗栗縣造橋鄉: crawling...
+[12/18] 苗栗縣獅潭鄉: crawling...
+[13/18] 苗栗縣泰安鄉: crawling...
+[14/18] 苗栗縣苑裡鎮: crawling...
+[15/18] 苗栗縣通霄鎮: crawling...
+[16/18] 苗栗縣竹南鎮: crawling...
+[17/18] 苗栗縣後龍鎮: crawling...
+[18/18] 苗栗縣頭份市: crawling...
+Skipping phone lookup for 703 non-bikeshop candidates
+[1/555] phone lookup: 大全輪汽車行
+[2/555] phone lookup: 峨眉湖自行車道
+[3/555] phone lookup: GIANT—斯朗查運動精品、捷安特、Liv專屬女性單車、莫曼頓電動輔助車、親子車、童車、滑步車、網購兌換卷領車處、各品牌正廠零件、CADEX輪組（零配件）、3D動態FITTING 、DCF APP FITTING 專門店（原廠指定經銷通路-頭份店）
+[4/555] phone lookup: 台灣綠地動能摺疊式腳踏車
+[5/555] phone lookup: 育群自行車店
+[6/555] phone lookup: 119bike頭份店
+[7/555] phone lookup: 山灣咖啡
+[8/555] phone lookup: 三聯埤
+[9/555] phone lookup: 勁程單車精品生活館
+[10/555] phone lookup: 清成車行
+[11/555] phone lookup: 永大車行
+[12/555] phone lookup: 捷安特-福泰自行車精品店
+[13/555] phone lookup: 三灣鄉老街
+[14/555] phone lookup: 美利達
+[15/555] phone lookup: 凌駕社電動車 xe điện. Ebike
+[16/555] phone lookup: 十二寮自行車道
+[17/555] phone lookup: 安全車行 / 安弘單車企業社
+[18/555] phone lookup: GIANT捷安特-立泰車業行 自行車&電動車專賣店
+[19/555] phone lookup: 功學社KHS自行車
+[20/555] phone lookup: 紘電HD樂活單車館-大全聯頭份門市
+[21/555] phone lookup: 頭份單車俱樂部
+[22/555] phone lookup: 東勳輕旅自行車租賃
+[23/555] phone lookup: 鑫銳單車
+[24/555] phone lookup: 凌駕社電動車自強二店
+[25/555] phone lookup: GIANT捷安特-竹南店 電動車、單車專賣店(苗栗直營店)
+[26/555] phone lookup: 世宸單車
+[27/555] phone lookup: 城市綠洲戶外生活館【頭份尚順店】購物中心 4F GARMIN 摺疊車 登山 露營 機能服飾 滑雪 溯溪 水類活動
+[28/555] phone lookup: 獅子亭
+[29/555] phone lookup: GIANT捷安特-竹南加盟店-信友自行車&電輔車專賣店(苗栗縣竹南鎮光復路359號、照南國小旁)
+[30/555] phone lookup: 建迪電動代步車
+[31/555] phone lookup: youbike銀河東興路口
+[32/555] phone lookup: 亞仕曼自行車專賣店通霄店
+[33/555] phone lookup: 竹南喬登電動車
+[34/555] phone lookup: 橙香森林（橘子貝果/橘子香腸）
+[35/555] phone lookup: 喬山健康科技苗栗大全聯頭份店
+[36/555] phone lookup: GIANT捷安特-伍泰單車休閒生活館 自行車&電動車專賣店
+[37/555] phone lookup: 成功運動生活館
+[38/555] phone lookup: 三灣梨鄉休閒農業區遊客服務中心
+[39/555] phone lookup: 百年埤塘-三連埤
+[40/555] phone lookup: 三灣鵝肉(無訂位、公休已粉專公告為主)
+[41/555] phone lookup: 山城單車生活館
+[42/555] phone lookup: 三灣依山居
+[43/555] phone lookup: 捷安特 堃都車行
+[44/555] phone lookup: 金典文具批發廣場
+[45/555] phone lookup: 滑步車公園
+[46/555] phone lookup: 弘信電動折疊腳踏車（苗栗分店）
+[47/555] phone lookup: 喬登電動車-苗栗店
+[48/555] phone lookup: 喬登電動車
+[49/555] phone lookup: $ 瓏華電動車 $
+[50/555] phone lookup: 和興電動車、自行車修理
+[51/555] phone lookup: 真新盛電動車/微型電動自行車、電動代步車、電動三輪車、電動輔助自行車不限廠牌銷售、維修服務
+[52/555] phone lookup: 台灣電力公司三灣服務所
+[53/555] phone lookup: 中華電動二輪車(佶益錦水車行店)
+[54/555] phone lookup: 喬登電動車-銅鑼店
+[55/555] phone lookup: 艾蜜莉的窩 / Emily der World
+[56/555] phone lookup: 大順微型電動車
+[57/555] phone lookup: TOYOTA 認證中古車 頭份所
+[58/555] phone lookup: 鴻騎動能科技有限公司
+[59/555] phone lookup: YAMAHA YSP 范氏大車業 （機車檢測，電動機車自行車充電）
+[60/555] phone lookup: 宗佑農機行
+[61/555] phone lookup: 三灣鄉落羽松
+[62/555] phone lookup: 銅鏡社區活動中心
+[63/555] phone lookup: 竹南綠光海風自行車道
+[64/555] phone lookup: 南庄鄉農夫市集
+[65/555] phone lookup: 品園日式花園
+[66/555] phone lookup: 海棠島水域遊憩中心Span Outdoor (場地部分開放,預約制,請加官方帳號@153udwql事先預約)
+[67/555] phone lookup: 楓林吊橋
+[68/555] phone lookup: 蘇鐵化石區
+[69/555] phone lookup: 環湖橋
+[70/555] phone lookup: 豐隆五金行
+[71/555] phone lookup: 台灣三六八 Taiwan368 - 客製化台灣登山行程
+[72/555] phone lookup: 泰源三輪車廠
+[73/555] phone lookup: 野狼單車s3bworks
+[74/555] phone lookup: 大全聯頭份店
+[75/555] phone lookup: YouBike 內湖
+[76/555] phone lookup: 香山自行車行/專修自行車
+[77/555] phone lookup: You bike 2.0 / 2.0E
+[78/555] phone lookup: You bike 2.0 / 2.0E
+[79/555] phone lookup: You bike 2.0
+[80/555] phone lookup: YouBike 維新路315號（東側）
+[81/555] phone lookup: Youbike
+[82/555] phone lookup: YouBike 客家圓樓(高鐵苗栗站)
+[83/555] phone lookup: EASY SHOP苗栗中正店
+[84/555] phone lookup: YouBike
+[85/555] phone lookup: 喬山健康科技苗栗尚順專櫃
+[86/555] phone lookup: 里山賽夏PakaSan-森林小站
+[87/555] phone lookup: 桂花品南庄門市(專賣牛窩窩、伴手禮)
+[88/555] phone lookup: 蓬萊溪自然生態園區
+[89/555] phone lookup: 神仙谷瀑布
+[90/555] phone lookup: 藝欣山莊
+[91/555] phone lookup: 向天湖農場
+[92/555] phone lookup: 江記花蜜桂花巷花茶湯圓
+[93/555] phone lookup: 神仙谷
+[94/555] phone lookup: 鹿場部落
+[95/555] phone lookup: 山行寄野民宿 苗栗南庄住宿 親子民宿 家庭聚會 民宿住宿 景觀雙人房四人房 寵物友善 賞螢火蟲油桐花住宿 在地美食 咖啡
+[96/555] phone lookup: 丈母娘豆干
+[97/555] phone lookup: 東河吊橋
+[98/555] phone lookup: 杉林松境休閒農場
+[99/555] phone lookup: 南庄-向天湖咖啡民宿
+[100/555] phone lookup: 八卦力部落
+[101/555] phone lookup: 南庄情人巷
+[102/555] phone lookup: 八卦力吊橋
+[103/555] phone lookup: 桂花巷麵食店
+[104/555] phone lookup: 南庄老郵局
+[105/555] phone lookup: 裕見生活《懶人露營推薦》南庄親子露營｜免搭帳｜團體露營｜特色｜熱門｜好玩露營區
+[106/555] phone lookup: 銳鋒車業
+[107/555] phone lookup: 八卦力渡假村
+[108/555] phone lookup: 邱記麻糬
+[109/555] phone lookup: 獅潭仙山秘境 星仙草
+[110/555] phone lookup: 毓琇圖書山莊(距離老街3分鐘)
+[111/555] phone lookup: 南庄雲水度假溫泉
+[112/555] phone lookup: 游牧人露營專賣店-苗栗店（ 野營/車露/野餐/登山/戶外活動/玩水用品/電動腳踏車/車架）
+[113/555] phone lookup: 台灣電力公司南庄服務所
+[114/555] phone lookup: 立珵電動車有限公司
+[115/555] phone lookup: 驛興電動車
+[116/555] phone lookup: Green E-bike格林電動車 Xe Điện Ngọc Hương
+[117/555] phone lookup: 信益自行車行
+[118/555] phone lookup: 容園谷景觀渡假山莊
+[119/555] phone lookup: 騰電動車專賣
+[120/555] phone lookup: 電動車專賣店
+[121/555] phone lookup: 南庄橄欖樹 | 咖啡廳 ‧ 民宿 | Olive Tree Guesthouse & Café
+[122/555] phone lookup: 苦花潭瀑布
+[123/555] phone lookup: 松鶴小吃店
+[124/555] phone lookup: 苗栗客運南庄站
+[125/555] phone lookup: 南庄桂花園鄉村會館
+[126/555] phone lookup: 西湖鄉環鄉自行車道
+[127/555] phone lookup: 南天古道
+[128/555] phone lookup: 曲中居（吃飯請詢問老闆娘，不要問老闆不然你會後悔）
+[129/555] phone lookup: 觀雲田莊 包棟民宿
+[130/555] phone lookup: 島語單車保養維修店︱預約到府收車︱公路車保養︱登山車整理︱小折車維修
+[131/555] phone lookup: 風城單車
+[132/555] phone lookup: KHS人力引擎單車
+[133/555] phone lookup: 百富自行車工作室
+[134/555] phone lookup: 勝遠電動車
+[135/555] phone lookup: You bike 2.0 / 2.0E
+[136/555] phone lookup: 黃金小鎮自行車道
+[137/555] phone lookup: YouBike 苗栗服務中心
+[138/555] phone lookup: GIANT捷安特-信頤行
+[139/555] phone lookup: youbike 南勢車站
+[140/555] phone lookup: 功維敘火車
+[141/555] phone lookup: 苗栗市單車道八甲休息站
+[142/555] phone lookup: YouBike 2.0 / 2.0E
+[143/555] phone lookup: 振宇五金 苗栗苗栗店
+[144/555] phone lookup: 小北百貨-苗栗中正店 SHOWBA
+[145/555] phone lookup: 六六順五金百貨大賣場（苗栗店）
+[146/555] phone lookup: 萬家福量販 苗栗店
+[147/555] phone lookup: 小北百貨-苗栗縣府店 SHOWBA
+[148/555] phone lookup: Youbike聯合大學八甲圓環站
+[149/555] phone lookup: youbike 聯合大學理工一館及二館站
+[150/555] phone lookup: 岳林書局
+[151/555] phone lookup: 功維敘隧道
+[152/555] phone lookup: 袁點車坊
+[153/555] phone lookup: IONEX 吉米智慧電車(換電站)
+[154/555] phone lookup: 宏全醫療器材｜復健器材行
+[155/555] phone lookup: 中華電動二輪車(裕益苖栗店)
+[156/555] phone lookup: 達信車業
+[157/555] phone lookup: 向錢走企業社
+[158/555] phone lookup: 恆智重機股份NOVELTEK-電動堆高機工廠, 電動拖板車廠商, 堆高機出租, 推高機租賃
+[159/555] phone lookup: KYMCO 光陽機車 廣達機車行（機車檢測，電動機車自行車充電）
+[160/555] phone lookup: 苗栗計程車
+[161/555] phone lookup: 第一無線金昌計程車
+[162/555] phone lookup: 苗栗中義計程車
+[163/555] phone lookup: 功維敘滾輪溜滑梯
+[164/555] phone lookup: 金昌遊覽車客運有限公司
+[165/555] phone lookup: 建新針車行
+[166/555] phone lookup: 苗栗車站
+[167/555] phone lookup: 國揚帆布汽車裝璜行
+[168/555] phone lookup: YAMAHA YSP金昌輪業 苗栗縣
+[169/555] phone lookup: 交通部公路局新竹區監理所苗栗監理站
+[170/555] phone lookup: 何時旅遊（苗栗店+輕裝上陣）
+[171/555] phone lookup: 台灣電力公司卓蘭服務所
+[172/555] phone lookup: 台中東勢卓越電動車
+[173/555] phone lookup: 威勝電動車
+[174/555] phone lookup: 哈品有限公司 哈2嘟嘟車 電動三輪車 行動攤車、餐車
+[175/555] phone lookup: 晴樺電動車行
+[176/555] phone lookup: 捷安特
+[177/555] phone lookup: 諦揚電動車
+[178/555] phone lookup: 東昇自行車行
+[179/555] phone lookup: 松錳租車連鎖店-后里店
+[180/555] phone lookup: 168自行車租車-東豐綠廊-后豐鐵馬道
+[181/555] phone lookup: 東勢薰衣草租車（預約租車享優惠）青春動滋卷合作店家
+[182/555] phone lookup: 田原租車生活廣場｜腳踏車電動車出租
+[183/555] phone lookup: 后豐鐵馬道-薰衣草租車總店
+[184/555] phone lookup: 后豐鐵馬道后里車站店遊騎兵租車
+[185/555] phone lookup: 東勢電動車
+[186/555] phone lookup: 后豐鐵馬道-鐵馬哥租車中心（原小馬哥租車）運動幣配合店家
+[187/555] phone lookup: 后豐鐵馬道-隧道口租車中心
+[188/555] phone lookup: 奇典租車行-借問站/單車租借/機車租借/停車優惠/觀光導覽/免預約
+[189/555] phone lookup: 東勢 洋基租車（動滋卷特約店）預約租車享優惠可甲租乙還
+[190/555] phone lookup: 后豐鐵馬道 心星二店租車【租腳踏車】
+[191/555] phone lookup: 后東豐聯合租車廣場
+[192/555] phone lookup: 東豐自行車綠廊
+[193/555] phone lookup: 后豐鐵馬道-寶馬租電動車
+[194/555] phone lookup: 昌鋊輪胎行-普利司通輪胎
+[195/555] phone lookup: 發貴車行
+[196/555] phone lookup: 美利達
+[197/555] phone lookup: 頂級車行
+[198/555] phone lookup: 美利達
+[199/555] phone lookup: 清郎車行
+[200/555] phone lookup: 福興車行
+[201/555] phone lookup: 力全自行車行
+[202/555] phone lookup: 寶程鐵馬腳踏車店
+[203/555] phone lookup: 后里捷安特 名匠
+[204/555] phone lookup: 福興自行車
+[205/555] phone lookup: 皇捷自行車維修(採預約制)line:lovesenzo123
+[206/555] phone lookup: 熊踏工作室/Fixed Gear
+[207/555] phone lookup: 美利達自行車豐原店(上豪自行車行)
+[208/555] phone lookup: 大坑185車庫
+[209/555] phone lookup: 美利達久大單車生活館
+[210/555] phone lookup: 永泰腳踏車行
+[211/555] phone lookup: 大湖汽車行
+[212/555] phone lookup: 薑麻園農業休閒園區
+[213/555] phone lookup: 大湖計程車聯絡站
+[214/555] phone lookup: 泉銘行館-苗栗大湖採草莓園/休閒農場/民宿/住宿/休閒農場 人氣推薦觀光 採草莓一日遊 草莓醬/草莓酒 親子活動/手做DIY 國旅卡特約 大湖酒莊附近 熱門好評推薦 PTT Dcard
+[215/555] phone lookup: 薑麻園農產品販賣中心
+[216/555] phone lookup: YouBike微笑單車
+[217/555] phone lookup: 榮發棉被店
+[218/555] phone lookup: 大湖鄉大南村辦公處
+[219/555] phone lookup: 郵局旁麵店
+[220/555] phone lookup: 采莓行館Caimei Hotel
+[221/555] phone lookup: 沒事不要喝｜現烤甜甜圈｜下午茶/網美景點/飲料店/咖啡廳(鐵道自行車上停車場)/完售會提早關門，不定期公休唷
+[222/555] phone lookup: 琉璃秋境｜懶人野餐・窯烤披薩
+[223/555] phone lookup: 雲也居一休閒農場
+[224/555] phone lookup: 內政部國家公園署雪霸國家公園管理處
+[225/555] phone lookup: 大湖 酒莊
+[226/555] phone lookup: 勝興甩尾場
+[227/555] phone lookup: 新竹客運
+[228/555] phone lookup: 舊山線隧道群
+[229/555] phone lookup: 國興獸肉店
+[230/555] phone lookup: 花露農場 Flower Home
+[231/555] phone lookup: 大湖法雲禪寺
+[232/555] phone lookup: 天空之城景觀餐廳
+[233/555] phone lookup: 旺汪電輔胖胎車工作室（預約制）；販售車輛,維修保養
+[234/555] phone lookup: 湖東休閒農業區
+[235/555] phone lookup: 景泰電動車 潭子創始總店Jing tai
+[236/555] phone lookup: 初露(苗栗)戶外露營設備租借-帳篷出租-代客搭收-代客運送
+[237/555] phone lookup: In Silva野苒莊園
+[238/555] phone lookup: 松果戶外 苗栗泰安大湖店-露營用品|租帳篷|曬帳
+[239/555] phone lookup: Ubike 2.0
+[240/555] phone lookup: Route3 三號公路（公休日請看IG）
+[241/555] phone lookup: 好農村客家美食廣場
+[242/555] phone lookup: 鯉魚潭觀景臺
+[243/555] phone lookup: 崛起山城客家特色美食餐廳（大湖店）
+[244/555] phone lookup: 情願來飲食店
+[245/555] phone lookup: 河川前窯烤披薩pizza 6/27-6/28店休 露營區電話訂餐 5公里內可外送 其餘請電洽
+[246/555] phone lookup: 鐵山腳單車運動村
+[247/555] phone lookup: DORCUS
+[248/555] phone lookup: 鯉魚潭觀景台
+[249/555] phone lookup: 富士自行車
+[250/555] phone lookup: YouBike 泰安鐵道文化園區
+[251/555] phone lookup: YouBike微笑單車
+[252/555] phone lookup: 銅鑼自行車道
+[253/555] phone lookup: ooo cafe圓滾滾穀倉咖啡
+[254/555] phone lookup: 苗栗縣單車運動推廣協會
+[255/555] phone lookup: 亞特力士
+[256/555] phone lookup: 六六順五金百貨賣場
+[257/555] phone lookup: 威川汽車-車輛買賣-改裝升級-免費貸款評估-第三方鑒定車輛
+[258/555] phone lookup: 力承堆高機-苗栗公館門市(HANGCHA杭叉代理商/堆高機/大噸位堆高機/電動拖板車/高空車/苗栗堆高機/越野堆高機/零件/掃地機)
+[259/555] phone lookup: 苗栗公館計程車
+[260/555] phone lookup: 苗栗縣公館鄉公所
+[261/555] phone lookup: 早點餐車
+[262/555] phone lookup: 正新輪胎行
+[263/555] phone lookup: 日泰輪胎行
+[264/555] phone lookup: 隆興大聖輪胎行
+[265/555] phone lookup: 東億陶瓷廠
+[266/555] phone lookup: 公館鄉尖山社區活動中心
+[267/555] phone lookup: 出磺坑吊橋
+[268/555] phone lookup: 帝皇客菜餐廳
+[269/555] phone lookup: 穿龍老屋豆腐坊
+[270/555] phone lookup: 石墻社區活動中心
+[271/555] phone lookup: 亞特力士股份有限公司
+[272/555] phone lookup: U bike銅鑼火車站
+[273/555] phone lookup: 台灣農林 銅鑼茶廠
+[274/555] phone lookup: 億達草本
+[275/555] phone lookup: 姜太公中部道場
+[276/555] phone lookup: 銅鑼灣1895文化生活館
+[277/555] phone lookup: 華豐五金行
+[278/555] phone lookup: 銅鑼車站
+[279/555] phone lookup: 達邁科技股份有限公司-銅鑼分公司
+[280/555] phone lookup: 正達國際光電股份有限公司（綠建築加工廠）
+[281/555] phone lookup: 銅鑼輪胎行（專業內補）
+[282/555] phone lookup: 綺緣樟腦精油觀光工場
+[283/555] phone lookup: MAXXIS瑪吉斯輪胎 - 東宏輪胎行
+[284/555] phone lookup: 苗栗縣銅鑼鄉公所
+[285/555] phone lookup: 銅鑼炮仗花海公園 櫻花隧道
+[286/555] phone lookup: 苗栗銅鑼 杭菊花季會場
+[287/555] phone lookup: 回角
+[288/555] phone lookup: 阿財米食
+[289/555] phone lookup: 客屬大橋
+[290/555] phone lookup: 愛麗絲的天空專業攝影基地/Alice'sky/苗栗景點/銅鑼景點/苗栗銅鑼/婚紗攝影
+[291/555] phone lookup: 美利達正倫自行車行
+[292/555] phone lookup: 勝光腳踏車店
+[293/555] phone lookup: HomChen motorcycle store
+[294/555] phone lookup: 明德水庫水陸空遊憩區
+[295/555] phone lookup: 葛瑞絲香草田
+[296/555] phone lookup: 信昌五金行
+[297/555] phone lookup: 水漾月明度假文旅Hana Mizu Tsuki Hotel
+[298/555] phone lookup: 日新島第一吊橋
+[299/555] phone lookup: 穩信小吃
+[300/555] phone lookup: 楊家蛋黃麵
+[301/555] phone lookup: 慕雲想莊園B&B景觀餐廳 - 苗栗頭屋 人氣星空房觀星民宿 特色房型 落羽松秘境餐廳 法式套餐 浪漫約會 寵物友善 親子沙坑 家庭旅遊渡假首選 線上訂房住宿優惠 PTT網紅推薦
+[302/555] phone lookup: 海棠島劇場
+[303/555] phone lookup: 海棠島舞台
+[304/555] phone lookup: 軒登國際事業有限公司 MIT CYCLE SOURCING LTD.
+[305/555] phone lookup: 鱺魚小吃店
+[306/555] phone lookup: 125K---石墨烯遠紅外線汗蒸
+[307/555] phone lookup: 東山輪胎行-苗栗輪胎行 頭屋輪胎行 苗栗中古胎 苗栗補胎 苗栗二手胎
+[308/555] phone lookup: 珈禾車庫
+[309/555] phone lookup: 雅聞七里香玫瑰森林
+[310/555] phone lookup: 中港溪大河戀自行車道
+[311/555] phone lookup: 禪廚蔬食餐廳 | 超人氣| 頭屋交流道素食 |苗栗必吃 |
+[312/555] phone lookup: 姐妹花早餐車
+[313/555] phone lookup: DFSK穩發商用車-苗栗所-有誼汽車
+[314/555] phone lookup: YouBike 後龍火車站
+[315/555] phone lookup: 佐皇騎士部品
+[316/555] phone lookup: 榮獲苗栗十大店家/十大金選伴手禮/勝興365-青年創業基地
+[317/555] phone lookup: 庄腳店仔
+[318/555] phone lookup: Twsswh素手浣花勝興店
+[319/555] phone lookup: 勝隆客家小館
+[320/555] phone lookup: 木藝軒 三義木雕藝術品|傳統手工藝師傅木雕推薦
+[321/555] phone lookup: 勝興客棧
+[322/555] phone lookup: 綠葉方舟Green Ark
+[323/555] phone lookup: 三義計程車-計程車叫車、機場接送、計程車試算、計程車電話
+[324/555] phone lookup: 三義車亭服務區 全家商場
+[325/555] phone lookup: 豐樂莊園
+[326/555] phone lookup: 三義客家書院
+[327/555] phone lookup: 永欣客家黑白切
+[328/555] phone lookup: 五月雪茶舖
+[329/555] phone lookup: 建光機車、自行車出租
+[330/555] phone lookup: 雅聞香草植物工廠
+[331/555] phone lookup: 采園居
+[332/555] phone lookup: 勝興七姊八弟山城店
+[333/555] phone lookup: 老鐵馬臭豆腐
+[334/555] phone lookup: 札木工坊 臺灣工藝之家
+[335/555] phone lookup: 花桐印記擂茶專賣舖
+[336/555] phone lookup: 十六份驛站
+[337/555] phone lookup: 春田窯
+[338/555] phone lookup: 向陽田園
+[339/555] phone lookup: 舊山線休閒農業區
+[340/555] phone lookup: 永昇電動車
+[341/555] phone lookup: 妙吉祥電動車行(電動三輪、電動輔助四輪)
+[342/555] phone lookup: 台灣電力公司三義服務所
+[343/555] phone lookup: 豐洲電動車
+[344/555] phone lookup: 依山林單車行
+[345/555] phone lookup: 永順輪胎行
+[346/555] phone lookup: 三義車站
+[347/555] phone lookup: 鐵馬藝速自行車維修輪組專賣店
+[348/555] phone lookup: 三義木雕博物館
+[349/555] phone lookup: 四月雪小徑
+[350/555] phone lookup: 再居車行
+[351/555] phone lookup: 后里站前租車中心
+[352/555] phone lookup: GIANT捷安特 名品單車生活館-自行車&電動車專賣店 &自行車維修保養
+[353/555] phone lookup: 新生車行
+[354/555] phone lookup: 福興自行車行
+[355/555] phone lookup: 笠原單車店
+[356/555] phone lookup: 昌宇電動車行
+[357/555] phone lookup: ibike 美光 O4 ICHU
+[358/555] phone lookup: ibike 美光O2 AATT
+[359/555] phone lookup: 三義 綠波浪 BY 尋路
+[360/555] phone lookup: 十六份人文茶館
+[361/555] phone lookup: 喆娟夢田
+[362/555] phone lookup: iBike 三豐泉州路口
+[363/555] phone lookup: ibike 美光員工宿舍
+[364/555] phone lookup: ibike 三光路停車場
+[365/555] phone lookup: ibike 三豐星科路口
+[366/555] phone lookup: ibike 后科南甲后路一段136巷口
+[367/555] phone lookup: 卓也小屋渡假園區
+[368/555] phone lookup: 巨缿民宿（巨象民宿）
+[369/555] phone lookup: YouBike 后里森林園區
+[370/555] phone lookup: 西湖溪自行車鐵橋
+[371/555] phone lookup: 噢哈娜咖啡屋
+[372/555] phone lookup: 西湖鄉農特產品展售中心
+[373/555] phone lookup: 苗栗縣西湖鄉公所
+[374/555] phone lookup: 西湖鄉湖東社區多功能活動中心
+[375/555] phone lookup: 西湖鄉休閒產業發展協會
+[376/555] phone lookup: 媽祖石雕
+[377/555] phone lookup: 吳濁流藝文館
+[378/555] phone lookup: 西湖早點餐車版
+[379/555] phone lookup: 青少年運動遊戲場
+[380/555] phone lookup: 大寶柑仔店
+[381/555] phone lookup: 苗栗縣政府消防局第四大隊西湖消防分隊
+[382/555] phone lookup: 西湖老街
+[383/555] phone lookup: 鍾兆振
+[384/555] phone lookup: 西湖服務區
+[385/555] phone lookup: 西湖服務區服務台
+[386/555] phone lookup: 西湖服務區 (南下)
+[387/555] phone lookup: 鄉野傳奇休閒農園
+[388/555] phone lookup: 格林奇幻森林 Green Fantasy Forest
+[389/555] phone lookup: 苗栗縣西湖鄉五湖國民小學
+[390/555] phone lookup: 谷巴休閒渡假村
+[391/555] phone lookup: 造橋車站（百年驛站）
+[392/555] phone lookup: 東昇車行 YAMAHA
+[393/555] phone lookup: 中港溪出海口單車道
+[394/555] phone lookup: 龍昇綠龍隧道
+[395/555] phone lookup: 造橋車站
+[396/555] phone lookup: 苗栗縣造橋鄉公所
+[397/555] phone lookup: 談文車站
+[398/555] phone lookup: 義燁庚輪胎行
+[399/555] phone lookup: 振宇五金 苗栗竹南店
+[400/555] phone lookup: 塭子頭紅樹林生態保護區
+[401/555] phone lookup: 北勢溪親水廊道
+[402/555] phone lookup: 談文早餐店
+[403/555] phone lookup: I Sky Villa
+[404/555] phone lookup: 台灣電力公司造橋服務所
+[405/555] phone lookup: 力承自動化倉儲設備有限公司(HANGCHA杭叉代理商/堆高機/大噸位堆高機/電動拖板車/高空車/苗栗堆高機/越野堆高機/零件/掃地機)
+[406/555] phone lookup: 國1造橋地磅站 北向
+[407/555] phone lookup: 綠池鳳凰花攝點
+[408/555] phone lookup: 苗栗縣造橋鄉造橋社區活動中心
+[409/555] phone lookup: 大坪傳統早餐店
+[410/555] phone lookup: 造橋南瓜產業發展中心
+[411/555] phone lookup: 港仔墘瞭望亭
+[412/555] phone lookup: 國道公路警察局第二公路警察大隊暨造橋分隊
+[413/555] phone lookup: 中港溪 港墘碼頭
+[414/555] phone lookup: 跳蚤本舖竹南店
+[415/555] phone lookup: 苗栗縣獅潭鄉
+[416/555] phone lookup: 仙山茶莊-苗栗高山茶/比賽茶/東方美人茶/高山烏龍茶/茶葉禮盒
+[417/555] phone lookup: 仙山生態教育農場（仙山農園民宿）
+[418/555] phone lookup: 八角隱士莊園
+[419/555] phone lookup: 石觀音寺(苗栗縣頭屋鄉)
+[420/555] phone lookup: 桂橘園民宿
+[421/555] phone lookup: 苗栗縣警察局大湖分局獅潭分駐所
+[422/555] phone lookup: 獅潭鄉衛生所
+[423/555] phone lookup: 凌明電行車
+[424/555] phone lookup: 快樂阿隆 電動自行車出租
+[425/555] phone lookup: 進泉莊民宿
+[426/555] phone lookup: 三角龍電動車
+[427/555] phone lookup: 力翔電動車-南投店
+[428/555] phone lookup: 苗栗縣獅潭鄉公所
+[429/555] phone lookup: 獅潭名產 仙山仙草
+[430/555] phone lookup: 獅潭新店老街
+[431/555] phone lookup: 汶水老街
+[432/555] phone lookup: 蓮臺山妙音淨苑
+[433/555] phone lookup: 佳味小吃 客家鹹年糕
+[434/555] phone lookup: 苗栗新中橫 阿婆的家
+[435/555] phone lookup: 汶水老街-傅燕昌番茄草莓園展售處
+[436/555] phone lookup: 苗栗縣獅潭鄉豐林國民小學
+[437/555] phone lookup: 東線瀑布
+[438/555] phone lookup: 鐵馬王自行車行
+[439/555] phone lookup: 大安部落
+[440/555] phone lookup: 蜜月小徑
+[441/555] phone lookup: 天狗部落
+[442/555] phone lookup: 觀霧瀑布
+[443/555] phone lookup: 洪台玉豆腐店
+[444/555] phone lookup: 水雲瀑布
+[445/555] phone lookup: 捷安特Giant台中豐原旗艦店－台中 電動輔助自行車｜買腳踏車｜親子腳踏車｜單車保養｜自行車衣｜單車Fitting
+[446/555] phone lookup: GIANT捷安特-大衛單車 自行車&電動車專賣店
+[447/555] phone lookup: 日月潭大樹電動自行車
+[448/555] phone lookup: 將盟電動自行車（日月潭伊達邵營區）
+[449/555] phone lookup: SHOPRIDER必翔電動車 (溢德實業社)
+[450/555] phone lookup: 捷峰電動車#在地經營20年老店永續經營#台中電動車#中部電動車# 微型電動二輪車# 微電車#電動自行車# 電動腳踏車 #老人四輪代步車# 電動三輪車專賣店#14歲合法騎乘#電動輔助自行車#ebike#代步車#電動車#
+[451/555] phone lookup: 和平自由里雙崎部落
+[452/555] phone lookup: 水雲吊橋
+[453/555] phone lookup: 斯瓦細格部落
+[454/555] phone lookup: 雪霸國家公園觀霧管理站
+[455/555] phone lookup: 泰安服務區
+[456/555] phone lookup: 大霸尖山登山服務站
+[457/555] phone lookup: 泰安竹林秘境
+[458/555] phone lookup: 鋼鐵馬廄 Iron Stable｜專業的登山車經營團隊
+[459/555] phone lookup: DOSUN 中區電輔車 暢貨中心｜台中電動輔助自行車/二手車販售/自行車維修/自行車保養/租借
+[460/555] phone lookup: 美利達中美車行（單車、電動車）維修 買賣
+[461/555] phone lookup: RALLIART BIKE 腳踏車
+[462/555] phone lookup: 巨大機械工業股份有限公司
+[463/555] phone lookup: 威輪工業股份有限公司
+[464/555] phone lookup: 旭生自行車工業股份有限公司
+[465/555] phone lookup: 威沛股份有限公司
+[466/555] phone lookup: 永久機械工業-公路自行車,自行車車架,自行車架魚鱗焊
+[467/555] phone lookup: 巨蓁實業有限公司
+[468/555] phone lookup: 華慶自行車股份有限公司
+[469/555] phone lookup: 超寶國際/鈺寶實業有限公司
+[470/555] phone lookup: 輪鋒工業股份有限公司
+[471/555] phone lookup: GIANT捷安特-聯宜自行車店 自行車&電動車專賣店
+[472/555] phone lookup: 聯立國際股份有限公司
+[473/555] phone lookup: 宗達企業股份有限公司
+[474/555] phone lookup: 貿晟工業有限公司
+[475/555] phone lookup: 通展車業有限公司
+[476/555] phone lookup: 士承股份有限公司
+[477/555] phone lookup: 成達車業股份有限公司
+[478/555] phone lookup: 宇輪自行車股份有限公司
+[479/555] phone lookup: Youbike2.0：苑港觀光漁港
+[480/555] phone lookup: YouBike 2.0 / 2.0E
+[481/555] phone lookup: YouBike 2.0 / 2.0E
+[482/555] phone lookup: 苑裡火車站
+[483/555] phone lookup: 詮緯有限公司
+[484/555] phone lookup: 苑裡總店-1又1/2嬰兒用品店
+[485/555] phone lookup: 詮緯有限公司社柑廠
+[486/555] phone lookup: 自行車專賣店
+[487/555] phone lookup: GOGORO苗栗苑裡通宵特約推廣站
+[488/555] phone lookup: 永協順電動車/ 協順農機行
+[489/555] phone lookup: 永達電動麻將桌
+[490/555] phone lookup: 省力割 割草機省力輔助器
+[491/555] phone lookup: 昆誠電動車大甲店
+[492/555] phone lookup: 勇偉電動車
+[493/555] phone lookup: GIANT捷安特-久玖車行 自行車&電動車專賣店
+[494/555] phone lookup: 苗栗客運苑裡站
+[495/555] phone lookup: 苗栗苑港漁港放船斜坡道
+[496/555] phone lookup: 自行車休息站
+[497/555] phone lookup: 垂坤食品-旗艦店
+[498/555] phone lookup: 苑裡老街
+[499/555] phone lookup: 苗栗苑裡紫薇花園
+[500/555] phone lookup: 龍慶商行
+[501/555] phone lookup: 易美行股份有限公司
+[502/555] phone lookup: 通霄腳踏車裝置藝術
+[503/555] phone lookup: YouBike 2.0 / 2.0E
+[504/555] phone lookup: YouBike 2.0 / 2.0E
+[505/555] phone lookup: 中華腳踏車環保推展協會
+[506/555] phone lookup: YouBike 2.0 / 2.0E
+[507/555] phone lookup: 永旺五金建築材料行
+[508/555] phone lookup: KT BIKER
+[509/555] phone lookup: 川鉅實業有限公司 專業細鋼索,鋼絲繩,鋼纜製造廠，非批發商，歡迎到廠參觀/PVC,PU,PE,尼龍6,尼龍12,PEI,PEEK披覆加工/特殊精抽線材/防墜網、隱形鐵窗專用線/車用變速線/剎車線/運動線材/窗簾鋼索/燈飾吊線/車窗升降線/各式鎖類鋼索
+[510/555] phone lookup: 見新輪胎行
+[511/555] phone lookup: 通霄漁港
+[512/555] phone lookup: 錢媽媽肉粽50年老店
+[513/555] phone lookup: 台灣電力公司 通霄發電廠
+[514/555] phone lookup: 立豐達實業有限公司 LFD Portable lifter Powertools 電動工具製造商
+[515/555] phone lookup: 裕芳食品 通霄店
+[516/555] phone lookup: 國勝豐工具機股份有限公司
+[517/555] phone lookup: 宏昇輪胎行
+[518/555] phone lookup: 通霄日落大道觀景台
+[519/555] phone lookup: 竹南車行
+[520/555] phone lookup: 東勳輕旅單車環島電輔車租賃
+[521/555] phone lookup: 坤山車行
+[522/555] phone lookup: youbike崎頂車站
+[523/555] phone lookup: 安全帽專賣店
+[524/555] phone lookup: 六甲媽咪親子生活館
+[525/555] phone lookup: 遙宗車業
+[526/555] phone lookup: YouBike 後龍圖書館
+[527/555] phone lookup: 大龍大賣場-後龍店
+[528/555] phone lookup: 福寧漁港
+[529/555] phone lookup: 後龍外埔漁港
+[530/555] phone lookup: 米亞咖啡.手作甜點
+[531/555] phone lookup: 後龍滯洪池
+[532/555] phone lookup: 過港隧道
+[533/555] phone lookup: 酵法自然環保旅宿
+[534/555] phone lookup: 億鴻汽車美容
+[535/555] phone lookup: 佑順環保有限公司
+[536/555] phone lookup: 台灣高鐵苗栗站
+[537/555] phone lookup: 新益勝輪胎行
+[538/555] phone lookup: 益勝輪胎行 後龍
+[539/555] phone lookup: 俊達輪胎行
+[540/555] phone lookup: 鄭美香食品旗艦店
+[541/555] phone lookup: 後龍車站
+[542/555] phone lookup: 苗栗站
+[543/555] phone lookup: 同興老街
+[544/555] phone lookup: 苗栗縣後龍鎮公所
+[545/555] phone lookup: 振宇五金 苗栗頭份店
+[546/555] phone lookup: 小北百貨-苗栗頭份店 SHOWBA
+[547/555] phone lookup: 六六順五金百貨大賣場-頭份店
+[548/555] phone lookup: 東瀛車業
+[549/555] phone lookup: 孩子玩伴玩具批發廣場(頭份店)
+[550/555] phone lookup: 擇木鸚鵡寵物專門店
+[551/555] phone lookup: 中華電動二輪車(佶益偉成車行店)
+[552/555] phone lookup: 長富鋼索有限公司,新竹鋼索,不鏽鋼索,雪鏈:雪錬油桶吊具 吊貨機 鋼纜 機械五金 ,吊鉤,電梯鋼索電動吊車'捲揚機小金鋼 ;小金剛維修手搖吊車,,油壓拖板車,白鐵鋼索,防墜器.全身安全帶。天車維修 貨梯維修 .吊桿鋼索更換•吊車,吊帶，吊鍊 起重工具
+[553/555] phone lookup: 凌巨科技股份有限公司
+[554/555] phone lookup: 東元五金
+[555/555] phone lookup: 頭份竹南
+API calls made this run: {'nearby_calls': 18, 'text_calls': 314, 'details_calls': 555}
+Wrote 555 shops to /Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/output/Miaoli_County.csv (703 filtered out as non-bikeshop primary types)
+=== Changhua County ===
+/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+Traceback (most recent call last):
+  File "/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/crawl.py", line 286, in <module>
+    main()
+  File "/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/crawl.py", line 246, in main
+    grid_points = list(geo.township_grid_points(args.county))
+  File "/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/geo.py", line 96, in township_grid_points
+    for feature, (min_lng, min_lat, max_lng, max_lat) in _indexed_features():
+  File "/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/geo.py", line 68, in _indexed_features
+    geojson = load_towns_geojson()
+  File "/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/tools/taiwan-bikeshop-crawler/geo.py", line 24, in load_towns_geojson
+    text = TOWNS_JS_PATH.read_text(encoding="utf-8")
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1256, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1242, in open
+    return io.open(self, mode, buffering, encoding, errors, newline,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1110, in _opener
+    return self._accessor.open(self, flags, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/kamil_dl/Documents/GitHub/nuvari-sales-map/nst/js/taiwan-towns.js'

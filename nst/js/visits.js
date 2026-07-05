@@ -14,6 +14,22 @@ export async function loadVisits({ shopId, repId, dateFrom, dateTo, status } = {
   return data;
 }
 
+// One batched query for a shop-list view, rather than one query per shop.
+// Returns { [shop_id]: { scheduled_date, status } } — the most recent visit per shop.
+export async function loadLatestVisitsByShopIds(shopIds) {
+  if (!shopIds.length) return {};
+  const { data, error } = await supabase.from('visits')
+    .select('shop_id, scheduled_date, status')
+    .in('shop_id', shopIds)
+    .order('scheduled_date', { ascending: false });
+  if (error) throw error;
+  const latest = {};
+  for (const v of data) {
+    if (!(v.shop_id in latest)) latest[v.shop_id] = v; // first hit per shop_id is the most recent, since already sorted desc
+  }
+  return latest;
+}
+
 export async function getVisit(id) {
   const { data, error } = await supabase.from('visits')
     .select('*, shops(id, name, address, status, contact_name, contact_phone)')

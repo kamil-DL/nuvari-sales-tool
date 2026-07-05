@@ -29,7 +29,7 @@
 
   <div class="nst-page">
     <div id="back-link" style="margin-bottom:14px">
-      <a href="visits.html" style="font-size:13px;color:var(--nst-gray)">← 返回拜訪列表 Back to visits</a>
+      <a href="visits.html" style="font-size:13px;font-weight:700;color:var(--nst-accent-dark)">← 返回拜訪列表 Back to visits</a>
     </div>
 
     <div id="error-banner" class="nst-error-banner" style="display:none"></div>
@@ -136,9 +136,9 @@ function renderVisit() {
   // Back link → shop detail
   if (shop) {
     document.getElementById('back-link').innerHTML =
-      `<a href="shop-detail.html?id=${shop.id}" style="font-size:13px;color:var(--nst-gray)">← ${esc(shop.name)}</a>
+      `<a href="shop-detail.html?id=${shop.id}" style="font-size:13px;font-weight:700;color:var(--nst-accent-dark)">← ${esc(shop.name)}</a>
        <span style="color:var(--nst-border);margin:0 8px">|</span>
-       <a href="visits.html" style="font-size:13px;color:var(--nst-gray)">拜訪列表 Visits</a>`;
+       <a href="visits.html" style="font-size:13px;font-weight:700;color:var(--nst-accent-dark)">拜訪列表 Visits</a>`;
   }
   document.getElementById('f-shop').innerHTML = shop
     ? `<a href="shop-detail.html?id=${shop.id}">${esc(shop.name)}</a> ${shopStatusBadge(shop.status)}`

@@ -29,7 +29,7 @@
 
   <div class="nst-page">
     <div style="margin-bottom:14px">
-      <a href="shops.html" style="font-size:13px;color:var(--nst-gray)">← 返回店家列表 Back to shops</a>
+      <a href="shops.html" style="font-size:13px;font-weight:700;color:var(--nst-accent-dark)">← 返回店家列表 Back to shops</a>
     </div>
 
     <div id="error-banner" class="nst-error-banner" style="display:none"></div>
@@ -50,8 +50,11 @@
       <div class="nst-detail-card">
         <h2>基本資訊 Shop Info</h2>
         <div class="nst-field-row"><span class="label">地址 Address</span><span class="value" id="f-address">—</span></div>
+        <div class="nst-field-row"><span class="label">地區 Region</span><span class="value" id="f-region">—</span></div>
         <div class="nst-field-row"><span class="label">聯絡人 Contact</span><span class="value" id="f-contact-name">—</span></div>
         <div class="nst-field-row"><span class="label">聯絡電話 Phone</span><span class="value" id="f-contact-phone">—</span></div>
+        <div class="nst-field-row"><span class="label">業務員 Sales rep</span><span class="value" id="f-sales-rep">—</span></div>
+        <div class="nst-field-row"><span class="label">資料集 Dataset</span><span class="value" id="f-dataset">—</span></div>
         <div class="nst-field-row"><span class="label">建立時間 Created</span><span class="value" id="f-created-at">—</span></div>
         <div id="notes-row" style="margin-top:10px;display:none">
           <div class="nst-section-label" style="margin-bottom:6px">備註 Notes</div>
@@ -91,10 +94,26 @@
       </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="ef-address" type="text" class="nst-input"/>
+      <label class="nst-field-label">地區 Region</label>
+      <select id="ef-region" class="nst-select">
+        <option value="">未分類 Unassigned</option>
+        <option value="北部">北部 North</option>
+        <option value="中部">中部 Central</option>
+        <option value="南部">南部 South</option>
+        <option value="東部">東部 East</option>
+      </select>
       <label class="nst-field-label">聯絡人 Contact name</label>
       <input id="ef-contact-name" type="text" class="nst-input"/>
       <label class="nst-field-label">聯絡電話 Contact phone</label>
       <input id="ef-contact-phone" type="tel" class="nst-input"/>
+      <label class="nst-field-label">業務員 Sales rep</label>
+      <select id="ef-sales-rep" class="nst-select">
+        <option value="">未指派 Unassigned</option>
+      </select>
+      <label class="nst-field-label">資料集 Dataset</label>
+      <select id="ef-dataset" class="nst-select">
+        <option value="">未分類 Unassigned</option>
+      </select>
       <label class="nst-field-label">備註 Notes</label>
       <textarea id="ef-notes" class="nst-textarea"></textarea>
       <div id="edit-modal-error" class="nst-auth-error" style="margin-top:10px"></div>
@@ -135,7 +154,7 @@
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { getShop, updateShop, deleteShop, STATUS_LABELS } from './js/shops.js';
+import { getShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
 import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
 
 document.getElementById('logo').src = LOGO;
@@ -150,6 +169,47 @@ const shopId = params.get('id');
 if (!shopId) { location.href = 'shops.html'; }
 
 let shop = null;
+let repDirectory = [];
+let datasets = [];
+
+async function loadRepOptions() {
+  try {
+    repDirectory = await loadUserDirectory();
+  } catch (e) {
+    repDirectory = [];
+  }
+}
+
+async function loadDatasetOptions() {
+  try {
+    datasets = await loadDatasets();
+  } catch (e) {
+    datasets = [];
+  }
+}
+
+function datasetName(id) {
+  if (!id) return null;
+  const d = datasets.find(d => d.id === id);
+  return d ? d.name : null;
+}
+
+function populateRepSelect(currentRep) {
+  const sel = document.getElementById('ef-sales-rep');
+  const optionsHtml = repDirectory.map(u => `<option value="${esc(repLabel(u.email))}">${esc(repLabel(u.email))}</option>`).join('');
+  sel.innerHTML = '<option value="">未指派 Unassigned</option>' + optionsHtml;
+  if (currentRep && ![...sel.options].some(o => o.value === currentRep)) {
+    sel.insertAdjacentHTML('beforeend', `<option value="${esc(currentRep)}">${esc(currentRep)} (unknown user)</option>`);
+  }
+  sel.value = currentRep || '';
+}
+
+function populateDatasetSelect(currentDatasetId) {
+  const sel = document.getElementById('ef-dataset');
+  const optionsHtml = datasets.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+  sel.innerHTML = '<option value="">未分類 Unassigned</option>' + optionsHtml;
+  sel.value = currentDatasetId || '';
+}
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -174,8 +234,11 @@ function renderShop() {
   document.getElementById('shop-name').textContent = shop.name;
   document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status);
   document.getElementById('f-address').textContent = shop.address || '—';
+  document.getElementById('f-region').textContent = shop.region || '—';
   document.getElementById('f-contact-name').textContent = shop.contact_name || '—';
   document.getElementById('f-contact-phone').textContent = shop.contact_phone || '—';
+  document.getElementById('f-sales-rep').textContent = shop.sales_rep || '—';
+  document.getElementById('f-dataset').textContent = datasetName(shop.dataset_id) || '—';
   document.getElementById('f-created-at').textContent = fmtDate(shop.created_at);
   if (shop.notes) {
     document.getElementById('f-notes').textContent = shop.notes;
@@ -213,7 +276,7 @@ async function renderVisits() {
 
 // Load shop
 try {
-  shop = await getShop(shopId);
+  [shop] = await Promise.all([getShop(shopId), loadRepOptions(), loadDatasetOptions()]);
   renderShop();
   document.getElementById('loading').style.display = 'none';
   document.getElementById('content').style.display = '';
@@ -229,8 +292,11 @@ document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('ef-name').value = shop.name;
   document.getElementById('ef-status').value = shop.status;
   document.getElementById('ef-address').value = shop.address || '';
+  document.getElementById('ef-region').value = shop.region || '';
   document.getElementById('ef-contact-name').value = shop.contact_name || '';
   document.getElementById('ef-contact-phone').value = shop.contact_phone || '';
+  populateRepSelect(shop.sales_rep || '');
+  populateDatasetSelect(shop.dataset_id || '');
   document.getElementById('ef-notes').value = shop.notes || '';
   document.getElementById('edit-modal-error').textContent = '';
   document.getElementById('edit-modal').style.display = '';
@@ -249,8 +315,11 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
       name,
       status: document.getElementById('ef-status').value,
       address: document.getElementById('ef-address').value.trim() || null,
+      region: document.getElementById('ef-region').value.trim() || null,
       contact_name: document.getElementById('ef-contact-name').value.trim() || null,
       contact_phone: document.getElementById('ef-contact-phone').value.trim() || null,
+      sales_rep: document.getElementById('ef-sales-rep').value || null,
+      dataset_id: document.getElementById('ef-dataset').value || null,
       notes: document.getElementById('ef-notes').value.trim() || null,
     });
     document.getElementById('edit-modal').style.display = 'none';

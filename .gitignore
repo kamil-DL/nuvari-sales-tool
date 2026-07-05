@@ -1,0 +1,7 @@
+.env
+tools/taiwan-bikeshop-crawler/output/
+tools/taiwan-bikeshop-crawler/.crawl-cache/
+tools/taiwan-bikeshop-crawler/.venv/
+__pycache__/
+*.pyc
+.DS_Store

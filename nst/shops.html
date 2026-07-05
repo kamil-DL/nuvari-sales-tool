@@ -35,6 +35,9 @@
       </div>
       <div id="normal-actions" style="display:flex;gap:8px">
         <button id="select-mode-btn" class="nst-btn nst-btn-outline">☑ 選取 Select</button>
+        <button id="manage-datasets-btn" class="nst-btn nst-btn-outline">🗂 資料集 Datasets</button>
+        <button id="backfill-region-btn" class="nst-btn nst-btn-outline" title="為已有座標但缺少地區/縣市/鄉鎮市區的店家自動填入 · Auto-fill region/county/district from coordinates for shops missing them">📍 自動填入地區 Auto-fill regions</button>
+        <button id="export-csv-btn" class="nst-btn nst-btn-outline">⬇ 匯出 Export</button>
         <button id="import-csv-btn" class="nst-btn nst-btn-outline">↑ 匯入 CSV Import CSV</button>
         <button id="add-shop-btn" class="nst-btn nst-btn-primary">＋ 新增店家 Add shop</button>
       </div>
@@ -53,6 +56,19 @@
         <option value="已合作">已合作 Partnered</option>
         <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
       </select>
+      <select id="region-filter" class="nst-select" style="width:auto;min-width:130px">
+        <option value="all">全部地區 All regions</option>
+      </select>
+      <select id="rep-filter" class="nst-select" style="width:auto;min-width:130px">
+        <option value="all">全部業務員 All reps</option>
+      </select>
+      <select id="dataset-filter" class="nst-select" style="width:auto;min-width:150px">
+        <option value="all">全部資料集 All datasets</option>
+        <option value="unassigned">未分類 Unassigned</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="only-mine-checkbox"/> 只顯示我的 Only mine
+      </label>
     </div>
 
     <div id="selection-bar" class="nst-filter-bar" style="display:none">
@@ -96,10 +112,26 @@
       </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="f-address" type="text" class="nst-input" placeholder="e.g. 台北市信義區松壽路 12 號"/>
+      <label class="nst-field-label">地區 Region</label>
+      <select id="f-region" class="nst-select">
+        <option value="">未分類 Unassigned</option>
+        <option value="北部">北部 North</option>
+        <option value="中部">中部 Central</option>
+        <option value="南部">南部 South</option>
+        <option value="東部">東部 East</option>
+      </select>
       <label class="nst-field-label">聯絡人 Contact name</label>
       <input id="f-contact-name" type="text" class="nst-input" placeholder="e.g. 陳老闆"/>
       <label class="nst-field-label">聯絡電話 Contact phone</label>
       <input id="f-contact-phone" type="tel" class="nst-input" placeholder="e.g. 02-1234-5678"/>
+      <label class="nst-field-label">業務員 Sales rep</label>
+      <select id="f-sales-rep" class="nst-select">
+        <option value="">未指派 Unassigned</option>
+      </select>
+      <label class="nst-field-label">資料集 Dataset</label>
+      <select id="f-dataset" class="nst-select">
+        <option value="">未分類 Unassigned</option>
+      </select>
       <label class="nst-field-label">備註 Notes</label>
       <textarea id="f-notes" class="nst-textarea" placeholder="Additional notes…"></textarea>
       <div id="modal-error" class="nst-auth-error" style="margin-top:10px"></div>
@@ -122,15 +154,23 @@
     <div class="nst-modal-body">
       <div style="font-size:13px;color:var(--nst-gray);margin-bottom:14px;line-height:1.6">
         CSV 欄位（首行為標題，與地圖規劃工具共用同一標準）：<br/>
-        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, notes, lat/GISY, lng/GISX</code><br/>
+        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, sales_rep, notes, lat/GISY, lng/GISX</code><br/>
         <span style="font-size:12px">status 可填：尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失（預設 尚未開發）</span><br/>
-        <span style="font-size:12px">也會儲存：地區、縣市、鄉鎮市區、座標狀態、category、google_* 等欄位 · Also stored: region/county/district/coord_status/category/google_* columns if present</span>
+        <span style="font-size:12px">也會儲存：地區、縣市、鄉鎮市區、座標狀態、category、google_* 等欄位 · Also stored: region/county/district/coord_status/category/google_* columns if present</span><br/>
+        <span style="font-size:12px">資料集在下方選擇，不是 CSV 欄位 · Dataset is chosen below, not a CSV column</span>
       </div>
-      <label class="nst-field-label">選擇檔案 Choose file</label>
+      <label class="nst-field-label">匯入至資料集 Import into dataset</label>
+      <select id="csv-dataset-select" class="nst-select">
+        <option value="">未分類 Unassigned</option>
+        <option value="__new__">＋ 新增資料集 New dataset…</option>
+      </select>
+      <input id="csv-new-dataset-name" type="text" class="nst-input" placeholder="新資料集名稱 New dataset name" style="display:none;margin-top:8px"/>
+      <label class="nst-field-label" style="margin-top:14px">選擇檔案 Choose file</label>
       <input id="csv-file-input" type="file" accept=".csv,text/csv" class="nst-input" style="padding:8px"/>
       <div id="csv-preview" style="display:none;margin-top:14px">
         <div id="csv-preview-text" style="font-size:13px;color:var(--nst-ink);margin-bottom:8px"></div>
         <div id="csv-warnings" style="font-size:12px;color:#E07A30;margin-bottom:4px"></div>
+        <div id="csv-duplicates" style="display:none;margin-top:10px;max-height:220px;overflow-y:auto;border:1px solid var(--nst-border);border-radius:8px;padding:8px 10px"></div>
       </div>
       <div id="csv-progress" style="display:none;font-size:13px;color:var(--nst-gray);margin-top:10px"></div>
       <div id="csv-error" class="nst-auth-error" style="margin-top:8px"></div>
@@ -142,10 +182,35 @@
   </div>
 </div>
 
+<!-- Manage datasets modal -->
+<div id="datasets-modal" class="nst-modal-backdrop" style="display:none">
+  <div class="nst-modal" style="max-width:480px">
+    <div class="nst-modal-header">
+      <h3>資料集管理 Manage datasets</h3>
+      <button class="nst-modal-close" id="datasets-modal-close">✕</button>
+    </div>
+    <div class="nst-modal-body">
+      <div id="datasets-list" style="margin-bottom:16px"></div>
+      <label class="nst-field-label">新增資料集 New dataset</label>
+      <input id="new-dataset-name" type="text" class="nst-input" placeholder="e.g. 全國電子 2026 名單"/>
+      <div id="datasets-error" class="nst-auth-error" style="margin-top:8px"></div>
+    </div>
+    <div class="nst-modal-footer">
+      <button id="datasets-close-btn" class="nst-btn nst-btn-ghost">關閉 Close</button>
+      <button id="add-dataset-btn" class="nst-btn nst-btn-primary">＋ 新增 Add</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS } from './js/shops.js';
+import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset } from './js/shops.js';
+import { loadLatestVisitsByShopIds, VISIT_STATUS_LABELS } from './js/visits.js';
+import { lookupGeoFromCoords } from '../shared/geo.js';
+import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
+import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
+import { supabase } from './js/supabase-client.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -158,10 +223,32 @@ let currentShops = [];
 let editingShopCreatedBy = null;
 let selectionMode = false;
 let selectedIds = new Set();
+let repDirectory = []; // [{ id, email }] from public.user_directory
+let datasets = []; // [{ id, name, description, created_by, created_at }] from public.shop_datasets
+let latestVisitByShop = {}; // { [shop_id]: { scheduled_date, status } }
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function datasetName(id) {
+  if (!id) return null;
+  const d = datasets.find(d => d.id === id);
+  return d ? d.name : null;
+}
 
 function statusBadge(s) {
   const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
+}
+
+function regionBadge(region) {
+  if (!region) return '';
+  const color = REGION_COLOR_BY_ZH[region];
+  return color
+    ? `<span class="nst-badge" style="background:${color}1A;color:${color}">${esc(region)}</span>`
+    : `<span class="nst-badge badge-gray">${esc(region)}</span>`;
 }
 
 function renderShops(shops) {
@@ -180,18 +267,33 @@ function renderShops(shops) {
     const checkbox = selectionMode
       ? `<span class="nst-card-check${checked ? ' checked' : ''}${owned ? '' : ' disabled'}" title="${owned ? '' : '只能刪除自己新增的店家 · Only shops you created can be deleted'}">${checked ? '✓' : ''}</span>`
       : '';
+    const dsName = s.dataset_id ? (datasetName(s.dataset_id) || '—') : null;
+    const lastVisit = latestVisitByShop[s.id];
+    const lastVisitText = lastVisit
+      ? `${fmtDate(lastVisit.scheduled_date)} (${(VISIT_STATUS_LABELS[lastVisit.status] || {}).zh || lastVisit.status})`
+      : '尚未拜訪 Unvisited';
     return `
     <a class="nst-card nst-card-link${selectionMode ? ' selection-mode' : ''}" href="shop-detail.html?id=${s.id}" data-id="${esc(s.id)}">
-      <div class="nst-card-header">
+      <div class="nst-card-header" style="align-items:flex-start">
         ${checkbox}
-        <span class="nst-card-name">${esc(s.name)}</span>
-        ${statusBadge(s.status)}
+        <div style="flex:1;min-width:0">
+          <span class="nst-card-name">${esc(s.name)}</span>
+          ${s.address ? `<div class="nst-card-meta" style="margin-top:2px">${esc(s.address)}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+          ${statusBadge(s.status)}
+          ${regionBadge(s.region)}
+          ${dsName ? `<span class="nst-badge badge-gray">🗂 ${esc(dsName)}</span>` : ''}
+        </div>
       </div>
-      <div class="nst-card-meta">
-        ${s.contact_name ? `<span>👤 ${esc(s.contact_name)}</span>` : ''}
-        ${s.contact_phone ? ` · 📞 ${esc(s.contact_phone)}` : ''}
+      ${(s.contact_name || s.contact_phone) ? `<div class="nst-card-meta" style="margin-top:6px">
+        ${s.contact_name ? `<span>${esc(s.contact_name)}</span>` : ''}
+        ${s.contact_phone ? ` · ${esc(s.contact_phone)}` : ''}
+      </div>` : ''}
+      <div class="nst-card-meta" style="margin-top:8px;text-align:right">
+        Sales: ${esc(s.sales_rep || '未指派 Unassigned')}<br/>
+        Last Visit: ${esc(lastVisitText)}
       </div>
-      ${s.address ? `<div class="nst-card-meta" style="margin-top:2px">📍 ${esc(s.address)}</div>` : ''}
     </a>`;
   }).join('');
 }
@@ -238,11 +340,54 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── CSV export — same unified column standard as the map planner's export ──
+const EXPORT_COLUMNS = ['name','status','category','address','region','county','district','sales_rep','dataset','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status'];
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadShopsCSV(rows, label) {
+  const lines = [EXPORT_COLUMNS.join(',')];
+  rows.forEach(r => {
+    const augmented = { ...r, dataset: datasetName(r.dataset_id) || '' };
+    lines.push(EXPORT_COLUMNS.map(c => csvCell(augmented[c])).join(','));
+  });
+  const csv = lines.join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM so Excel opens CJK text correctly
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeLabel = String(label || 'shops').replace(/[\\/:*?"<>|]/g, '').trim() || 'shops';
+  a.href = url; a.download = `${safeLabel}-export-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+document.getElementById('export-csv-btn').addEventListener('click', () => {
+  const rows = (selectionMode && selectedIds.size > 0)
+    ? currentShops.filter(s => selectedIds.has(s.id))
+    : currentShops;
+  if (!rows.length) { showError('沒有可匯出的資料 Nothing to export'); return; }
+  const datasetFilterVal = document.getElementById('dataset-filter').value;
+  let label = 'shops';
+  if (datasetFilterVal === 'unassigned') label = 'unassigned';
+  else if (datasetFilterVal && datasetFilterVal !== 'all') label = datasetName(datasetFilterVal) || 'shops';
+  downloadShopsCSV(rows, label);
+});
+
 async function refresh() {
   const status = document.getElementById('status-filter').value;
   const search = document.getElementById('search-input').value.trim();
+  const region = document.getElementById('region-filter').value;
+  const salesRep = document.getElementById('rep-filter').value;
+  const datasetId = document.getElementById('dataset-filter').value;
+  const onlyMine = document.getElementById('only-mine-checkbox').checked;
   try {
-    currentShops = await loadShops({ status, search });
+    currentShops = await loadShops({ status, search, region, salesRep, datasetId, onlyMine, userId: user.id });
+    try {
+      latestVisitByShop = await loadLatestVisitsByShopIds(currentShops.map(s => s.id));
+    } catch {
+      latestVisitByShop = {};
+    }
     renderShops(currentShops);
   } catch (e) {
     showError(e.message);
@@ -254,6 +399,44 @@ function showError(msg) {
   el.textContent = msg; el.style.display = '';
 }
 
+// Region is a freeform text field, not a fixed enum, so populate it from whatever distinct
+// values actually exist across all shops (not just the current filter). Sales rep instead
+// comes from public.user_directory (real registered accounts), not from shop data.
+async function loadFilterOptions() {
+  const { data } = await supabase.from('shops').select('region');
+  const regions = [...new Set((data || []).map(s => s.region).filter(Boolean))].sort();
+  const regionSel = document.getElementById('region-filter');
+  regionSel.innerHTML = '<option value="all">全部地區 All regions</option>' + regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+  try {
+    repDirectory = await loadUserDirectory();
+  } catch (e) {
+    repDirectory = [];
+  }
+  const repOptionsHtml = repDirectory.map(u => `<option value="${esc(repLabel(u.email))}">${esc(repLabel(u.email))}</option>`).join('');
+  const repSel = document.getElementById('rep-filter');
+  repSel.innerHTML = '<option value="all">全部業務員 All reps</option>' + repOptionsHtml;
+  const fRepSel = document.getElementById('f-sales-rep');
+  fRepSel.innerHTML = '<option value="">未指派 Unassigned</option>' + repOptionsHtml;
+}
+
+// Datasets (public.shop_datasets) group shops so CSV imports don't all pile into one
+// undifferentiated list, and so the map planner can load a specific subset.
+async function refreshDatasets() {
+  try {
+    datasets = await loadDatasets();
+  } catch (e) {
+    datasets = [];
+  }
+  const optionsHtml = datasets.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+  const filterSel = document.getElementById('dataset-filter');
+  filterSel.innerHTML = '<option value="all">全部資料集 All datasets</option><option value="unassigned">未分類 Unassigned</option>' + optionsHtml;
+  const fSel = document.getElementById('f-dataset');
+  fSel.innerHTML = '<option value="">未分類 Unassigned</option>' + optionsHtml;
+  const csvSel = document.getElementById('csv-dataset-select');
+  csvSel.innerHTML = '<option value="">未分類 Unassigned</option>' + optionsHtml + '<option value="__new__">＋ 新增資料集 New dataset…</option>';
+}
+
 // Debounced search
 let searchTimer;
 document.getElementById('search-input').addEventListener('input', () => {
@@ -261,6 +444,10 @@ document.getElementById('search-input').addEventListener('input', () => {
   searchTimer = setTimeout(refresh, 300);
 });
 document.getElementById('status-filter').addEventListener('change', refresh);
+document.getElementById('region-filter').addEventListener('change', refresh);
+document.getElementById('rep-filter').addEventListener('change', refresh);
+document.getElementById('dataset-filter').addEventListener('change', refresh);
+document.getElementById('only-mine-checkbox').addEventListener('change', refresh);
 
 // Modal
 function openModal(shop = null) {
@@ -270,8 +457,17 @@ function openModal(shop = null) {
   document.getElementById('f-name').value = shop ? shop.name : '';
   document.getElementById('f-status').value = shop ? shop.status : '尚未開發';
   document.getElementById('f-address').value = shop ? (shop.address || '') : '';
+  document.getElementById('f-region').value = shop ? (shop.region || '') : '';
   document.getElementById('f-contact-name').value = shop ? (shop.contact_name || '') : '';
   document.getElementById('f-contact-phone').value = shop ? (shop.contact_phone || '') : '';
+  const fRepSel = document.getElementById('f-sales-rep');
+  document.querySelectorAll('#f-sales-rep option[data-extra]').forEach(o => o.remove());
+  const currentRep = shop ? (shop.sales_rep || '') : '';
+  if (currentRep && ![...fRepSel.options].some(o => o.value === currentRep)) {
+    fRepSel.insertAdjacentHTML('beforeend', `<option value="${esc(currentRep)}" data-extra>${esc(currentRep)} (unknown user)</option>`);
+  }
+  fRepSel.value = currentRep;
+  document.getElementById('f-dataset').value = shop ? (shop.dataset_id || '') : '';
   document.getElementById('f-notes').value = shop ? (shop.notes || '') : '';
   document.getElementById('modal-error').textContent = '';
   editingShopCreatedBy = shop ? shop.created_by : null;
@@ -300,8 +496,11 @@ document.getElementById('modal-save-btn').addEventListener('click', async () => 
     name,
     status: document.getElementById('f-status').value,
     address: document.getElementById('f-address').value.trim() || null,
+    region: document.getElementById('f-region').value.trim() || null,
     contact_name: document.getElementById('f-contact-name').value.trim() || null,
     contact_phone: document.getElementById('f-contact-phone').value.trim() || null,
+    sales_rep: document.getElementById('f-sales-rep').value || null,
+    dataset_id: document.getElementById('f-dataset').value || null,
     notes: document.getElementById('f-notes').value.trim() || null,
   };
   const btn = document.getElementById('modal-save-btn');
@@ -312,6 +511,7 @@ document.getElementById('modal-save-btn').addEventListener('click', async () => 
     else await addShop(fields, user.id);
     closeModal();
     await refresh();
+    loadFilterOptions();
   } catch (e) {
     document.getElementById('modal-error').textContent = e.message;
   } finally {
@@ -328,6 +528,104 @@ document.getElementById('modal-delete-btn').addEventListener('click', async () =
     await refresh();
   } catch (e) {
     document.getElementById('modal-error').textContent = e.message;
+  }
+});
+
+// ── Manage datasets modal ──
+function renderDatasetsList(counts) {
+  const el = document.getElementById('datasets-list');
+  if (!datasets.length) {
+    el.innerHTML = `<div style="font-size:13px;color:var(--nst-gray)">尚無資料集 No datasets yet</div>`;
+    return;
+  }
+  el.innerHTML = datasets.map(d => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--nst-border)">
+      <span style="flex:1;font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.name)}">${esc(d.name)}</span>
+      <span style="font-size:11.5px;color:var(--nst-gray);white-space:nowrap">${counts[d.id] || 0} 家 shops</span>
+      <button class="nst-btn nst-btn-outline nst-btn-sm dataset-rename-btn" data-id="${esc(d.id)}">✎</button>
+      <button class="nst-btn nst-btn-danger nst-btn-sm dataset-delete-btn" data-id="${esc(d.id)}">✕</button>
+    </div>`).join('');
+}
+
+async function openDatasetsModal() {
+  await refreshDatasets();
+  const { data } = await supabase.from('shops').select('dataset_id');
+  const counts = {};
+  (data || []).forEach(s => { if (s.dataset_id) counts[s.dataset_id] = (counts[s.dataset_id] || 0) + 1; });
+  renderDatasetsList(counts);
+  document.getElementById('new-dataset-name').value = '';
+  document.getElementById('datasets-error').textContent = '';
+  document.getElementById('datasets-modal').style.display = '';
+}
+
+document.getElementById('manage-datasets-btn').addEventListener('click', openDatasetsModal);
+
+document.getElementById('backfill-region-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('backfill-region-btn');
+  btn.disabled = true; const origText = btn.textContent; btn.textContent = '處理中… Working…';
+  try {
+    const { data: candidates, error } = await supabase.from('shops')
+      .select('id,lat,lng')
+      .is('region', null)
+      .not('lat', 'is', null)
+      .not('lng', 'is', null);
+    if (error) throw error;
+    let updated = 0, noMatch = 0;
+    for (const s of (candidates || [])) {
+      const geo = lookupGeoFromCoords(s.lat, s.lng);
+      if (!geo) { noMatch++; continue; }
+      await updateShop(s.id, { region: geo.region, county: geo.county, district: geo.district });
+      updated++;
+    }
+    await refresh();
+    loadFilterOptions();
+    if (!candidates || !candidates.length) showError('沒有需要補齊地區的店家 No shops need a region backfill');
+    else showError(`已補齊 ${updated} 家店的地區資訊${noMatch ? `（${noMatch} 家座標不在資料範圍內）` : ''} · Filled region for ${updated} shop(s)${noMatch ? `, ${noMatch} outside coverage` : ''}`);
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = origText;
+  }
+});
+document.getElementById('datasets-modal-close').addEventListener('click', () => { document.getElementById('datasets-modal').style.display = 'none'; refresh(); });
+document.getElementById('datasets-close-btn').addEventListener('click', () => { document.getElementById('datasets-modal').style.display = 'none'; refresh(); });
+document.getElementById('datasets-modal').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.style.display = 'none'; refresh(); } });
+
+document.getElementById('add-dataset-btn').addEventListener('click', async () => {
+  const name = document.getElementById('new-dataset-name').value.trim();
+  if (!name) { document.getElementById('datasets-error').textContent = '請輸入名稱 Name is required'; return; }
+  try {
+    await createDataset(name, null, user.id);
+    await openDatasetsModal();
+  } catch (e) {
+    document.getElementById('datasets-error').textContent = e.message;
+  }
+});
+
+document.getElementById('datasets-list').addEventListener('click', async e => {
+  const renameBtn = e.target.closest('.dataset-rename-btn');
+  const deleteBtn = e.target.closest('.dataset-delete-btn');
+  if (renameBtn) {
+    const id = renameBtn.dataset.id;
+    const ds = datasets.find(d => d.id === id);
+    const newName = prompt('資料集名稱 Dataset name:', ds ? ds.name : '');
+    if (!newName || !newName.trim() || (ds && newName.trim() === ds.name)) return;
+    try {
+      await updateDataset(id, { name: newName.trim() });
+      await openDatasetsModal();
+    } catch (e) {
+      document.getElementById('datasets-error').textContent = e.message;
+    }
+  } else if (deleteBtn) {
+    const id = deleteBtn.dataset.id;
+    const ds = datasets.find(d => d.id === id);
+    if (!confirm(`確定要刪除資料集「${ds ? ds.name : ''}」嗎？此資料集內的店家不會被刪除，只會變成未分類。\nDelete this dataset? Shops in it won't be deleted, just unassigned.`)) return;
+    try {
+      await deleteDataset(id);
+      await openDatasetsModal();
+    } catch (e) {
+      document.getElementById('datasets-error').textContent = e.message;
+    }
   }
 });
 
@@ -365,30 +663,62 @@ document.getElementById('delete-selected-btn').addEventListener('click', async (
   await bulkDelete([...selectedIds]);
 });
 
-await refresh();
+await Promise.all([refresh(), loadFilterOptions(), refreshDatasets()]);
 
 // ── CSV Import ──
 const VALID_STATUSES = new Set(['尚未開發','電訪過','電訪過-拒絕','拜訪過','拜訪過-拒絕','已合作','已合作-流失']);
 let csvRows = [];
+let csvDupMatches = []; // parallel to csvRows — matched existing shop {name,address} or null
+let csvSkipSet = new Set(); // indices into csvRows that will be skipped on import (defaults to all duplicates)
+
+// A row is treated as a likely duplicate if it matches an existing shop on exact name,
+// exact address, or near-identical coordinates (~11m) — any one of these is enough,
+// since re-imported CSVs commonly repeat the same shop under slightly different columns.
+function findDuplicateMatch(row, existingShops) {
+  return existingShops.find(s => {
+    if (row.name && s.name && row.name.trim().toLowerCase() === s.name.trim().toLowerCase()) return true;
+    if (row.address && s.address && row.address.trim() === s.address.trim()) return true;
+    if (row.lat != null && row.lng != null && s.lat != null && s.lng != null &&
+        Math.abs(row.lat - s.lat) < 0.0001 && Math.abs(row.lng - s.lng) < 0.0001) return true;
+    return false;
+  }) || null;
+}
+
+function renderCsvDuplicates() {
+  const el = document.getElementById('csv-duplicates');
+  const dupIndices = csvDupMatches.map((m, i) => m ? i : -1).filter(i => i >= 0);
+  if (!dupIndices.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--nst-ink)">可能重複 Possible duplicates (${dupIndices.length}) — 預設略過，勾選以仍然匯入 unchecked = skipped, check to import anyway</div>` +
+    dupIndices.map(i => {
+      const row = csvRows[i];
+      const match = csvDupMatches[i];
+      const checked = !csvSkipSet.has(i);
+      return `<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--nst-border);cursor:pointer">
+        <input type="checkbox" class="csv-dup-checkbox" data-idx="${i}" ${checked ? 'checked' : ''} style="margin-top:2px"/>
+        <span><strong>${esc(row.name)}</strong>${row.address ? ` · ${esc(row.address)}` : ''}<br/>
+        <span style="color:var(--nst-gray)">matches existing: ${esc(match.name)}${match.address ? ` · ${esc(match.address)}` : ''}</span></span>
+      </label>`;
+    }).join('');
+}
+
+document.getElementById('csv-duplicates').addEventListener('change', e => {
+  const cb = e.target.closest('.csv-dup-checkbox');
+  if (!cb) return;
+  const idx = parseInt(cb.dataset.idx, 10);
+  if (cb.checked) csvSkipSet.delete(idx);
+  else csvSkipSet.add(idx);
+});
 
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
   // auto-detect delimiter: tab takes priority if present in header row (common when pasted/exported
   // from Excel or Google Sheets), else comma — matches the map planner's parser
-  const delim = lines[0].includes('\t') ? '\t' : ',';
-  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/[\s\-]+/g,'_'));
+  const delim = detectDelimiter(lines[0]);
+  const headers = parseCSVLine(lines[0], delim).map(h => h.trim().toLowerCase().replace(/[\s\-]+/g,'_'));
   return lines.slice(1).filter(l => l.trim()).map(line => {
-    // Simple CSV/TSV parse (handles quoted fields)
-    const vals = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; }
-      else if (c === delim && !inQ) { vals.push(cur.trim()); cur = ''; }
-      else { cur += c; }
-    }
-    vals.push(cur.trim());
+    const vals = parseCSVLine(line, delim).map(v => v.trim());
     const row = {};
     headers.forEach((h, i) => { row[h] = vals[i] || ''; });
     return row;
@@ -405,6 +735,7 @@ function normaliseRow(row) {
     address: (row.address || row['地址'] || '').trim() || null,
     contact_name: (row.contact_name || row['聯絡人'] || '').trim() || null,
     contact_phone: (row.contact_phone || row['聯絡電話'] || row.phone || '').trim() || null,
+    sales_rep: (row.sales_rep || row['業務員'] || '').trim() || null,
     notes: (row.notes || row['備註'] || '').trim() || null,
     // GISY = latitude, GISX = longitude (Chunghwa Post / 內政部 coordinate convention) — same aliases as the map planner's parser
     lat: parseFloat(row.lat || row.latitude || row['緯度'] || row.gisy) || null,
@@ -425,12 +756,23 @@ function normaliseRow(row) {
 
 document.getElementById('import-csv-btn').addEventListener('click', () => {
   csvRows = [];
+  csvDupMatches = [];
+  csvSkipSet = new Set();
   document.getElementById('csv-file-input').value = '';
   document.getElementById('csv-preview').style.display = 'none';
+  document.getElementById('csv-duplicates').style.display = 'none';
+  document.getElementById('csv-duplicates').innerHTML = '';
   document.getElementById('csv-progress').style.display = 'none';
   document.getElementById('csv-error').textContent = '';
   document.getElementById('csv-import-btn').disabled = true;
+  document.getElementById('csv-dataset-select').value = '';
+  document.getElementById('csv-new-dataset-name').value = '';
+  document.getElementById('csv-new-dataset-name').style.display = 'none';
   document.getElementById('csv-modal').style.display = '';
+});
+
+document.getElementById('csv-dataset-select').addEventListener('change', e => {
+  document.getElementById('csv-new-dataset-name').style.display = e.target.value === '__new__' ? '' : 'none';
 });
 
 function closeCsvModal() { document.getElementById('csv-modal').style.display = 'none'; }
@@ -442,7 +784,7 @@ document.getElementById('csv-file-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try {
       const raw = parseCSV(ev.target.result);
       const normalised = raw.map(normaliseRow);
@@ -450,8 +792,28 @@ document.getElementById('csv-file-input').addEventListener('change', e => {
       csvRows = normalised.filter(r => r.name && r.lat !== null && r.lng !== null);
       const skipped = skippedRows.length;
       const noStatus = csvRows.filter(r => !VALID_STATUSES.has(r.status)).length;
+
+      // Fill in region/county/district from coordinates when the CSV didn't provide them.
+      let geoFilled = 0;
+      csvRows.forEach(row => {
+        if (!row.region && !row.county && !row.district) {
+          const geo = lookupGeoFromCoords(row.lat, row.lng);
+          if (geo) {
+            row.region = geo.region;
+            row.county = geo.county;
+            row.district = geo.district;
+            geoFilled++;
+          }
+        }
+      });
+
+      const { data: existingShops } = await supabase.from('shops').select('name,address,lat,lng');
+      csvDupMatches = csvRows.map(row => findDuplicateMatch(row, existingShops || []));
+      csvSkipSet = new Set(csvDupMatches.map((m, i) => m ? i : -1).filter(i => i >= 0));
+
+      const dupCount = csvDupMatches.filter(Boolean).length;
       document.getElementById('csv-preview-text').textContent =
-        `找到 ${csvRows.length} 筆店家資料 Found ${csvRows.length} shops to import.${skipped ? ` (${skipped} rows skipped — missing required fields)` : ''}`;
+        `找到 ${csvRows.length} 筆店家資料 Found ${csvRows.length} shops to import.${skipped ? ` (${skipped} rows skipped — missing required fields)` : ''}${dupCount ? ` — ${dupCount} possible duplicates` : ''}${geoFilled ? ` — ${geoFilled} 筆自動填入地區 auto-filled region/county/district from coordinates` : ''}`;
       const warnParts = [];
       if (noStatus) warnParts.push(`${noStatus} rows had invalid status → defaulted to "尚未開發"`);
       if (skipped) {
@@ -465,6 +827,7 @@ document.getElementById('csv-file-input').addEventListener('change', e => {
         warnParts.push(`Skipped rows missing: ${reasons.join(', ')}`);
       }
       document.getElementById('csv-warnings').textContent = warnParts.join(' · ');
+      renderCsvDuplicates();
       document.getElementById('csv-preview').style.display = '';
       document.getElementById('csv-error').textContent = '';
       document.getElementById('csv-import-btn').disabled = csvRows.length === 0;
@@ -484,11 +847,35 @@ document.getElementById('csv-import-btn').addEventListener('click', async () => 
   btn.disabled = true;
   progress.style.display = '';
   document.getElementById('csv-error').textContent = '';
-  let done = 0, failed = 0;
-  for (const row of csvRows) {
-    progress.textContent = `匯入中 Importing… ${done + failed}/${csvRows.length}`;
+
+  let datasetId = document.getElementById('csv-dataset-select').value;
+  if (datasetId === '__new__') {
+    const newName = document.getElementById('csv-new-dataset-name').value.trim();
+    if (!newName) {
+      document.getElementById('csv-error').textContent = '請輸入新資料集名稱 Please enter a dataset name';
+      progress.style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
     try {
-      await addShop(row, user.id);
+      const created = await createDataset(newName, null, user.id);
+      datasetId = created.id;
+    } catch (e) {
+      document.getElementById('csv-error').textContent = e.message;
+      progress.style.display = 'none';
+      btn.disabled = false;
+      return;
+    }
+  }
+  datasetId = datasetId || null;
+
+  const rowsToImport = csvRows.filter((r, i) => !csvSkipSet.has(i));
+  const skippedAsDup = csvRows.length - rowsToImport.length;
+  let done = 0, failed = 0;
+  for (const row of rowsToImport) {
+    progress.textContent = `匯入中 Importing… ${done + failed}/${rowsToImport.length}`;
+    try {
+      await addShop({ ...row, dataset_id: datasetId }, user.id);
       done++;
     } catch {
       failed++;
@@ -496,11 +883,14 @@ document.getElementById('csv-import-btn').addEventListener('click', async () => 
   }
   progress.style.display = 'none';
   if (failed) {
-    document.getElementById('csv-error').textContent = `匯入完成 Done: ${done} 成功 / ${failed} 失敗 failed`;
+    document.getElementById('csv-error').textContent = `匯入完成 Done: ${done} 成功 / ${failed} 失敗 failed${skippedAsDup ? ` / ${skippedAsDup} 略過重複 skipped as duplicates` : ''}`;
   } else {
     closeCsvModal();
+    if (skippedAsDup) showError(`匯入 ${done} 筆，略過 ${skippedAsDup} 筆重複資料 Imported ${done}, skipped ${skippedAsDup} duplicate(s)`);
   }
   await refresh();
+  loadFilterOptions();
+  refreshDatasets();
 });
 </script>
 </body>

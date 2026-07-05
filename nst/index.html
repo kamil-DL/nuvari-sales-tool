@@ -4,27 +4,27 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Nuvari Sales Tool (NST)</title>
-<link rel="stylesheet" href="css/nst-shared.css"/>
+<link rel="stylesheet" href="/nst/css/nst-shared.css"/>
 </head>
 <body>
 
 <div id="app" style="display:none">
   <header class="nst-header">
     <div class="nst-header-left">
-      <a href="../index.html"><img id="logo" class="nst-header-logo" alt="Nuvari"/></a>
+      <a href="/index.html"><img id="logo" class="nst-header-logo" alt="Nuvari"/></a>
       <span class="nst-header-title">業務管理工具 Sales Tool</span>
     </div>
     <div class="nst-header-right">
       <span id="user-email" class="nst-user-email"></span>
-      <a href="../index.html" class="nst-btn nst-btn-ghost nst-btn-sm">← Dashboard</a>
+      <a href="/index.html" class="nst-btn nst-btn-ghost nst-btn-sm">← Dashboard</a>
       <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
     </div>
   </header>
 
   <nav class="nst-nav">
-    <a href="index.html" class="active">首頁 Home</a>
-    <a href="shops.html">店家資料庫 Shops</a>
-    <a href="visits.html">拜訪計劃 Visits</a>
+    <a href="/nst/index.html" class="active">首頁 Home</a>
+    <a href="/nst/shops.html">店家資料庫 Shops</a>
+    <a href="/nst/visits.html">拜訪計劃 Visits</a>
   </nav>
 
   <div class="nst-page">
@@ -56,12 +56,12 @@
 
     <div class="nst-section-label">模組 Modules</div>
     <div class="nst-module-grid">
-      <a class="nst-module-card" href="shops.html">
+      <a class="nst-module-card" href="/nst/shops.html">
         <div class="nst-module-icon">🏪</div>
         <div class="nst-module-name">店家資料庫 Shop Database</div>
         <div class="nst-module-desc">管理合作店家名單、聯絡資訊與合作狀態<br>Manage shops, contacts, and pipeline status</div>
       </a>
-      <a class="nst-module-card" href="visits.html">
+      <a class="nst-module-card" href="/nst/visits.html">
         <div class="nst-module-icon">📅</div>
         <div class="nst-module-name">拜訪計劃 Visit Planner</div>
         <div class="nst-module-desc">排程與記錄業務拜訪、填寫拜訪記錄與照片<br>Schedule visits, write reviews, upload photos</div>
@@ -71,9 +71,9 @@
 </div>
 
 <script type="module">
-import { requireAuth, signOut } from './js/auth.js';
-import { LOGO } from './js/logo.js';
-import { supabase } from './js/supabase-client.js';
+import { requireAuth, signOut } from '/nst/js/auth.js';
+import { LOGO } from '/nst/js/logo.js';
+import { supabase } from '/nst/js/supabase-client.js';
 
 document.getElementById('logo').src = LOGO;
 
