@@ -2,6 +2,7 @@
 tools/taiwan-bikeshop-crawler/output/
 tools/taiwan-bikeshop-crawler/.crawl-cache/
 tools/taiwan-bikeshop-crawler/.venv/
+tools/bulk-import/.venv/
 __pycache__/
 *.pyc
 .DS_Store

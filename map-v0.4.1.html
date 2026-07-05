@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Nuvari 經銷網絡涵蓋地圖</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
@@ -399,6 +402,13 @@ window.onPwGatePassed=async function(){
             <span class="dp-label">新店預設顏色 Default pin color</span>
             <div id="defaultColorSwatches"></div>
           </div>
+          <div class="dp-row">
+            <span class="dp-label">標記叢集 Marker clustering</span>
+            <div class="seg" id="clusterSeg">
+              <button data-cluster="on" class="active">開啟 On</button>
+              <button data-cluster="off">關閉 Off</button>
+            </div>
+          </div>
           <div class="dp-row" style="margin-bottom:0;">
             <button class="btn" id="basemapToggleBtn" style="width:100%;">🗺️ 隱藏底圖 Hide basemap</button>
           </div>
@@ -410,7 +420,7 @@ window.onPwGatePassed=async function(){
       <button class="btn btn-red" id="clearBtn">清除店點 Clear pins</button>
       <div class="sep"></div>
       <input type="file" id="csvInput" accept=".csv,.txt,.tsv" style="display:none"/>
-      <button class="btn" id="toggleShopsBtn" style="display:none">候選店 ●</button>
+      <button class="btn" id="toggleShopsBtn" style="display:none">資料集 ●</button>
     </div>
   </header>
   <div class="main">
@@ -419,7 +429,7 @@ window.onPwGatePassed=async function(){
     <div class="sidebar">
       <div class="sidebar-tabs">
         <button class="active" data-tab="stats">數據 Stats</button>
-        <button data-tab="shops">候選店 <span id="shopTabBadge"></span></button>
+        <button data-tab="shops">資料集 Datasets <span id="shopTabBadge"></span></button>
         <button data-tab="scenarios">方案 Scenarios</button>
       </div>
       <div id="tab-stats" class="tab-panel active"></div>
@@ -465,7 +475,12 @@ const TOWNS_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature",
 const DISTRICT_DATA = {"V02":{"zh":"成功鎮","countyZh":"台東縣","countyEng":"Taitung County","eng":"Chenggong Township","region":"east","pop":12754,"area":143.9939},"T21":{"zh":"佳冬鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Jiadong Township","region":"south","pop":17323,"area":30.9842},"P13":{"zh":"麥寮鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Mailiao Township","region":"central","pop":48815,"area":80.1668},"V11":{"zh":"綠島鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Ludao Township","region":"east","pop":4327,"area":15.0919},"V16":{"zh":"蘭嶼鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Lanyu Township","region":"east","pop":5220,"area":48.3892},"N07":{"zh":"田中鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Tianzhong Township","region":"central","pop":38273,"area":34.6056},"N19":{"zh":"社頭鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Shetou Township","region":"central","pop":40272,"area":36.1449},"T14":{"zh":"竹田鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Zhutian Township","region":"south","pop":15363,"area":29.0732},"T05":{"zh":"萬丹鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Wandan Township","region":"south","pop":48586,"area":57.4679},"K13":{"zh":"三灣鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Sanwan Township","region":"central","pop":5664,"area":52.2964},"J13":{"zh":"峨眉鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Emei Township","region":"north","pop":4970,"area":46.801},"K14":{"zh":"南庄鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Nanzhuang Township","region":"central","pop":8576,"area":165.4938},"Q12":{"zh":"太保市","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Taibao City","region":"south","pop":39923,"area":66.8964},"Q14":{"zh":"中埔鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Zhongpu Township","region":"south","pop":41673,"area":129.5016},"Q17":{"zh":"番路鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Fanlu Township","region":"south","pop":10582,"area":117.5269},"Q13":{"zh":"水上鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Shuishang Township","region":"south","pop":46932,"area":69.1198},"N05":{"zh":"員林市","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Yuanlin City","region":"central","pop":122148,"area":40.038},"E11":{"zh":"小港區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Xiaogang District","region":"south","pop":153310,"area":45.4426},"G09":{"zh":"蘇澳鎮","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Su'ao Township","region":"north","pop":36413,"area":89.0196},"G07":{"zh":"五結鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Wujie Township","region":"north","pop":41737,"area":38.8671},"G01":{"zh":"宜蘭市","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Yilan City","region":"north","pop":94561,"area":29.408},"G04":{"zh":"壯圍鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Zhuangwei Township","region":"north","pop":24479,"area":38.4769},"Z01":{"zh":"南竿鄉","countyZh":"連江縣","countyEng":"Lienchiang County","eng":"Nangan Township","region":"islands","pop":7629,"area":10.4},"Z03":{"zh":"莒光鄉","countyZh":"連江縣","countyEng":"Lienchiang County","eng":"Juguang Township","region":"islands","pop":1537,"area":4.7},"W04":{"zh":"金寧鄉","countyZh":"金門縣","countyEng":"Kinmen County","eng":"Jinning Township","region":"islands","pop":35287,"area":29.854},"G06":{"zh":"羅東鎮","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Luodong Township","region":"north","pop":68960,"area":11.3448},"G05":{"zh":"員山鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Yuanshan Township","region":"north","pop":32226,"area":111.9106},"G08":{"zh":"冬山鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Dongshan Township","region":"north","pop":52938,"area":79.8573},"G10":{"zh":"三星鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Sanxing Township","region":"north","pop":21356,"area":144.2238},"G11":{"zh":"大同鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Datong Township","region":"north","pop":5998,"area":657.5442},"J02":{"zh":"竹東鎮","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Zhudong Township","region":"north","pop":97894,"area":53.5133},"J04":{"zh":"新埔鎮","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Xinpu Township","region":"north","pop":33561,"area":72.1911},"J03":{"zh":"關西鎮","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Guanxi Township","region":"north","pop":26011,"area":125.5193},"J06":{"zh":"湖口鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Hukou Township","region":"north","pop":84963,"area":58.4303},"J10":{"zh":"芎林鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Qionglin Township","region":"north","pop":20385,"area":40.7858},"J08":{"zh":"橫山鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Hengshan Township","region":"north","pop":11901,"area":66.3502},"J12":{"zh":"北埔鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Beipu Township","region":"north","pop":8289,"area":50.6676},"J14":{"zh":"尖石鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Jianshi Township","region":"north","pop":9464,"area":527.5795},"J15":{"zh":"五峰鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Wufeng Township","region":"north","pop":4397,"area":227.728},"B25":{"zh":"龍井區","countyZh":"台中市","countyEng":"Taichung City","eng":"Longjing District","region":"central","pop":79241,"area":38.0377},"B18":{"zh":"大雅區","countyZh":"台中市","countyEng":"Taichung City","eng":"Daya District","region":"central","pop":94741,"area":32.4109},"B13":{"zh":"沙鹿區","countyZh":"台中市","countyEng":"Taichung City","eng":"Shalu District","region":"central","pop":101419,"area":40.4604},"B14":{"zh":"梧棲區","countyZh":"台中市","countyEng":"Taichung City","eng":"Wuqi District","region":"central","pop":65685,"area":16.6049},"X02":{"zh":"湖西鄉","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Huxi Township","region":"islands","pop":16131,"area":33.3008},"K01":{"zh":"苗栗市","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Miaoli City","region":"central","pop":85838,"area":37.8878},"K16":{"zh":"卓蘭鎮","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Zhuolan Township","region":"central","pop":14483,"area":76.3153},"K15":{"zh":"大湖鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Dahu Township","region":"central","pop":12310,"area":90.8396},"K04":{"zh":"公館鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Gongguan Township","region":"central","pop":30461,"area":71.4523},"K05":{"zh":"銅鑼鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Tongluo Township","region":"central","pop":16079,"area":78.3805},"K08":{"zh":"頭屋鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Touwu Township","region":"central","pop":9354,"area":52.5046},"K06":{"zh":"三義鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Sanyi Township","region":"central","pop":14485,"area":69.3424},"K07":{"zh":"西湖鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Xihu Township","region":"central","pop":5875,"area":41.0758},"K11":{"zh":"造橋鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Zaoqiao Township","region":"central","pop":11548,"area":47.9978},"K17":{"zh":"獅潭鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Shitan Township","region":"central","pop":3943,"area":79.4324},"K18":{"zh":"泰安鄉","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Tai'an Township","region":"central","pop":5401,"area":614.5127},"N01":{"zh":"彰化市","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Changhua City","region":"central","pop":220487,"area":65.6947},"N03":{"zh":"和美鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Hemei Township","region":"central","pop":86635,"area":39.9345},"N09":{"zh":"線西鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Xianxi Township","region":"central","pop":16014,"area":18.0856},"N10":{"zh":"伸港鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Shengang Township","region":"central","pop":38146,"area":22.3268},"N12":{"zh":"秀水鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Xiushui Township","region":"central","pop":37356,"area":29.3447},"N13":{"zh":"花壇鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Huatan Township","region":"central","pop":42816,"area":36.3469},"N14":{"zh":"芬園鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Fenyuan Township","region":"central","pop":21334,"area":38.0204},"N06":{"zh":"溪湖鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Xihu Township","region":"central","pop":52832,"area":32.0592},"Q09":{"zh":"東石鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Dongshi Township","region":"south","pop":21671,"area":81.5821},"N15":{"zh":"大村鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Dacun Township","region":"central","pop":38919,"area":30.7837},"N16":{"zh":"埔鹽鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Puyan Township","region":"central","pop":30041,"area":38.6081},"N17":{"zh":"埔心鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Puxin Township","region":"central","pop":33082,"area":20.9526},"N18":{"zh":"永靖鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Yongjing Township","region":"central","pop":34177,"area":20.6382},"N20":{"zh":"二水鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Ershui Township","region":"central","pop":13220,"area":29.4449},"N08":{"zh":"二林鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Erlin Township","region":"central","pop":46419,"area":92.8478},"N22":{"zh":"埤頭鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Pitou Township","region":"central","pop":27997,"area":42.7508},"N23":{"zh":"芳苑鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Fangyuan Township","region":"central","pop":29880,"area":91.3827},"N24":{"zh":"大城鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Dacheng Township","region":"central","pop":14146,"area":63.7406},"N25":{"zh":"竹塘鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Zhutang Township","region":"central","pop":13918,"area":42.1662},"N26":{"zh":"溪州鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Xizhou Township","region":"central","pop":27248,"area":75.831},"M01":{"zh":"南投市","countyZh":"南投縣","countyEng":"Nantou County","eng":"Nantou City","region":"central","pop":96229,"area":71.6021},"M02":{"zh":"埔里鎮","countyZh":"南投縣","countyEng":"Nantou County","eng":"Puli Township","region":"central","pop":75613,"area":162.2227},"M03":{"zh":"草屯鎮","countyZh":"南投縣","countyEng":"Nantou County","eng":"Caotun Township","region":"central","pop":97724,"area":104.0327},"M04":{"zh":"竹山鎮","countyZh":"南投縣","countyEng":"Nantou County","eng":"Zhushan Township","region":"central","pop":49905,"area":247.3339},"M05":{"zh":"集集鎮","countyZh":"南投縣","countyEng":"Nantou County","eng":"Jiji Township","region":"central","pop":9882,"area":49.7268},"M06":{"zh":"名間鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Mingjian Township","region":"central","pop":34557,"area":83.0955},"M07":{"zh":"鹿谷鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Lugu Township","region":"central","pop":15454,"area":141.8981},"M08":{"zh":"中寮鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Zhongliao Township","region":"central","pop":12825,"area":146.6541},"M09":{"zh":"魚池鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Yuchi Township","region":"central","pop":14098,"area":121.3735},"M10":{"zh":"國姓鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Guoxing Township","region":"central","pop":15963,"area":175.7042},"M11":{"zh":"水里鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Shuili Township","region":"central","pop":15452,"area":106.8424},"M12":{"zh":"信義鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Xinyi Township","region":"central","pop":14886,"area":1422.4188},"M13":{"zh":"仁愛鄉","countyZh":"南投縣","countyEng":"Nantou County","eng":"Ren'ai Township","region":"central","pop":15293,"area":1273.5312},"P01":{"zh":"斗六市","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Douliu City","region":"central","pop":109030,"area":93.7151},"P02":{"zh":"斗南鎮","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Dounan Township","region":"central","pop":43322,"area":48.1505},"P03":{"zh":"虎尾鎮","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Huwei Township","region":"central","pop":71349,"area":68.742},"P04":{"zh":"西螺鎮","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Xiluo Township","region":"central","pop":43975,"area":49.7985},"P05":{"zh":"土庫鎮","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Tuku Township","region":"central","pop":27234,"area":49.0212},"P06":{"zh":"北港鎮","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Beigang Township","region":"central","pop":37053,"area":41.4999},"P07":{"zh":"古坑鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Gukeng Township","region":"central","pop":29193,"area":166.6059},"P08":{"zh":"大埤鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Dabi Township","region":"central","pop":17521,"area":44.9973},"P09":{"zh":"莿桐鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Citong Township","region":"central","pop":27201,"area":50.8502},"P10":{"zh":"林內鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Linnei Township","region":"central","pop":16285,"area":37.6035},"P11":{"zh":"二崙鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Erlun Township","region":"central","pop":24165,"area":59.5625},"P12":{"zh":"崙背鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Lunbei Township","region":"central","pop":22255,"area":58.484},"P14":{"zh":"東勢鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Dongshi Township","region":"central","pop":12885,"area":48.3562},"P15":{"zh":"褒忠鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Baozhong Township","region":"central","pop":11490,"area":37.0552},"P17":{"zh":"元長鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Yuanchang Township","region":"central","pop":22478,"area":71.5872},"P20":{"zh":"水林鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Shuilin Township","region":"central","pop":21805,"area":72.9582},"Q02":{"zh":"朴子市","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Puzi City","region":"south","pop":39950,"area":49.5737},"Q04":{"zh":"大林鎮","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Dalin Township","region":"south","pop":29542,"area":64.1663},"Q05":{"zh":"民雄鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Minxiong Township","region":"south","pop":69716,"area":85.4969},"Q06":{"zh":"溪口鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Xikou Township","region":"south","pop":12604,"area":33.0463},"Q07":{"zh":"新港鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Xingang Township","region":"south","pop":29006,"area":66.0495},"Q08":{"zh":"六腳鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Liujiao Township","region":"south","pop":20044,"area":62.2619},"Q10":{"zh":"義竹鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Yizhu Township","region":"south","pop":15829,"area":79.2925},"Q11":{"zh":"鹿草鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Lucao Township","region":"south","pop":13460,"area":54.3151},"Q15":{"zh":"竹崎鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Zhuqi Township","region":"south","pop":32160,"area":162.2256},"Q16":{"zh":"梅山鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Meishan Township","region":"south","pop":17177,"area":119.7571},"Q18":{"zh":"大埔鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Dapu Township","region":"south","pop":4160,"area":173.2472},"Q20":{"zh":"阿里山鄉","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Alishan Township","region":"south","pop":5163,"area":427.8471},"T01":{"zh":"屏東市","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Pingtung City","region":"south","pop":191466,"area":65.067},"T02":{"zh":"潮州鎮","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Chaozhou Township","region":"south","pop":53723,"area":42.4331},"T06":{"zh":"長治鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Changzhi Township","region":"south","pop":29192,"area":39.8861},"T07":{"zh":"麟洛鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Linluo Township","region":"south","pop":10406,"area":16.26},"T08":{"zh":"九如鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Jiuru Township","region":"south","pop":21420,"area":42.0187},"T09":{"zh":"里港鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Ligang Township","region":"south","pop":24948,"area":68.9208},"T10":{"zh":"鹽埔鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Yanpu Township","region":"south","pop":23106,"area":64.3493},"T11":{"zh":"高樹鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Gaoshu Township","region":"south","pop":21935,"area":90.1522},"T12":{"zh":"萬巒鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Wanluan Township","region":"south","pop":18654,"area":60.7315},"T13":{"zh":"內埔鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Neipu Township","region":"south","pop":52760,"area":81.8554},"T15":{"zh":"新埤鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Xinpi Township","region":"south","pop":8983,"area":59.0102},"T18":{"zh":"崁頂鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Kanding Township","region":"south","pop":14459,"area":31.2659},"T20":{"zh":"南州鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Nanzhou Township","region":"south","pop":9600,"area":18.97},"T22":{"zh":"琉球鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Liuqiu Township","region":"south","pop":12076,"area":6.8018},"T26":{"zh":"三地門鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Sandimen Township","region":"south","pop":7598,"area":196.3965},"T27":{"zh":"霧臺鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Wutai Township","region":"south","pop":3166,"area":278.796},"T28":{"zh":"瑪家鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Majia Township","region":"south","pop":6647,"area":78.7008},"T29":{"zh":"泰武鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Taiwu Township","region":"south","pop":5190,"area":118.6266},"T30":{"zh":"來義鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Laiyi Township","region":"south","pop":7282,"area":167.7756},"T31":{"zh":"春日鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Chunri Township","region":"south","pop":4857,"area":160.001},"T32":{"zh":"獅子鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Shizi Township","region":"south","pop":4825,"area":301.0018},"V09":{"zh":"鹿野鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Luye Township","region":"east","pop":6924,"area":89.698},"V10":{"zh":"池上鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Chishang Township","region":"east","pop":7529,"area":82.6854},"V12":{"zh":"延平鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Yanping Township","region":"east","pop":3547,"area":455.8805},"U02":{"zh":"光復鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Guangfu Township","region":"east","pop":11478,"area":157.11},"U09":{"zh":"瑞穗鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Ruisui Township","region":"east","pop":10388,"area":135.5862},"U10":{"zh":"富里鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Fuli Township","region":"east","pop":9386,"area":176.3705},"X01":{"zh":"馬公市","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Magong City","region":"islands","pop":63282,"area":33.9918},"X03":{"zh":"白沙鄉","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Baisha Township","region":"islands","pop":10084,"area":20.0875},"X04":{"zh":"西嶼鄉","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Xiyu Township","region":"islands","pop":8039,"area":18.7148},"X05":{"zh":"望安鄉","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Wang'an Township","region":"islands","pop":5266,"area":13.7824},"X06":{"zh":"七美鄉","countyZh":"澎湖縣","countyEng":"Penghu County","eng":"Qimei Township","region":"islands","pop":3914,"area":6.9868},"C03":{"zh":"暖暖區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Nuannuan District","region":"north","pop":38462,"area":22.8283},"A02":{"zh":"大安區","countyZh":"台北市","countyEng":"Taipei City","eng":"Da'an District","region":"north","pop":282328,"area":11.3614},"A11":{"zh":"文山區","countyZh":"台北市","countyEng":"Taipei City","eng":"Wenshan District","region":"north","pop":253822,"area":31.509},"E01":{"zh":"鹽埕區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Yancheng District","region":"south","pop":21871,"area":1.4161},"E06":{"zh":"新興區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Xinxing District","region":"south","pop":49380,"area":1.9764},"E07":{"zh":"前金區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qianjin District","region":"south","pop":27670,"area":1.8573},"E09":{"zh":"前鎮區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qianzhen District","region":"south","pop":176845,"area":19.1207},"G02":{"zh":"頭城鎮","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Toucheng Township","region":"north","pop":27868,"area":100.893},"G12":{"zh":"南澳鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Nan'ao Township","region":"north","pop":6171,"area":740.652},"J05":{"zh":"竹北市","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Zhubei City","region":"north","pop":220973,"area":46.8341},"J09":{"zh":"新豐鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Xinfeng Township","region":"north","pop":59839,"area":46.3496},"K02":{"zh":"苑裡鎮","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Yuanli Township","region":"central","pop":43237,"area":68.2473},"K03":{"zh":"通霄鎮","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Tongxiao Township","region":"central","pop":30618,"area":107.8486},"K09":{"zh":"竹南鎮","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Zhunan Township","region":"central","pop":91538,"area":37.5592},"K12":{"zh":"後龍鎮","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Houlong Township","region":"central","pop":33531,"area":75.8079},"N02":{"zh":"鹿港鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Lukang Township","region":"central","pop":82212,"area":39.4625},"N11":{"zh":"福興鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Fuxing Township","region":"central","pop":44284,"area":49.8934},"P16":{"zh":"臺西鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Taixi Township","region":"central","pop":20778,"area":54.0983},"P18":{"zh":"四湖鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Sihu Township","region":"central","pop":20210,"area":77.1189},"P19":{"zh":"口湖鄉","countyZh":"雲林縣","countyEng":"Yunlin County","eng":"Kouhu Township","region":"central","pop":23945,"area":80.4612},"Q03":{"zh":"布袋鎮","countyZh":"嘉義縣","countyEng":"Chiayi County","eng":"Budai Township","region":"south","pop":23589,"area":61.7307},"T03":{"zh":"東港鎮","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Donggang Township","region":"south","pop":45879,"area":29.4635},"T16":{"zh":"枋寮鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Fangliao Township","region":"south","pop":22321,"area":57.7347},"T17":{"zh":"新園鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Xinyuan Township","region":"south","pop":31703,"area":38.3109},"T19":{"zh":"林邊鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Linbian Township","region":"south","pop":15821,"area":15.6233},"T23":{"zh":"車城鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Checheng Township","region":"south","pop":7694,"area":49.8517},"T24":{"zh":"滿州鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Manzhou Township","region":"south","pop":6927,"area":142.2013},"T25":{"zh":"枋山鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Fangshan Township","region":"south","pop":4905,"area":17.2697},"T33":{"zh":"牡丹鄉","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Mudan Township","region":"south","pop":4671,"area":181.8366},"V01":{"zh":"臺東市","countyZh":"台東縣","countyEng":"Taitung County","eng":"Taitung City","region":"east","pop":102681,"area":109.7691},"V04":{"zh":"卑南鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Beinan Township","region":"east","pop":16264,"area":412.6871},"V07":{"zh":"東河鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Donghe Township","region":"east","pop":7710,"area":210.1908},"U05":{"zh":"吉安鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Ji'an Township","region":"east","pop":83004,"area":65.2582},"U06":{"zh":"壽豐鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Shoufeng Township","region":"east","pop":16628,"area":218.4448},"U11":{"zh":"秀林鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Xiulin Township","region":"east","pop":17178,"area":1641.8555},"E04":{"zh":"楠梓區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Nanzi District","region":"south","pop":195613,"area":25.8276},"E12":{"zh":"鳳山區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Fengshan District","region":"south","pop":353000,"area":26.759},"E14":{"zh":"大寮區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Daliao District","region":"south","pop":112239,"area":71.04},"E15":{"zh":"大樹區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Dashu District","region":"south","pop":39906,"area":66.9811},"E16":{"zh":"大社區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Dashe District","region":"south","pop":33741,"area":26.5848},"E17":{"zh":"仁武區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Renwu District","region":"south","pop":100311,"area":36.0808},"E18":{"zh":"鳥松區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Niaosong District","region":"south","pop":43703,"area":24.5927},"E19":{"zh":"岡山區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Gangshan District","region":"south","pop":94624,"area":47.9421},"E20":{"zh":"橋頭區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qiaotou District","region":"south","pop":43341,"area":25.9379},"E21":{"zh":"燕巢區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Yanchao District","region":"south","pop":28348,"area":65.395},"E22":{"zh":"田寮區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Tianliao District","region":"south","pop":6125,"area":92.6802},"E23":{"zh":"阿蓮區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Alian District","region":"south","pop":26785,"area":34.6164},"E24":{"zh":"路竹區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Luzhu District","region":"south","pop":48906,"area":48.4348},"E25":{"zh":"湖內區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Hunei District","region":"south","pop":29295,"area":20.1615},"E30":{"zh":"旗山區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qishan District","region":"south","pop":33368,"area":94.6122},"E31":{"zh":"美濃區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Meinong District","region":"south","pop":36074,"area":120.0316},"E32":{"zh":"六龜區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Liugui District","region":"south","pop":11286,"area":194.1584},"E33":{"zh":"甲仙區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Jiaxian District","region":"south","pop":5279,"area":124.034},"E34":{"zh":"杉林區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Shanlin District","region":"south","pop":10569,"area":104.0036},"E35":{"zh":"內門區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Neimen District","region":"south","pop":12519,"area":95.6224},"E36":{"zh":"茂林區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Maolin District","region":"south","pop":1846,"area":194.0},"E37":{"zh":"桃源區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Taoyuan District","region":"south","pop":4151,"area":928.98},"E38":{"zh":"那瑪夏區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Namaxia District","region":"south","pop":3111,"area":252.9895},"F33":{"zh":"永和區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Yonghe District","region":"north","pop":211536,"area":5.7138},"F07":{"zh":"新店區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Xindian District","region":"north","pop":306884,"area":120.2255},"F19":{"zh":"土城區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Tucheng District","region":"north","pop":242713,"area":29.5578},"F04":{"zh":"蘆洲區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Luzhou District","region":"north","pop":196371,"area":7.4351},"F03":{"zh":"五股區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Wugu District","region":"north","pop":94717,"area":34.8632},"F10":{"zh":"坪林區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Pinglin District","region":"north","pop":6163,"area":170.835},"F22":{"zh":"平溪區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Pingxi District","region":"north","pop":3900,"area":71.3382},"F11":{"zh":"烏來區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Wulai District","region":"north","pop":6199,"area":321.1306},"B09":{"zh":"豐原區","countyZh":"台中市","countyEng":"Taichung City","eng":"Fengyuan District","region":"central","pop":161771,"area":41.1845},"B10":{"zh":"東勢區","countyZh":"台中市","countyEng":"Taichung City","eng":"Dongshi District","region":"central","pop":46488,"area":117.4065},"B15":{"zh":"后里區","countyZh":"台中市","countyEng":"Taichung City","eng":"Houli District","region":"central","pop":52754,"area":58.9439},"B16":{"zh":"神岡區","countyZh":"台中市","countyEng":"Taichung City","eng":"Shengang District","region":"central","pop":63271,"area":35.0445},"B19":{"zh":"新社區","countyZh":"台中市","countyEng":"Taichung City","eng":"Xinshe District","region":"central","pop":22579,"area":68.8874},"B20":{"zh":"石岡區","countyZh":"台中市","countyEng":"Taichung City","eng":"Shigang District","region":"central","pop":13668,"area":18.2105},"B21":{"zh":"外埔區","countyZh":"台中市","countyEng":"Taichung City","eng":"Waipu District","region":"central","pop":30823,"area":42.4099},"B24":{"zh":"大肚區","countyZh":"台中市","countyEng":"Taichung City","eng":"Dadu District","region":"central","pop":55255,"area":37.0024},"B29":{"zh":"和平區","countyZh":"台中市","countyEng":"Taichung City","eng":"Heping District","region":"central","pop":10469,"area":1037.8192},"D09":{"zh":"新營區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xinying District","region":"south","pop":74493,"area":38.5386},"D10":{"zh":"鹽水區","countyZh":"台南市","countyEng":"Tainan City","eng":"Yanshui District","region":"south","pop":23635,"area":52.2455},"D12":{"zh":"白河區","countyZh":"台南市","countyEng":"Tainan City","eng":"Baihe District","region":"south","pop":24948,"area":126.4046},"D13":{"zh":"後壁區","countyZh":"台南市","countyEng":"Tainan City","eng":"Houbi District","region":"south","pop":20840,"area":72.2189},"D15":{"zh":"麻豆區","countyZh":"台南市","countyEng":"Tainan City","eng":"Madou District","region":"south","pop":42873,"area":53.9744},"D16":{"zh":"下營區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xiaying District","region":"south","pop":21742,"area":33.5291},"D17":{"zh":"六甲區","countyZh":"台南市","countyEng":"Tainan City","eng":"Liujia District","region":"south","pop":20880,"area":67.5471},"D18":{"zh":"官田區","countyZh":"台南市","countyEng":"Tainan City","eng":"Guantian District","region":"south","pop":20527,"area":70.7953},"D19":{"zh":"大內區","countyZh":"台南市","countyEng":"Tainan City","eng":"Danei District","region":"south","pop":8427,"area":70.3125},"D20":{"zh":"佳里區","countyZh":"台南市","countyEng":"Tainan City","eng":"Jiali District","region":"south","pop":58328,"area":38.9422},"D25":{"zh":"學甲區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xuejia District","region":"south","pop":24365,"area":53.9919},"D21":{"zh":"西港區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xigang District","region":"south","pop":24811,"area":33.7666},"D26":{"zh":"新化區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xinhua District","region":"south","pop":41932,"area":62.0579},"D28":{"zh":"新市區","countyZh":"台南市","countyEng":"Tainan City","eng":"Xinshi District","region":"south","pop":38279,"area":47.8096},"D29":{"zh":"安定區","countyZh":"台南市","countyEng":"Tainan City","eng":"Anding District","region":"south","pop":29783,"area":31.27},"D36":{"zh":"玉井區","countyZh":"台南市","countyEng":"Tainan City","eng":"Yujing District","region":"south","pop":12674,"area":76.3662},"D37":{"zh":"楠西區","countyZh":"台南市","countyEng":"Tainan City","eng":"Nanxi District","region":"south","pop":8392,"area":109.6316},"D38":{"zh":"南化區","countyZh":"台南市","countyEng":"Tainan City","eng":"Nanhua District","region":"south","pop":7606,"area":171.5198},"D31":{"zh":"左鎮區","countyZh":"台南市","countyEng":"Tainan City","eng":"Zuozhen District","region":"south","pop":4095,"area":74.9025},"D32":{"zh":"仁德區","countyZh":"台南市","countyEng":"Tainan City","eng":"Rende District","region":"south","pop":77496,"area":50.7664},"D33":{"zh":"歸仁區","countyZh":"台南市","countyEng":"Tainan City","eng":"Guiren District","region":"south","pop":70574,"area":55.7913},"D34":{"zh":"關廟區","countyZh":"台南市","countyEng":"Tainan City","eng":"Guanmiao District","region":"south","pop":33198,"area":53.6413},"D35":{"zh":"龍崎區","countyZh":"台南市","countyEng":"Tainan City","eng":"Longqi District","region":"south","pop":3234,"area":64.0814},"D39":{"zh":"永康區","countyZh":"台南市","countyEng":"Tainan City","eng":"Yongkang District","region":"south","pop":235805,"area":40.2753},"D04":{"zh":"北區","countyZh":"台南市","countyEng":"Tainan City","eng":"North District","region":"south","pop":125439,"area":10.434},"E13":{"zh":"林園區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Linyuan District","region":"south","pop":67341,"area":32.286},"E26":{"zh":"茄萣區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qieding District","region":"south","pop":28732,"area":15.7624},"E27":{"zh":"永安區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Yong'an District","region":"south","pop":13510,"area":22.6141},"E28":{"zh":"彌陀區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Mituo District","region":"south","pop":17715,"area":14.7772},"E29":{"zh":"梓官區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Ziguan District","region":"south","pop":34701,"area":11.5967},"F27":{"zh":"淡水區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Tamsui District","region":"north","pop":208004,"area":70.6565},"F21":{"zh":"瑞芳區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Ruifang District","region":"north","pop":35623,"area":70.7336},"F02":{"zh":"林口區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Linkou District","region":"north","pop":138461,"area":54.1519},"F30":{"zh":"三芝區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Sanzhi District","region":"north","pop":22061,"area":65.9909},"F32":{"zh":"八里區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Bali District","region":"north","pop":43495,"area":39.4933},"B11":{"zh":"大甲區","countyZh":"台中市","countyEng":"Taichung City","eng":"Dajia District","region":"central","pop":73108,"area":58.5192},"B22":{"zh":"大安區","countyZh":"台中市","countyEng":"Taichung City","eng":"Da'an District","region":"central","pop":17487,"area":27.4045},"D24":{"zh":"北門區","countyZh":"台南市","countyEng":"Tainan City","eng":"Beimen District","region":"south","pop":9436,"area":44.1003},"D06":{"zh":"安南區","countyZh":"台南市","countyEng":"Tainan City","eng":"Annan District","region":"south","pop":204534,"area":107.2016},"H05":{"zh":"蘆竹區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Luzhu District","region":"north","pop":170556,"area":75.5025},"H07":{"zh":"龜山區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Guishan District","region":"north","pop":188328,"area":72.0177},"H13":{"zh":"復興區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Fuxing District","region":"north","pop":13296,"area":350.7775},"I01":{"zh":"東區","countyZh":"嘉義市","countyEng":"Chiayi City","eng":"East District","region":"south","pop":116567,"area":30.1556},"I02":{"zh":"西區","countyZh":"嘉義市","countyEng":"Chiayi City","eng":"West District","region":"south","pop":145025,"area":29.87},"V14":{"zh":"達仁鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Daren Township","region":"east","pop":3437,"area":306.4454},"V05":{"zh":"大武鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Dawu Township","region":"east","pop":5327,"area":69.1454},"V03":{"zh":"關山鎮","countyZh":"台東縣","countyEng":"Taitung County","eng":"Guanshan Township","region":"east","pop":7757,"area":58.7351},"V13":{"zh":"海端鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Haiduan Township","region":"east","pop":4317,"area":880.0382},"O02":{"zh":"北區","countyZh":"新竹市","countyEng":"Hsinchu City","eng":"North District","region":"north","pop":153915,"area":15.7267},"O03":{"zh":"香山區","countyZh":"新竹市","countyEng":"Hsinchu City","eng":"Xiangshan District","region":"north","pop":79606,"area":54.8491},"G03":{"zh":"礁溪鄉","countyZh":"宜蘭縣","countyEng":"Yilan County","eng":"Jiaoxi Township","region":"north","pop":36629,"area":101.4278},"U03":{"zh":"玉里鎮","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Yuli Township","region":"east","pop":21277,"area":252.3719},"U13":{"zh":"卓溪鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Zhuoxi Township","region":"east","pop":5851,"area":1021.313},"K10":{"zh":"頭份市","countyZh":"苗栗縣","countyEng":"Miaoli County","eng":"Toufen City","region":"central","pop":108231,"area":53.3205},"B12":{"zh":"清水區","countyZh":"台中市","countyEng":"Taichung City","eng":"Qingshui District","region":"central","pop":90640,"area":64.1709},"D02":{"zh":"南區","countyZh":"台南市","countyEng":"Tainan City","eng":"South District","region":"south","pop":119121,"area":27.2681},"D01":{"zh":"東區","countyZh":"台南市","countyEng":"Tainan City","eng":"East District","region":"south","pop":180856,"area":13.4156},"D07":{"zh":"安平區","countyZh":"台南市","countyEng":"Tainan City","eng":"Anping District","region":"south","pop":71256,"area":11.0663},"D08":{"zh":"中西區","countyZh":"台南市","countyEng":"Tainan City","eng":"West Central District","region":"south","pop":75802,"area":6.26},"H02":{"zh":"大溪區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Daxi District","region":"north","pop":93799,"area":105.1206},"H08":{"zh":"八德區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Bade District","region":"north","pop":216058,"area":33.7111},"H01":{"zh":"桃園區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Taoyuan District","region":"north","pop":478487,"area":34.8046},"H06":{"zh":"大園區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Dayuan District","region":"north","pop":89713,"area":87.3925},"H04":{"zh":"楊梅區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Yangmei District","region":"north","pop":182837,"area":89.1229},"C02":{"zh":"七堵區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Qidu District","region":"north","pop":52169,"area":56.2659},"C04":{"zh":"仁愛區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Ren'ai District","region":"north","pop":39689,"area":4.2335},"C07":{"zh":"信義區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Xinyi District","region":"north","pop":52568,"area":10.6706},"C01":{"zh":"中正區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Zhongzheng District","region":"north","pop":51542,"area":10.2118},"C05":{"zh":"中山區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Zhongshan District","region":"north","pop":45556,"area":10.5238},"C06":{"zh":"安樂區","countyZh":"基隆市","countyEng":"Keelung City","eng":"Anle District","region":"north","pop":79850,"area":18.025},"F15":{"zh":"三峽區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Sanxia District","region":"north","pop":115009,"area":191.4508},"F16":{"zh":"鶯歌區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Yingge District","region":"north","pop":89501,"area":21.1248},"F18":{"zh":"中和區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Zhonghe District","region":"north","pop":403791,"area":20.144},"F17":{"zh":"樹林區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Shulin District","region":"north","pop":177412,"area":33.1288},"F09":{"zh":"深坑區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Shenkeng District","region":"north","pop":23639,"area":20.5787},"F14":{"zh":"板橋區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Banqiao District","region":"north","pop":549762,"area":23.1373},"F08":{"zh":"石碇區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Shiding District","region":"north","pop":6917,"area":144.3498},"F01":{"zh":"新莊區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Xinzhuang District","region":"north","pop":421239,"area":19.7383},"F06":{"zh":"泰山區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Taishan District","region":"north","pop":78083,"area":19.1603},"F05":{"zh":"三重區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Sanchong District","region":"north","pop":382778,"area":16.317},"F23":{"zh":"雙溪區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Shuangxi District","region":"north","pop":7442,"area":146.2484},"F24":{"zh":"貢寮區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Gongliao District","region":"north","pop":10445,"area":99.9734},"F28":{"zh":"汐止區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Xizhi District","region":"north","pop":212758,"area":71.2354},"F26":{"zh":"萬里區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Wanli District","region":"north","pop":20209,"area":63.3766},"F25":{"zh":"金山區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Jinshan District","region":"north","pop":19725,"area":49.2132},"F31":{"zh":"石門區","countyZh":"新北市","countyEng":"New Taipei City","eng":"Shimen District","region":"north","pop":9994,"area":51.2645},"E08":{"zh":"苓雅區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Lingya District","region":"south","pop":161185,"area":8.1522},"E05":{"zh":"三民區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Sanmin District","region":"south","pop":328827,"area":19.7866},"H11":{"zh":"新屋區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Xinwu District","region":"north","pop":49723,"area":85.0166},"H12":{"zh":"觀音區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Guanyin District","region":"north","pop":77526,"area":87.9807},"Z02":{"zh":"北竿鄉","countyZh":"連江縣","countyEng":"Lienchiang County","eng":"Beigan Township","region":"islands","pop":2930,"area":9.9},"Z04":{"zh":"東引鄉","countyZh":"連江縣","countyEng":"Lienchiang County","eng":"Dongyin Township","region":"islands","pop":1525,"area":3.8},"W05":{"zh":"烈嶼鄉","countyZh":"金門縣","countyEng":"Kinmen County","eng":"Lieyu Township","region":"islands","pop":12050,"area":16.003},"E10":{"zh":"旗津區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Qijin District","region":"south","pop":24906,"area":1.7341},"V08":{"zh":"長濱鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Changbin Township","region":"east","pop":6469,"area":155.1868},"U08":{"zh":"豐濱鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Fengbin Township","region":"east","pop":4082,"area":162.4332},"B26":{"zh":"霧峰區","countyZh":"台中市","countyEng":"Taichung City","eng":"Wufeng District","region":"central","pop":62627,"area":98.0779},"B28":{"zh":"大里區","countyZh":"台中市","countyEng":"Taichung City","eng":"Dali District","region":"central","pop":211094,"area":28.8758},"B03":{"zh":"南區","countyZh":"台中市","countyEng":"Taichung City","eng":"South District","region":"central","pop":128309,"area":6.8101},"B23":{"zh":"烏日區","countyZh":"台中市","countyEng":"Taichung City","eng":"Wuri District","region":"central","pop":82248,"area":43.4032},"B01":{"zh":"中區","countyZh":"台中市","countyEng":"Taichung City","eng":"Central District","region":"central","pop":18029,"area":0.8803},"B04":{"zh":"西區","countyZh":"台中市","countyEng":"Taichung City","eng":"West District","region":"central","pop":113288,"area":5.7042},"B07":{"zh":"南屯區","countyZh":"台中市","countyEng":"Taichung City","eng":"Nantun District","region":"central","pop":186105,"area":31.2578},"B05":{"zh":"北區","countyZh":"台中市","countyEng":"Taichung City","eng":"North District","region":"central","pop":143537,"area":6.9376},"B06":{"zh":"西屯區","countyZh":"台中市","countyEng":"Taichung City","eng":"Xitun District","region":"central","pop":238052,"area":39.8467},"B08":{"zh":"北屯區","countyZh":"台中市","countyEng":"Taichung City","eng":"Beitun District","region":"central","pop":317182,"area":62.7034},"B17":{"zh":"潭子區","countyZh":"台中市","countyEng":"Taichung City","eng":"Tanzi District","region":"central","pop":109314,"area":25.8497},"A17":{"zh":"信義區","countyZh":"台北市","countyEng":"Taipei City","eng":"Xinyi District","region":"north","pop":201446,"area":11.2077},"A05":{"zh":"萬華區","countyZh":"台北市","countyEng":"Taipei City","eng":"Wanhua District","region":"north","pop":168675,"area":8.8522},"A03":{"zh":"中正區","countyZh":"台北市","countyEng":"Taipei City","eng":"Zhongzheng District","region":"north","pop":144109,"area":7.6071},"A13":{"zh":"南港區","countyZh":"台北市","countyEng":"Taipei City","eng":"Nangang District","region":"north","pop":111239,"area":21.8424},"A01":{"zh":"松山區","countyZh":"台北市","countyEng":"Taipei City","eng":"Songshan District","region":"north","pop":187318,"area":9.2878},"A09":{"zh":"大同區","countyZh":"台北市","countyEng":"Taipei City","eng":"Datong District","region":"north","pop":116618,"area":5.6815},"A10":{"zh":"中山區","countyZh":"台北市","countyEng":"Taipei City","eng":"Zhongshan District","region":"north","pop":212152,"area":13.6821},"A14":{"zh":"內湖區","countyZh":"台北市","countyEng":"Taipei City","eng":"Neihu District","region":"north","pop":267959,"area":31.5787},"A15":{"zh":"士林區","countyZh":"台北市","countyEng":"Taipei City","eng":"Shilin District","region":"north","pop":258163,"area":62.3682},"A16":{"zh":"北投區","countyZh":"台北市","countyEng":"Taipei City","eng":"Beitou District","region":"north","pop":235678,"area":56.8216},"U01":{"zh":"花蓮市","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Hualien City","region":"east","pop":96860,"area":29.4095},"U04":{"zh":"新城鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Xincheng Township","region":"east","pop":20492,"area":29.4095},"D27":{"zh":"善化區","countyZh":"台南市","countyEng":"Tainan City","eng":"Shanhua District","region":"south","pop":53888,"area":55.3097},"D30":{"zh":"山上區","countyZh":"台南市","countyEng":"Tainan City","eng":"Shanshang District","region":"south","pop":6796,"area":27.878},"N04":{"zh":"北斗鎮","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Beidou Township","region":"central","pop":33099,"area":19.2547},"N21":{"zh":"田尾鄉","countyZh":"彰化縣","countyEng":"Changhua County","eng":"Tianwei Township","region":"central","pop":25251,"area":24.0375},"W03":{"zh":"金城鎮","countyZh":"金門縣","countyEng":"Kinmen County","eng":"Jincheng Township","region":"islands","pop":40998,"area":21.713},"W02":{"zh":"金沙鎮","countyZh":"金門縣","countyEng":"Kinmen County","eng":"Jinsha Township","region":"islands","pop":19840,"area":41.19},"W01":{"zh":"金湖鎮","countyZh":"金門縣","countyEng":"Kinmen County","eng":"Jinhu Township","region":"islands","pop":30545,"area":41.696},"D11":{"zh":"柳營區","countyZh":"台南市","countyEng":"Tainan City","eng":"Liuying District","region":"south","pop":19831,"area":61.2929},"D14":{"zh":"東山區","countyZh":"台南市","countyEng":"Tainan City","eng":"Dongshan District","region":"south","pop":18490,"area":124.9178},"D22":{"zh":"七股區","countyZh":"台南市","countyEng":"Tainan City","eng":"Qigu District","region":"south","pop":20493,"area":110.1492},"D23":{"zh":"將軍區","countyZh":"台南市","countyEng":"Tainan City","eng":"Jiangjun District","region":"south","pop":17598,"area":41.9796},"E02":{"zh":"鼓山區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Gushan District","region":"south","pop":140791,"area":14.7523},"E03":{"zh":"左營區","countyZh":"高雄市","countyEng":"Kaohsiung City","eng":"Zuoying District","region":"south","pop":197621,"area":19.3823},"V15":{"zh":"金峰鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Jinfeng Township","region":"east","pop":3682,"area":380.6635},"V06":{"zh":"太麻里鄉","countyZh":"台東縣","countyEng":"Taitung County","eng":"Taimali Township","region":"east","pop":10375,"area":96.6523},"H03":{"zh":"中壢區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Zhongli District","region":"north","pop":439213,"area":76.52},"O01":{"zh":"東區","countyZh":"新竹市","countyEng":"Hsinchu City","eng":"East District","region":"north","pop":222219,"area":33.5768},"J11":{"zh":"寶山鄉","countyZh":"新竹縣","countyEng":"Hsinchu County","eng":"Baoshan Township","region":"north","pop":14588,"area":64.7871},"T04":{"zh":"恆春鎮","countyZh":"屏東縣","countyEng":"Pingtung County","eng":"Hengchun Township","region":"south","pop":28770,"area":136.763},"B02":{"zh":"東區","countyZh":"台中市","countyEng":"Taichung City","eng":"East District","region":"central","pop":77745,"area":9.2855},"B27":{"zh":"太平區","countyZh":"台中市","countyEng":"Taichung City","eng":"Taiping District","region":"central","pop":201536,"area":120.7473},"U12":{"zh":"萬榮鄉","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Wanrong Township","region":"east","pop":6047,"area":618.491},"U07":{"zh":"鳳林鎮","countyZh":"花蓮縣","countyEng":"Hualien County","eng":"Fenglin Township","region":"east","pop":10136,"area":120.5181},"H10":{"zh":"平鎮區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Pingzhen District","region":"north","pop":228210,"area":47.7532},"H09":{"zh":"龍潭區","countyZh":"桃園市","countyEng":"Taoyuan City","eng":"Longtan District","region":"north","pop":127360,"area":75.2341}};
 let detailLevel='county'; // 'county' | 'district'
 let basemapMode='light'; // 'light' | 'streets' | 'satellite' | 'none'
-let interactionMode='pin'; // 'pin' | 'click'
+let interactionMode='click'; // 'pin' | 'click' — always starts in Click Mode on a fresh load, not persisted
+let clusterEnabled=true; // toggled from Display settings
+// Individual pins from this zoom level and closer in; clustering only kicks in when
+// zoomed out further than this (roughly "half the island" visible or wider) — a full-island
+// view otherwise renders 1,000s of unclustered dots.
+const CLUSTER_DISABLE_ZOOM=10;
 let defaultPinShape='circle'; // 'circle' | 'square' — applies to NEW pins only, like radius
 let defaultPinColor='#282828'; // applies to NEW pins only, until changed again — like defaultPinShape
 let defaultIsochroneMinutes=10; // used for NEW pins when defaultPinShape==='isochrone'
@@ -476,8 +491,8 @@ let popupClickGuard=false;
 document.addEventListener('click',ev=>{
   if(ev.target&&ev.target.closest&&ev.target.closest('.leaflet-popup'))popupClickGuard=true;
 },true);
-const APP_VERSION='0.4.2';
-const BUILD_DATE='2026-07-02';
+const APP_VERSION='0.5.1'; // whole-suite version now (see index.html dashboard header), not per-file
+const BUILD_DATE='2026-07-05';
 
 
 /* status styling — any string not in this map gets 'default' */
@@ -504,17 +519,61 @@ let colorMode='density';
 let activeScenarioId=null;
 let clearArmed=false, clearArmTimer=null;
 
-// Layer colors (cycles)
+// Layer colors (cycles) — used as a fallback for layers that don't match a known dataset name
 const LAYER_COLORS=['#137ECE','#E08E2C','#3B6FD9','#1FA67A','#8B5CF6','#E0584A','#D97706','#059669'];
+
+/* Fixed identity for the known research/infrastructure datasets imported via tools/bulk-import —
+   colors reuse the exact region palette hex values (blue/green/orange/purple) plus one new pink
+   for 全國電子, per Kamil's decision. "kind" controls which filter groups + popup shape a layer
+   gets: sales (full filters, status+rep) / research (region+rating only) / infrastructure
+   (region only, minimal popup) — see shopPassesLayerFilters / renderShopsTab / buildBikeshopPopup. */
+const DATASET_META={
+  'Taiwan Bike Shops':{kind:'sales',color:'#8B5CF6'},
+  'GIANT':{kind:'research',color:'#3B6FD9'},
+  'MERIDA':{kind:'research',color:'#1FA67A'},
+  '全國電子':{kind:'research',color:'#D6588F'},
+  'YouBike':{kind:'infrastructure',color:'#E08E2C'}
+};
+function resolveDatasetMeta(name){
+  if(!name)return null;
+  if(DATASET_META[name])return DATASET_META[name];
+  // Fallback substring match for CSV-uploaded layers, whose name comes from the filename and
+  // may not exactly match the Shop DB dataset name (e.g. "ALL_TAIWAN_youbike.csv" -> "ALL TAIWAN youbike")
+  const n=name.toLowerCase();
+  if(n.includes('youbike'))return DATASET_META['YouBike'];
+  if(n.includes('giant'))return DATASET_META['GIANT'];
+  if(n.includes('merida'))return DATASET_META['MERIDA'];
+  if(name.includes('全國電子'))return DATASET_META['全國電子'];
+  if(n.includes('bike shop')||n.includes('bikeshop'))return DATASET_META['Taiwan Bike Shops'];
+  return null;
+}
+
+/* Google-rating and rating-count multi-select bucket filters. Fixed bucket lists (not
+   discovered from data) so every layer offers the same options, including an explicit "no
+   rating"/"no reviews" bucket rather than silently dropping unrated shops. */
+const GRATING_BUCKETS=[{key:'none',label:'無評分 No rating'},{key:'0-1',label:'0–1'},{key:'1-2',label:'1–2'},{key:'2-3',label:'2–3'},{key:'3-4',label:'3–4'},{key:'4-5',label:'4–5'}];
+const RCOUNT_BUCKETS=[{key:'none',label:'無評論數 No reviews'},{key:'0-49',label:'0–49'},{key:'50-199',label:'50–199'},{key:'200-499',label:'200–499'},{key:'500+',label:'500+'}];
+function gRatingBucketKey(r){
+  if(r==null)return'none';
+  if(r<1)return'0-1'; if(r<2)return'1-2'; if(r<3)return'2-3'; if(r<4)return'3-4'; return'4-5';
+}
+function rCountBucketKey(c){
+  if(c==null)return'none';
+  if(c<50)return'0-49'; if(c<200)return'50-199'; if(c<500)return'200-499'; return'500+';
+}
 
 function ensureLayerFilterDefaults(layer){
   if(!layer.ratingFilters)layer.ratingFilters=new Set([...new Set(layer.data.map(s=>s.ratingGroup).filter(Boolean))]);
-  if(layer.minGoogleRating==null)layer.minGoogleRating=0;
   if(!layer.regionFilters)layer.regionFilters=new Set([...new Set(layer.data.map(s=>s.region).filter(Boolean))]);
   if(!layer.salesRepFilters)layer.salesRepFilters=new Set([...new Set(layer.data.map(s=>s.sales_rep).filter(Boolean))]);
+  if(!layer.gRatingBucketFilters)layer.gRatingBucketFilters=new Set(GRATING_BUCKETS.map(b=>b.key));
+  if(!layer.rCountBucketFilters)layer.rCountBucketFilters=new Set(RCOUNT_BUCKETS.map(b=>b.key));
+  if(!layer.kind)layer.kind='sales';
 }
 /* single source of truth for "does this shop pass the layer's active filters" — used by the
-   map/list display AND the per-dataset export button, so exporting always matches what's shown */
+   map/list display AND the per-dataset export button, so exporting always matches what's shown.
+   Convention throughout: an empty (zero-selected) filter Set behaves like an inactive filter
+   (shows everything) — deselecting every option isn't the same as excluding every shop. */
 function shopPassesLayerFilters(shop,layer){
   if(!layer.statusFilters.has(shop.status))return false;
   // tier/region/sales-rep filters: a shop with no value for that field always passes through
@@ -522,9 +581,10 @@ function shopPassesLayerFilters(shop,layer){
   if(shop.ratingGroup && layer.ratingFilters.size>0 && !layer.ratingFilters.has(shop.ratingGroup))return false;
   if(shop.region && layer.regionFilters.size>0 && !layer.regionFilters.has(shop.region))return false;
   if(shop.sales_rep && layer.salesRepFilters.size>0 && !layer.salesRepFilters.has(shop.sales_rep))return false;
-  // Google rating filter: unlike the filters above, a minimum-rating threshold only makes sense
-  // if the shop actually has a rating — one with none is excluded, not passed through
-  if(layer.minGoogleRating>0 && !(shop.google_rating!=null && shop.google_rating>=layer.minGoogleRating))return false;
+  const grb=gRatingBucketKey(shop.google_rating);
+  if(layer.gRatingBucketFilters.size>0 && !layer.gRatingBucketFilters.has(grb))return false;
+  const rcb=rCountBucketKey(shop.google_rating_count);
+  if(layer.rCountBucketFilters.size>0 && !layer.rCountBucketFilters.has(rcb))return false;
   return true;
 }
 function rebuildBikeshopDataFromLayers(){
@@ -715,7 +775,7 @@ function initMap(){
   L.control.layers({'簡約 Light':tileLight,'街道 Streets':tileStreets,'衛星 Satellite':tileSat},null,{position:'topright',collapsed:true}).addTo(map);
   markersLayer=L.layerGroup().addTo(map);
   circlesLayer=L.layerGroup().addTo(map);
-  bikeshopGroup=L.layerGroup().addTo(map);
+  bikeshopGroup=createBikeshopGroup().addTo(map);
 
   countyGeoLayer=L.geoJSON(COUNTY_GEOJSON,{
     style:f=>styleForCounty(f.properties.COUNTYENG),
@@ -974,6 +1034,21 @@ function removeShop(id){
 }
 
 /* ══ CSV bike shops layer ══ */
+function createBikeshopGroup(){
+  return clusterEnabled
+    ? L.markerClusterGroup({maxClusterRadius:60,disableClusteringAtZoom:CLUSTER_DISABLE_ZOOM,spiderfyOnEveryZoom:false,showCoverageOnHover:false})
+    : L.layerGroup();
+}
+function setClusterEnabled(v){
+  if(clusterEnabled===v)return;
+  clusterEnabled=v;
+  persistSettings();
+  // markercluster doesn't support toggling its own clustering behavior post-creation —
+  // swap the whole layer group and re-add every marker into the new one.
+  if(map.hasLayer(bikeshopGroup))map.removeLayer(bikeshopGroup);
+  bikeshopGroup=createBikeshopGroup().addTo(map);
+  rebuildBikeshopMarkers();
+}
 function rebuildBikeshopMarkers(){
   bikeshopGroup.clearLayers();
   if(csvLayers.length===0)return;
@@ -983,7 +1058,7 @@ function rebuildBikeshopMarkers(){
     const m=L.circleMarker([shop.lat,shop.lng],{
       radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9
     }).addTo(bikeshopGroup);
-    m.bindPopup(buildBikeshopPopup(shop),{maxWidth:230});
+    m.bindPopup(buildBikeshopPopup(shop),{maxWidth:230,closeOnClick:false});
     m.on('click',e=>L.DomEvent.stopPropagation(e));
     m.on('popupopen',e=>{
       const el=e.popup.getElement();
@@ -998,27 +1073,90 @@ function rebuildBikeshopMarkers(){
           rebuildBikeshopMarkers();
         });
       });
+      const delBtn=el.querySelector('.bs-del-btn');
+      if(delBtn){
+        delBtn.addEventListener('click',async()=>{
+          // same two-click arm pattern as the "Clear pins" button — a single misclick
+          // shouldn't delete a real prospect from production
+          if(delBtn.dataset.armed!=='1'){
+            delBtn.dataset.armed='1';
+            delBtn.textContent='確定移除？Confirm remove?';
+            delBtn.classList.add('armed');
+            clearTimeout(delBtn._armTimer);
+            delBtn._armTimer=setTimeout(()=>{
+              delBtn.dataset.armed='0';
+              delBtn.textContent='🗑 移除此店家 Remove this shop';
+              delBtn.classList.remove('armed');
+            },3000);
+            return;
+          }
+          clearTimeout(delBtn._armTimer);
+          delBtn.disabled=true;delBtn.textContent='移除中… Removing…';
+          const layer=csvLayers.find(l=>l.id===shop._layerId);
+          if(!layer)return;
+          // Shop-DB-backed rows (loaded via "Load from Shop DB") have a real production row —
+          // delete it there too, or reloading the dataset would bring it right back. RLS only
+          // lets the row's creator delete it, so surface that distinctly from a network error.
+          if(shop._dbId){
+            const{data,error}=await sbClient.from('shops').delete().eq('id',shop._dbId).select();
+            if(error){
+              toast('移除失敗 Failed to remove: '+error.message,'err');
+              delBtn.disabled=false;delBtn.textContent='🗑 移除此店家 Remove this shop';delBtn.dataset.armed='0';delBtn.classList.remove('armed');
+              return;
+            }
+            if(!data||data.length===0){
+              toast('無法移除 — 您可能不是此店家的建立者 Could not remove — you may not be the owner','err');
+              delBtn.disabled=false;delBtn.textContent='🗑 移除此店家 Remove this shop';delBtn.dataset.armed='0';delBtn.classList.remove('armed');
+              return;
+            }
+          }
+          layer.data=layer.data.filter(s=>!(s.lat===shop.lat&&s.lng===shop.lng&&s.name===shop.name));
+          rebuildBikeshopDataFromLayers();
+          persistBikeshops();
+          map.closePopup();
+          rebuildBikeshopMarkers();
+          renderShopsTab();
+          toast(`已移除「${shop.name}」Removed`);
+        });
+      }
     });
   });
   updateShopsLayerBtn();
 }
 function buildBikeshopPopup(shop){
-  const st=statusStyle(shop.status);
   const layer=csvLayers.find(l=>l.id===shop._layerId);
+  const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
+  // Infrastructure layers (e.g. YouBike docks) aren't sales prospects — no status/rating/phone/
+  // color-picker, just enough to identify the location.
+  const delBtn=`<button class="btn btn-red bs-del-btn" style="font-size:10px;padding:3px 8px;margin-top:6px;width:100%;">🗑 移除此店家 Remove this shop</button>`;
+  if(layer&&layer.kind==='infrastructure'){
+    return`<div class="bs-popup">
+      <div class="bs-name">${esc(shop.name)}</div>
+      <div style="font-size:10px;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(layer.color)};margin-right:4px;vertical-align:middle;"></span>${esc(layer.name)}</div>
+      ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
+      <div style="margin:6px 0;"></div>
+      ${gmapsLink}
+      ${delBtn}
+    </div>`;
+  }
+  const st=statusStyle(shop.status);
   const curColor=shop.customColor||shop._layerColor;
   const swatches=PIN_COLORS.map(c=>`<span class="pc-swatch" data-color="${c}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin:2px;cursor:pointer;border:2px solid ${curColor===c?'#282828':'transparent'};"></span>`).join('');
   const RATING_COLORS={'A':'#0E8F6B','B':'#E08E2C','C':'#E0584A','D':'#8B5CF6','E':'#798BA5'};
   const ratingBadge=shop.rating?`<span class="bs-badge" style="background:${RATING_COLORS[shop.ratingGroup]||'#798BA5'}1A;color:${RATING_COLORS[shop.ratingGroup]||'#798BA5'};margin-left:5px;">${esc(shop.rating)}</span>`:'';
   const googleRatingBadge=shop.google_rating!=null?`<span class="bs-badge" style="background:#FFF3E0;color:#E65100;margin-left:5px;">★ ${shop.google_rating}${shop.google_rating_count!=null?` (${shop.google_rating_count})`:''}</span>`:'';
   const categoryLine=shop.category?`<div class="bs-addr" style="color:var(--soft,#798BA5);">${esc(shop.category)}${shop.business_status&&shop.business_status!=='OPERATIONAL'?` · ${esc(shop.business_status)}`:''}</div>`:'';
+  const phoneLine=shop.contact_phone?`<div class="bs-addr">Tel: ${esc(shop.contact_phone)}</div>`:'';
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
     ${layer?`<div style="font-size:10px;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(layer.color)};margin-right:4px;vertical-align:middle;"></span>${esc(layer.name)}</div>`:''}
     <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>${ratingBadge}${googleRatingBadge}
     ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
     ${categoryLine}
+    ${phoneLine}
     <div style="margin:6px 0;">${swatches}</div>
-    <a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>
+    ${gmapsLink}
+    ${delBtn}
   </div>`;
 }
 
@@ -1125,9 +1263,10 @@ function handleCSVUpload(file){
     if(result.length===0){toast('CSV 沒有有效座標資料','err');return;}
     const layerName=file.name.replace(/\.csv$/i,'').replace(/[-_]/g,' ');
     const layerId='layer_'+Date.now().toString(36);
-    const layerColor=LAYER_COLORS[csvLayers.length % LAYER_COLORS.length];
+    const meta=resolveDatasetMeta(layerName);
+    const layerColor=meta?meta.color:LAYER_COLORS[csvLayers.length % LAYER_COLORS.length];
     const statuses=new Set(result.map(s=>s.status));
-    const newLayer={id:layerId,name:layerName,color:layerColor,data:result,statusFilters:statuses};
+    const newLayer={id:layerId,name:layerName,color:layerColor,data:result,statusFilters:statuses,kind:meta?meta.kind:'sales'};
     csvLayers.push(newLayer);
     activeLayerIds.add(layerId);
     rebuildBikeshopDataFromLayers();
@@ -1172,10 +1311,17 @@ async function loadFromShopDB(datasetFilter='all'){
       toast(`Shop DB 共 ${data.length} 家店，但均無座標 — 請在 Shop DB 填入 lat/lng`,'err');
       return;
     }
-    // Replace existing Shop DB layer if present
-    csvLayers=csvLayers.filter(l=>l.id!=='shopdb');
-    activeLayerIds.delete('shopdb');
-    const layerColor='#137ECE';
+    const datasetLabel=datasetFilter==='unassigned'
+      ?'未分類 Unassigned'
+      :(datasetFilter&&datasetFilter!=='all'?((shopDbDatasets||[]).find(d=>d.id===datasetFilter)?.name||'Shop DB'):null);
+    const meta=datasetLabel?resolveDatasetMeta(datasetLabel):null;
+    // Each dataset selection gets its own persistent layer id (keyed by the dataset filter, not
+    // a single shared "shopdb" slot) so multiple Shop DB datasets can be loaded and toggled on
+    // the map side by side, e.g. GIANT + MERIDA + Taiwan Bike Shops all visible at once.
+    const layerId='shopdb_'+datasetFilter;
+    csvLayers=csvLayers.filter(l=>l.id!==layerId);
+    activeLayerIds.delete(layerId);
+    const layerColor=meta?meta.color:'#137ECE';
     const shops=mappable.map(s=>({
       name:s.name,
       address:s.address||'',
@@ -1198,23 +1344,21 @@ async function loadFromShopDB(datasetFilter='all'){
       google_rating:s.google_rating!=null?parseFloat(s.google_rating):null,
       google_rating_count:s.google_rating_count!=null?parseInt(s.google_rating_count,10):null,
       business_status:s.business_status||null,
-      _layerId:'shopdb',
+      _layerId:layerId,
       _layerColor:layerColor,
       _dbId:s.id
     }));
-    const datasetLabel=datasetFilter==='unassigned'
-      ?'未分類 Unassigned'
-      :(datasetFilter&&datasetFilter!=='all'?((shopDbDatasets||[]).find(d=>d.id===datasetFilter)?.name||'Shop DB'):null);
     const newLayer={
-      id:'shopdb',
+      id:layerId,
       name:datasetLabel?`Shop DB — ${datasetLabel}`:'Shop DB',
       color:layerColor,
       data:shops,
       statusFilters:new Set(shops.map(s=>s.status)),
-      ratingFilters:new Set()
+      ratingFilters:new Set(),
+      kind:meta?meta.kind:'sales'
     };
     csvLayers.push(newLayer);
-    activeLayerIds.add('shopdb');
+    activeLayerIds.add(layerId);
     rebuildBikeshopDataFromLayers();
     persistBikeshops();
     rebuildBikeshopMarkers();
@@ -1429,7 +1573,7 @@ function renderShopsTab(){
   let uploadHtml=csvLayers.length===0
     ?`<div class="upload-zone" id="uploadZone">
         <div class="uz-icon">📋</div>
-        <div class="uz-title">上傳候選店名單 Upload shop list</div>
+        <div class="uz-title">上傳資料集 Upload dataset</div>
         <div class="uz-sub">CSV 格式，需含 lat/GISY, lng/GISX 欄位（與 Shop DB 共用標準）<br>columns: name, status, address, category, contact_name, contact_phone, notes, rating, lat, lng<br>status: 尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失</div>
       </div>${dbBtn}`
     :`<button class="btn btn-teal" id="addLayerBtn" style="width:100%;margin-bottom:8px;">＋ 新增位置資料集 Add location dataset</button>${dbBtn}`;
@@ -1440,6 +1584,11 @@ function renderShopsTab(){
     const isActive=activeLayerIds.has(layer.id);
     ensureLayerFilterDefaults(layer);
     const visCount=layer.data.filter(s=>shopPassesLayerFilters(s,layer)).length;
+    const kind=layer.kind||'sales';
+    // research/infrastructure datasets (GIANT/MERIDA/全國電子/YouBike) aren't sales pipelines —
+    // hide the status + sales-rep filter groups for them ("we don't need filters like 開發 etc")
+    const showStatusRep=kind==='sales';
+    const showRatingFilters=kind!=='infrastructure';
     const statChips=[...new Set(layer.data.map(s=>s.status))].map(st=>{
       const style=statusStyle(st);
       const cnt=layer.data.filter(s=>s.status===st).length;
@@ -1453,13 +1602,15 @@ function renderShopsTab(){
       const col=RATING_COLORS[rg]||'#798BA5';
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-rating="${esc(rg)}" style="--dot-color:${col};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(rg)} 級<span class="sf-count">${cnt}</span></span>`;
     }).join('');
-    const hasGoogleRating=layer.data.some(s=>s.google_rating!=null);
-    const GRATING_THRESHOLDS=[0,3.5,4,4.5];
-    const gRatingChips=GRATING_THRESHOLDS.map(th=>{
-      const cnt=th===0?layer.data.filter(s=>s.google_rating!=null).length:layer.data.filter(s=>s.google_rating!=null&&s.google_rating>=th).length;
-      const active=(layer.minGoogleRating||0)===th;
-      const label=th===0?'全部 All':`≥${th}`;
-      return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-grating="${th}" style="--dot-color:#E65100;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${label}<span class="sf-count">${cnt}</span></span>`;
+    const gRatingChips=GRATING_BUCKETS.map(b=>{
+      const cnt=layer.data.filter(s=>gRatingBucketKey(s.google_rating)===b.key).length;
+      const active=layer.gRatingBucketFilters.has(b.key);
+      return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-gratingbucket="${b.key}" style="--dot-color:#E65100;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(b.label)}<span class="sf-count">${cnt}</span></span>`;
+    }).join('');
+    const rCountChips=RCOUNT_BUCKETS.map(b=>{
+      const cnt=layer.data.filter(s=>rCountBucketKey(s.google_rating_count)===b.key).length;
+      const active=layer.rCountBucketFilters.has(b.key);
+      return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-rcountbucket="${b.key}" style="--dot-color:#D97706;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(b.label)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const regions=[...new Set(layer.data.map(s=>s.region).filter(Boolean))].sort();
     const regionChips=regions.map(rg=>{
@@ -1473,6 +1624,18 @@ function renderShopsTab(){
       const active=layer.salesRepFilters.has(sr);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-salesrep="${esc(sr)}" style="--dot-color:#8B5CF6;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(sr)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
+    // All applicable filter groups for this layer, gated by kind — collapsed by default behind
+    // the "⚙ Filters" button so a growing number of datasets/filter dimensions doesn't clutter
+    // the list. layer._filtersOpen is in-memory UI state, not persisted.
+    const filterGroups=[
+      showStatusRep?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${statChips}</div>`:'',
+      (showStatusRep&&ratingGroups.length)?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">店家等級 Shop rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${ratingChips}</div>`:'',
+      showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評分 Google rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${gRatingChips}</div>`:'',
+      showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評論數 Review count</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${rCountChips}</div>`:'',
+      regions.length?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">地區 Region</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${regionChips}</div>`:'',
+      (showStatusRep&&salesReps.length)?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">業務員 Sales rep</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${salesRepChips}</div>`:''
+    ].filter(Boolean).join('');
+    const filtersOpen=!!layer._filtersOpen;
     layersHtml+=`<div class="layer-card" style="border:1.5px solid ${isActive?layer.color:'var(--border)'};border-radius:9px;padding:9px 11px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
         <span style="width:11px;height:11px;border-radius:50%;background:${esc(layer.color)};flex-shrink:0;display:inline-block;"></span>
@@ -1481,12 +1644,11 @@ function renderShopsTab(){
         <button class="btn layer-export-btn" data-lid="${esc(layer.id)}" title="匯出此資料集（依目前篩選）Export this dataset (respects active filters)" style="font-size:12px;padding:5px 9px;">⬇</button>
         <button class="btn btn-red layer-del-btn" data-lid="${esc(layer.id)}" style="font-size:12px;padding:5px 11px;">✕</button>
       </div>
-      <div style="font-size:10px;color:var(--soft);margin-bottom:6px;">${visCount} / ${layer.data.length} shops shown</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:${ratingGroups.length?'5px':'0'};">${statChips}</div>
-      ${ratingGroups.length?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">店家等級 Shop rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${ratingChips}</div>`:''}
-      ${hasGoogleRating?`<div style="font-size:9px;color:var(--soft);margin:5px 0 3px;">Google 評分 Google rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${gRatingChips}</div>`:''}
-      ${regions.length?`<div style="font-size:9px;color:var(--soft);margin:5px 0 3px;">地區 Region</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${regionChips}</div>`:''}
-      ${salesReps.length?`<div style="font-size:9px;color:var(--soft);margin:5px 0 3px;">業務員 Sales rep</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${salesRepChips}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${filtersOpen?'6px':'0'};">
+        <span style="font-size:10px;color:var(--soft);">${visCount} / ${layer.data.length} shops shown</span>
+        <button class="btn layer-filters-btn" data-lid="${esc(layer.id)}" style="font-size:10.5px;padding:3px 9px;${filtersOpen?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">⚙ 篩選 Filters${filtersOpen?' ▾':' ▸'}</button>
+      </div>
+      ${filtersOpen?`<div class="layer-filters-panel">${filterGroups}</div>`:''}
     </div>`;
   });
 
@@ -1541,6 +1703,13 @@ function renderShopsTab(){
       persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();updateShopsLayerBtn();
     });
   });
+  el.querySelectorAll('.layer-filters-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
+      layer._filtersOpen=!layer._filtersOpen;
+      renderShopsTab();
+    });
+  });
   el.querySelectorAll('.sf-chip[data-lid]').forEach(chip=>{
     chip.addEventListener('click',()=>{
       const lid=chip.dataset.lid;
@@ -1551,8 +1720,12 @@ function renderShopsTab(){
       } else if(chip.dataset.rating!==undefined){
         const rg=chip.dataset.rating;
         if(layer.ratingFilters.has(rg))layer.ratingFilters.delete(rg);else layer.ratingFilters.add(rg);
-      } else if(chip.dataset.grating!==undefined){
-        layer.minGoogleRating=parseFloat(chip.dataset.grating);
+      } else if(chip.dataset.gratingbucket!==undefined){
+        const b=chip.dataset.gratingbucket;
+        if(layer.gRatingBucketFilters.has(b))layer.gRatingBucketFilters.delete(b);else layer.gRatingBucketFilters.add(b);
+      } else if(chip.dataset.rcountbucket!==undefined){
+        const b=chip.dataset.rcountbucket;
+        if(layer.rCountBucketFilters.has(b))layer.rCountBucketFilters.delete(b);else layer.rCountBucketFilters.add(b);
       } else if(chip.dataset.region!==undefined){
         const rg=chip.dataset.region;
         if(layer.regionFilters.has(rg))layer.regionFilters.delete(rg);else layer.regionFilters.add(rg);
@@ -1576,7 +1749,7 @@ function updateShopsLayerBtn(){
   btn.style.display='';
   const anyActive=activeLayerIds.size>0;
   btn.className='btn'+(anyActive?' btn-on':'');
-  btn.textContent=`候選店 ${anyActive?'●':'○'} (${csvLayers.length})`;
+  btn.textContent=`資料集 ${anyActive?'●':'○'} (${csvLayers.length})`;
 }
 function setupDropzone(zone){
   zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
@@ -1776,6 +1949,11 @@ function bindControls(){
     switchDetailLevel(btn.dataset.level);
     persistSettings();
   });
+  document.getElementById('clusterSeg').addEventListener('click',e=>{
+    const btn=e.target.closest('button');if(!btn)return;
+    document.querySelectorAll('#clusterSeg button').forEach(b=>b.classList.toggle('active',b.dataset.cluster===btn.dataset.cluster));
+    setClusterEnabled(btn.dataset.cluster==='on');
+  });
   document.getElementById('interactionModeSeg').addEventListener('click',e=>{
     const btn=e.target.closest('button');if(!btn)return;
     interactionMode=btn.dataset.mode;
@@ -1860,24 +2038,47 @@ function bindControls(){
 
 /* ══ persistence ══ */
 function persistShops(){try{localStorage.setItem('nuvari_active_shops',JSON.stringify(shops));}catch(e){}}
-function persistSettings(){try{localStorage.setItem('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode,detailLevel,basemapMode,interactionMode,defaultPinShape,defaultPinColor,defaultIsochroneMinutes}));}catch(e){}}
+function persistSettings(){try{localStorage.setItem('nuvari_settings',JSON.stringify({targetRadiusKm,colorMode,detailLevel,basemapMode,defaultPinShape,defaultPinColor,defaultIsochroneMinutes,clusterEnabled}));}catch(e){}}
 function persistBikeshops(){
   try{
-    const serializableLayers=csvLayers.map(l=>({...l,statusFilters:[...l.statusFilters],ratingFilters:l.ratingFilters?[...l.ratingFilters]:[]}));
+    // Every *Filters/*BucketFilters field is a Set at runtime — JSON.stringify silently turns
+    // a bare Set into "{}", so each one must be spread into a plain array here and rebuilt back
+    // into a Set in loadSession(). (regionFilters/salesRepFilters previously fell through this
+    // gap — a reload would leave them as inert {} objects instead of Sets — fixed alongside the
+    // two new bucket filters below since they'd have hit the exact same bug.)
+    const serializableLayers=csvLayers.map(l=>({...l,
+      statusFilters:[...l.statusFilters],
+      ratingFilters:l.ratingFilters?[...l.ratingFilters]:[],
+      regionFilters:l.regionFilters?[...l.regionFilters]:[],
+      salesRepFilters:l.salesRepFilters?[...l.salesRepFilters]:[],
+      gRatingBucketFilters:l.gRatingBucketFilters?[...l.gRatingBucketFilters]:[],
+      rCountBucketFilters:l.rCountBucketFilters?[...l.rCountBucketFilters]:[]
+    }));
     localStorage.setItem('nuvari_bikeshops',JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
     const badge=document.getElementById('shopTabBadge');if(badge&&bikeshopData.length>0)badge.textContent=`(${bikeshopData.length})`;
   }catch(e){}
 }
 function loadSession(){
-  try{const v=localStorage.getItem('nuvari_active_shops');if(v)shops=JSON.parse(v);}catch{shops=[];}
-  shops.forEach(s=>{if(s.shape==='isochrone')s.isochroneFetching=false;}); // a reload can interrupt an in-flight fetch — clear so it can retry
-  try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.interactionMode)interactionMode=s.interactionMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;if(s.defaultPinColor)defaultPinColor=s.defaultPinColor;if(s.defaultIsochroneMinutes)defaultIsochroneMinutes=s.defaultIsochroneMinutes;}}catch{}
+  // Ad hoc dealer pins intentionally do NOT auto-restore across a fresh load/login anymore —
+  // only an explicitly-saved scenario persists. This keeps the map clean on entry rather than
+  // showing whatever pins were left over from a previous, unsaved session.
+  try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;if(s.defaultPinColor)defaultPinColor=s.defaultPinColor;if(s.defaultIsochroneMinutes)defaultIsochroneMinutes=s.defaultIsochroneMinutes;if(s.clusterEnabled!==undefined)clusterEnabled=s.clusterEnabled;}}catch{}
   try{
     const v=localStorage.getItem('nuvari_bikeshops');
     if(v){
       const b=JSON.parse(v);
       if(b.layers&&b.layers.length>0){
-        csvLayers=b.layers.map(l=>({...l,statusFilters:new Set(l.statusFilters||[]),ratingFilters:new Set(l.ratingFilters||[])}));
+        // Array.isArray guards: layers persisted before this fix have regionFilters/
+        // salesRepFilters as stale "{}" objects (Set serialized wrong), which would throw if
+        // passed straight into `new Set(...)` (not iterable) — fall back to empty instead.
+        csvLayers=b.layers.map(l=>({...l,
+          statusFilters:new Set(Array.isArray(l.statusFilters)?l.statusFilters:[]),
+          ratingFilters:new Set(Array.isArray(l.ratingFilters)?l.ratingFilters:[]),
+          regionFilters:new Set(Array.isArray(l.regionFilters)?l.regionFilters:[]),
+          salesRepFilters:new Set(Array.isArray(l.salesRepFilters)?l.salesRepFilters:[]),
+          gRatingBucketFilters:new Set(Array.isArray(l.gRatingBucketFilters)?l.gRatingBucketFilters:[]),
+          rCountBucketFilters:new Set(Array.isArray(l.rCountBucketFilters)?l.rCountBucketFilters:[])
+        }));
         activeLayerIds=new Set(b.activeLayerIds||csvLayers.map(l=>l.id));
         rebuildBikeshopDataFromLayers();
         const badge=document.getElementById('shopTabBadge');if(badge)badge.textContent=`(${bikeshopData.length})`;
@@ -1902,6 +2103,11 @@ function loadSession(){
   document.querySelectorAll('#shapeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.shape===defaultPinShape));
   document.getElementById('minutesInput').value=defaultIsochroneMinutes;
   updateDefaultRangeRowVisibility();
+  document.querySelectorAll('#clusterSeg button').forEach(b=>b.classList.toggle('active',b.dataset.cluster===(clusterEnabled?'on':'off')));
+  // bikeshopGroup was created in initMap() before the persisted clusterEnabled setting was
+  // restored above — sync it now, before markers are added, so the correct group type is used.
+  if(map.hasLayer(bikeshopGroup))map.removeLayer(bikeshopGroup);
+  bikeshopGroup=createBikeshopGroup().addTo(map);
   renderAll();
   renderShopsTab();
   rebuildBikeshopMarkers();
