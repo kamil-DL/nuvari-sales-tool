@@ -42,6 +42,7 @@
           <div style="margin-top:6px" id="shop-status-badge"></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span id="shop-links" style="display:flex;gap:8px;flex-wrap:wrap"></span>
           <button id="edit-btn" class="nst-btn nst-btn-outline" style="display:none">✏️ 編輯 Edit</button>
           <button id="add-visit-btn" class="nst-btn nst-btn-primary">＋ 排程拜訪 Schedule visit</button>
         </div>
@@ -220,6 +221,33 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
 }
 
+// Same link-building logic as the map planner's popups (map.html gmapsPlace/gmapsPoint) —
+// prefers the exact Google Business listing via place_id, falls back to a coordinate pin,
+// then to an address search for shops that were never geocoded (e.g. manually added ones).
+function gmapsLink(s) {
+  if (s.lat != null && s.lng != null) {
+    if (s.google_place_id) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name||'')}&query_place_id=${encodeURIComponent(s.google_place_id)}`;
+    return `https://www.google.com/maps?q=${s.lat.toFixed(6)},${s.lng.toFixed(6)}&z=17`;
+  }
+  if (s.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`;
+  return null;
+}
+
+function mapPlannerLink(s) {
+  if (s.lat == null || s.lng == null) return null;
+  const params = new URLSearchParams({ lat: s.lat, lng: s.lng, name: s.name || '' });
+  return `../map.html?${params.toString()}`;
+}
+
+function renderShopLinks() {
+  const gLink = gmapsLink(shop);
+  const mLink = mapPlannerLink(shop);
+  document.getElementById('shop-links').innerHTML = [
+    gLink ? `<a class="nst-btn nst-btn-outline" href="${esc(gLink)}" target="_blank" rel="noopener">📍 Google Maps ↗</a>` : '',
+    mLink ? `<a class="nst-btn nst-btn-outline" href="${esc(mLink)}" target="_blank" rel="noopener">🗺️ 地圖規劃工具 Map Planner ↗</a>` : '',
+  ].join('');
+}
+
 function statusBadge(s) {
   const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
@@ -240,6 +268,7 @@ function renderShop() {
   document.getElementById('f-sales-rep').textContent = shop.sales_rep || '—';
   document.getElementById('f-dataset').textContent = datasetName(shop.dataset_id) || '—';
   document.getElementById('f-created-at').textContent = fmtDate(shop.created_at);
+  renderShopLinks();
   if (shop.notes) {
     document.getElementById('f-notes').textContent = shop.notes;
     document.getElementById('notes-row').style.display = '';

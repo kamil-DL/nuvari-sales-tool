@@ -76,13 +76,25 @@
         <input type="checkbox" id="select-all-checkbox"/> 全選 Select all
       </label>
       <span id="selection-count" style="font-size:12.5px;color:var(--nst-gray)"></span>
-      <div style="margin-left:auto;display:flex;gap:8px">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <select id="bulk-status-select" class="nst-select" style="width:auto;min-width:170px">
+          <option value="">變更狀態為... Change status to…</option>
+          <option value="尚未開發">尚未開發 Not Developed</option>
+          <option value="電訪過">電訪過 Phone Contacted</option>
+          <option value="電訪過-拒絕">電訪過-拒絕 Phone Contacted (Declined)</option>
+          <option value="拜訪過">拜訪過 Visited</option>
+          <option value="拜訪過-拒絕">拜訪過-拒絕 Visited (Declined)</option>
+          <option value="已合作">已合作 Partnered</option>
+          <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
+        </select>
+        <button id="bulk-status-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
         <button id="delete-selected-btn" class="nst-btn nst-btn-danger" disabled>刪除已選 Delete selected</button>
         <button id="cancel-select-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
       </div>
     </div>
 
     <div id="error-banner" class="nst-error-banner" style="display:none"></div>
+    <div id="shops-count" style="font-size:12.5px;color:var(--nst-gray);margin-bottom:10px"></div>
     <div id="shops-list">
       <div class="nst-loading"><div class="nst-spinner"></div>載入中 Loading…</div>
     </div>
@@ -273,28 +285,19 @@ function renderShops(shops) {
       ? `${fmtDate(lastVisit.scheduled_date)} (${(VISIT_STATUS_LABELS[lastVisit.status] || {}).zh || lastVisit.status})`
       : '尚未拜訪 Unvisited';
     return `
-    <a class="nst-card nst-card-link${selectionMode ? ' selection-mode' : ''}" href="shop-detail.html?id=${s.id}" data-id="${esc(s.id)}">
-      <div class="nst-card-header" style="align-items:flex-start">
+    <div class="nst-card shop-card${selectionMode ? ' selection-mode' : ''}" data-id="${esc(s.id)}">
+      <div class="shop-card-top">
         ${checkbox}
-        <div style="flex:1;min-width:0">
-          <span class="nst-card-name">${esc(s.name)}</span>
-          ${s.address ? `<div class="nst-card-meta" style="margin-top:2px">${esc(s.address)}</div>` : ''}
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+        <span class="shop-card-name">${esc(s.name)}</span>
+        <div class="shop-card-tags">
           ${statusBadge(s.status)}
           ${regionBadge(s.region)}
           ${dsName ? `<span class="nst-badge badge-gray">🗂 ${esc(dsName)}</span>` : ''}
         </div>
+        <a class="shop-card-open" href="shop-detail.html?id=${s.id}" title="開啟 Open">↗</a>
       </div>
-      ${(s.contact_name || s.contact_phone) ? `<div class="nst-card-meta" style="margin-top:6px">
-        ${s.contact_name ? `<span>${esc(s.contact_name)}</span>` : ''}
-        ${s.contact_phone ? ` · ${esc(s.contact_phone)}` : ''}
-      </div>` : ''}
-      <div class="nst-card-meta" style="margin-top:8px;text-align:right">
-        Sales: ${esc(s.sales_rep || '未指派 Unassigned')}<br/>
-        Last Visit: ${esc(lastVisitText)}
-      </div>
-    </a>`;
+      <div class="shop-card-sub">${esc(s.sales_rep || '未指派 Unassigned')} · ${esc(lastVisitText)}</div>
+    </div>`;
   }).join('');
 }
 
@@ -304,6 +307,7 @@ function enterSelectionMode() {
   document.getElementById('selection-bar').style.display = '';
   document.getElementById('normal-actions').style.display = 'none';
   document.getElementById('select-all-checkbox').checked = false;
+  document.getElementById('bulk-status-select').value = '';
   renderShops(currentShops);
   updateSelectionBar();
 }
@@ -322,6 +326,7 @@ function updateSelectionBar() {
   document.getElementById('selection-count').textContent = n > 0 ? `已選 ${n} 筆 · ${n} selected` : '';
   document.getElementById('delete-selected-btn').disabled = n === 0;
   document.getElementById('delete-selected-btn').textContent = `刪除已選 Delete selected${n ? ` (${n})` : ''}`;
+  document.getElementById('bulk-status-apply-btn').disabled = n === 0 || !document.getElementById('bulk-status-select').value;
   document.getElementById('select-all-checkbox').checked = ownedShops.length > 0 && ownedShops.every(s => selectedIds.has(s.id));
 }
 
@@ -334,6 +339,17 @@ async function bulkDelete(ids) {
   await refresh();
   exitSelectionMode();
   if (failed) showError(`${failed} 筆刪除失敗 shop(s) failed to delete`);
+}
+
+async function bulkUpdateStatus(ids, status) {
+  let failed = 0;
+  for (const id of ids) {
+    try { await updateShop(id, { status }); } catch { failed++; }
+  }
+  selectedIds.clear();
+  await refresh();
+  exitSelectionMode();
+  if (failed) showError(`${failed} 筆更新失敗 shop(s) failed to update`);
 }
 
 function esc(s) {
@@ -383,6 +399,7 @@ async function refresh() {
   const onlyMine = document.getElementById('only-mine-checkbox').checked;
   try {
     currentShops = await loadShops({ status, search, region, salesRep, datasetId, onlyMine, userId: user.id });
+    document.getElementById('shops-count').textContent = `共 ${currentShops.length} 家店 · ${currentShops.length} shop${currentShops.length === 1 ? '' : 's'}`;
     try {
       latestVisitByShop = await loadLatestVisitsByShopIds(currentShops.map(s => s.id));
     } catch {
@@ -422,6 +439,7 @@ async function loadFilterOptions() {
 
 // Datasets (public.shop_datasets) group shops so CSV imports don't all pile into one
 // undifferentiated list, and so the map planner can load a specific subset.
+let datasetFilterDefaulted = false; // only auto-select "Taiwan Bike Shops" on the very first load
 async function refreshDatasets() {
   try {
     datasets = await loadDatasets();
@@ -430,7 +448,19 @@ async function refreshDatasets() {
   }
   const optionsHtml = datasets.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
   const filterSel = document.getElementById('dataset-filter');
+  const prevValue = filterSel.value;
+  const isFirstLoad = !datasetFilterDefaulted;
+  datasetFilterDefaulted = true;
   filterSel.innerHTML = '<option value="all">全部資料集 All datasets</option><option value="unassigned">未分類 Unassigned</option>' + optionsHtml;
+  if (isFirstLoad) {
+    // prevValue is always "all" here (the static HTML default), which would trivially "match"
+    // below and block this default from ever applying — so the very first load takes priority
+    // over the preserve-selection logic, falling back to prevValue if there's no such dataset.
+    const bikeShops = datasets.find(d => d.name === 'Taiwan Bike Shops');
+    filterSel.value = bikeShops ? bikeShops.id : prevValue;
+  } else if ([...filterSel.options].some(o => o.value === prevValue)) {
+    filterSel.value = prevValue;
+  }
   const fSel = document.getElementById('f-dataset');
   fSel.innerHTML = '<option value="">未分類 Unassigned</option>' + optionsHtml;
   const csvSel = document.getElementById('csv-dataset-select');
@@ -629,14 +659,16 @@ document.getElementById('datasets-list').addEventListener('click', async e => {
   }
 });
 
-// Click on a card opens edit if user is creator; otherwise navigates.
-// In selection mode, clicking anywhere on the card toggles its checkbox instead.
+// The card itself isn't a link — only the ↗ icon (a real <a>) opens the shop, so it supports
+// cmd/ctrl-click and middle-click to open in a new tab like any other link.
+// In selection mode, clicking anywhere on the card (including the icon) toggles its checkbox
+// instead of navigating.
 document.getElementById('shops-list').addEventListener('click', e => {
-  const link = e.target.closest('.nst-card-link');
-  if (!link) return;
-  if (!selectionMode) return; // normal mode: default link navigation
-  e.preventDefault();
-  const id = link.dataset.id;
+  const card = e.target.closest('.shop-card');
+  if (!card) return;
+  if (!selectionMode) return; // normal mode: only the ↗ link inside the card navigates
+  e.preventDefault(); // also stops the ↗ link from navigating while selecting
+  const id = card.dataset.id;
   const shop = currentShops.find(s => s.id === id);
   if (!shop || shop.created_by !== user.id) return; // can only select/delete shops you created
   if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
@@ -663,7 +695,23 @@ document.getElementById('delete-selected-btn').addEventListener('click', async (
   await bulkDelete([...selectedIds]);
 });
 
-await Promise.all([refresh(), loadFilterOptions(), refreshDatasets()]);
+document.getElementById('bulk-status-select').addEventListener('change', updateSelectionBar);
+
+document.getElementById('bulk-status-apply-btn').addEventListener('click', async () => {
+  const n = selectedIds.size;
+  const status = document.getElementById('bulk-status-select').value;
+  if (!n || !status) return;
+  const info = STATUS_LABELS[status] || { zh: status, en: status };
+  if (!confirm(`確定要將已選取的 ${n} 家店家狀態改為「${info.zh}」嗎？\nChange status of ${n} selected shops to "${info.en}"?`)) return;
+  document.getElementById('bulk-status-apply-btn').disabled = true;
+  await bulkUpdateStatus([...selectedIds], status);
+});
+
+// refreshDatasets() must resolve before the first refresh() so the "Taiwan Bike Shops" default
+// filter (set inside refreshDatasets) is in place before shops are loaded — otherwise refresh()
+// would read the stale "all datasets" value from the static HTML.
+await Promise.all([loadFilterOptions(), refreshDatasets()]);
+await refresh();
 
 // ── CSV Import ──
 const VALID_STATUSES = new Set(['尚未開發','電訪過','電訪過-拒絕','拜訪過','拜訪過-拒絕','已合作','已合作-流失']);

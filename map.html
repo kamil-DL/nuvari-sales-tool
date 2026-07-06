@@ -35,6 +35,8 @@ header{flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--borde
 .seg{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;}
 .seg button{border:none;background:transparent;padding:5px 10px;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;color:var(--soft);}
 .seg button.active{background:var(--ink);color:#fff;}
+.toggle-btn{border:1px solid var(--border);background:var(--bg);color:var(--soft);font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+.toggle-btn.on{background:#2E9E5B;color:#fff;border-color:#2E9E5B;}
 .btn{border:1px solid var(--border);background:var(--panel);color:var(--soft);font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;}
 .btn:hover{border-color:var(--ink);color:var(--ink);}
 .btn-red{border-color:#f0c9c5;color:var(--red);}
@@ -208,10 +210,21 @@ table.sh-table tbody tr:hover{background:var(--accent-light);}
 // Dev/prod switch by hostname — canonical copy is /shared/supabase-env.js (nst/ imports it
 // directly); this is a classic script and needs the client synchronously, so it keeps its
 // own copy of the same check instead of an async import(). Keep both in sync.
-const _isLocal=['localhost','127.0.0.1'].includes(window.location.hostname);
+// ?env=dev lets a deployed (non-local) URL point at the dev project too, e.g. for testing a
+// live Beta build without touching production shop/visit data.
+const _forcedDev=new URLSearchParams(window.location.search).get('env')==='dev';
+const _isLocal=['localhost','127.0.0.1'].includes(window.location.hostname)||_forcedDev;
 const SUPABASE_URL=_isLocal?'https://iytzwajjacmuffebuuzd.supabase.co':'https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY=_isLocal?'sb_publishable_F6xTfWNcQflW305r0iw37Q_ZBf91uDy':'sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';
 const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+if(_forcedDev&&!['localhost','127.0.0.1'].includes(window.location.hostname)){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const banner=document.createElement('div');
+    banner.textContent='⚠ DEV DATA MODE (?env=dev) — not production data';
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#E0584A;color:#fff;text-align:center;font:700 12px/1.4 sans-serif;padding:6px 8px;';
+    document.body.prepend(banner);
+  });
+}
 let currentUser=null; // {id,email}
 
 // Supabase silently rotates the refresh token on every use (incl. its own background
@@ -351,10 +364,7 @@ window.onPwGatePassed=async function(){
     </div>
     <div class="controls-bar">
       <span class="clabel">模式</span>
-      <div class="seg" id="interactionModeSeg">
-        <button data-mode="pin" class="active">📍 Pin Mode</button>
-        <button data-mode="click">🖱️ Click Mode</button>
-      </div>
+      <button class="toggle-btn" id="pinModeToggle" title="⌘P / Ctrl+P">📍 Pin Mode</button>
       <div class="sep"></div>
       <div class="dp-wrap" id="displaySettingsWrap">
         <button class="btn" id="displaySettingsBtn">⚙️ 顯示設定 Display</button>
@@ -476,6 +486,17 @@ const DISTRICT_DATA = {"V02":{"zh":"成功鎮","countyZh":"台東縣","countyEng
 let detailLevel='county'; // 'county' | 'district'
 let basemapMode='light'; // 'light' | 'streets' | 'satellite' | 'none'
 let interactionMode='click'; // 'pin' | 'click' — always starts in Click Mode on a fresh load, not persisted
+function togglePinMode(){
+  interactionMode=interactionMode==='pin'?'click':'pin';
+  updatePinModeUI();
+}
+function updatePinModeUI(){
+  const on=interactionMode==='pin';
+  const btn=document.getElementById('pinModeToggle');
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'📍 Pin Mode: On':'📍 Pin Mode: Off';
+  document.getElementById('map').style.cursor=on?'':'pointer';
+}
 let clusterEnabled=true; // toggled from Display settings
 // Individual pins from this zoom level and closer in; clustering only kicks in when
 // zoomed out further than this (roughly "half the island" visible or wider) — a full-island
@@ -1972,12 +1993,12 @@ function bindControls(){
     document.querySelectorAll('#clusterSeg button').forEach(b=>b.classList.toggle('active',b.dataset.cluster===btn.dataset.cluster));
     setClusterEnabled(btn.dataset.cluster==='on');
   });
-  document.getElementById('interactionModeSeg').addEventListener('click',e=>{
-    const btn=e.target.closest('button');if(!btn)return;
-    interactionMode=btn.dataset.mode;
-    document.querySelectorAll('#interactionModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===interactionMode));
-    document.getElementById('map').style.cursor=interactionMode==='click'?'pointer':'';
-    persistSettings();
+  document.getElementById('pinModeToggle').addEventListener('click',()=>togglePinMode());
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='p'){
+      e.preventDefault();
+      togglePinMode();
+    }
   });
   document.getElementById('shapeSeg').addEventListener('click',e=>{
     const btn=e.target.closest('button');if(!btn)return;
@@ -2116,8 +2137,7 @@ function loadSession(){
   document.querySelectorAll('#detailLevelSeg button').forEach(b=>b.classList.toggle('active',b.dataset.level===detailLevel));
   if(detailLevel!=='county')switchDetailLevel(detailLevel);
   if(basemapMode!=='light')setBasemap(basemapMode);
-  document.querySelectorAll('#interactionModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===interactionMode));
-  document.getElementById('map').style.cursor=interactionMode==='click'?'pointer':'';
+  updatePinModeUI();
   document.querySelectorAll('#shapeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.shape===defaultPinShape));
   document.getElementById('minutesInput').value=defaultIsochroneMinutes;
   updateDefaultRangeRowVisibility();
@@ -2132,7 +2152,30 @@ function loadSession(){
   updateShopsLayerBtn();
   const vf=document.getElementById('version-footer');
   if(vf)vf.textContent=`Nuvari Sales Map · v${APP_VERSION} · Updated ${BUILD_DATE}`;
+  focusFromUrlParams();
 })();
+
+// Lets other pages (e.g. NST shop detail) deep-link straight to a spot on the map — opened via
+// map.html?lat=..&lng=..&name=.. — without needing that shop loaded into any dataset layer.
+function focusFromUrlParams(){
+  const params=new URLSearchParams(window.location.search);
+  const lat=parseFloat(params.get('lat'));
+  const lng=parseFloat(params.get('lng'));
+  if(!isFinite(lat)||!isFinite(lng))return;
+  const name=params.get('name')||'';
+  let applied=false;
+  const apply=()=>{
+    if(applied)return;
+    applied=true;
+    map.setView([lat,lng],16,{animate:false});
+    L.marker([lat,lng],{icon:dealerIcon('#137ECE')}).addTo(map).bindPopup(name?esc(name):'').openPopup();
+  };
+  // initMap()'s default fitBounds(countyGeoLayer) may still be mid zoom-animation here — a new
+  // setView called while one is in flight is silently dropped by Leaflet. Wait for that
+  // transition's moveend, with a timeout fallback in case it already finished synchronously.
+  map.once('moveend',apply);
+  setTimeout(apply,400);
+}
 </script>
 <script>
 window.onPwGatePassed();

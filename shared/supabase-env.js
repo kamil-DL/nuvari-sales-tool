@@ -2,13 +2,29 @@
 // remember to flip a flag: running locally (npx serve, localhost/127.0.0.1) always talks
 // to the dev/test project; anywhere else (the real deployed domain) talks to production.
 //
-// map-v0.4.1.html is a classic (non-module) script and can't import this synchronously
-// where it creates its client, so it keeps its own copy of this same hostname check —
-// if you rotate a key or add another environment, update both places.
+// A deployed (non-local) URL can also be pointed at the dev project with a ?env=dev query
+// param — for testing a live/pushed build (e.g. a Beta card) without touching production
+// shop/visit data. IS_STAGING flags that case so callers can show a "not production data"
+// warning; a fixed on-page banner is injected below for the same reason.
+//
+// map.html is a classic (non-module) script and can't import this synchronously where it
+// creates its client, so it keeps its own copy of this same logic — if you rotate a key,
+// add another environment, or change the ?env=dev override, update both places.
 
 const PROD = { url: 'https://mdznetxdongeinthqgtp.supabase.co', key: 'sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9' };
 const DEV  = { url: 'https://iytzwajjacmuffebuuzd.supabase.co', key: 'sb_publishable_F6xTfWNcQflW305r0iw37Q_ZBf91uDy' };
 
 const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const forcedDev = new URLSearchParams(window.location.search).get('env') === 'dev';
 
-export const SUPABASE_ENV = isLocal ? DEV : PROD;
+export const SUPABASE_ENV = (isLocal || forcedDev) ? DEV : PROD;
+export const IS_STAGING = forcedDev && !isLocal;
+
+if (IS_STAGING) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.createElement('div');
+    banner.textContent = '⚠ DEV DATA MODE (?env=dev) — not production data';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#E0584A;color:#fff;text-align:center;font:700 12px/1.4 sans-serif;padding:6px 8px;';
+    document.body.prepend(banner);
+  });
+}
