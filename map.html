@@ -211,8 +211,18 @@ table.sh-table tbody tr:hover{background:var(--accent-light);}
 // directly); this is a classic script and needs the client synchronously, so it keeps its
 // own copy of the same check instead of an async import(). Keep both in sync.
 // ?env=dev lets a deployed (non-local) URL point at the dev project too, e.g. for testing a
-// live Beta build without touching production shop/visit data.
-const _forcedDev=new URLSearchParams(window.location.search).get('env')==='dev';
+// live Beta build without touching production shop/visit data. Sticks for the rest of the tab's
+// session (sessionStorage) so navigating within the app doesn't fall back to prod; ?env=prod
+// explicitly clears it (used by the dashboard's Stable cards).
+const _STAGING_KEY='nuvari_staging_env';
+const _envParam=new URLSearchParams(window.location.search).get('env');
+try{
+  if(_envParam==='dev')sessionStorage.setItem(_STAGING_KEY,'1');
+  else if(_envParam==='prod')sessionStorage.removeItem(_STAGING_KEY);
+}catch(e){}
+let _stickyForcedDev=false;
+try{_stickyForcedDev=sessionStorage.getItem(_STAGING_KEY)==='1';}catch(e){}
+const _forcedDev=_envParam==='dev'||_stickyForcedDev;
 const _isLocal=['localhost','127.0.0.1'].includes(window.location.hostname)||_forcedDev;
 const SUPABASE_URL=_isLocal?'https://iytzwajjacmuffebuuzd.supabase.co':'https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY=_isLocal?'sb_publishable_F6xTfWNcQflW305r0iw37Q_ZBf91uDy':'sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';

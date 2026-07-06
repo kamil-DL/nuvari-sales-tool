@@ -1,22 +1,5 @@
 import { supabase } from './supabase-client.js';
-
-// PostgREST caps any single query at 1000 rows by default — a plain .select() silently
-// truncates past that. Page through with .range() until a page comes back short, same fix
-// as the map planner's fetchAllShopsForDataset(). Any query that can return >1000 rows
-// (this one, and the dataset-count tally in shops.html's openDatasetsModal) needs this.
-async function fetchAllPages(buildQuery) {
-  const PAGE_SIZE = 1000;
-  let offset = 0, all = [];
-  while (true) {
-    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    all = all.concat(data);
-    if (data.length < PAGE_SIZE) break;
-    offset += PAGE_SIZE;
-  }
-  return all;
-}
+import { fetchAllPages } from '../../shared/supabase-paginate.js';
 
 export async function loadShops({ status, search, region, county, salesRep, datasetId, onlyMine, userId } = {}) {
   return fetchAllPages((from, to) => {
@@ -74,8 +57,13 @@ export async function updateShop(id, fields) {
 }
 
 export async function deleteShop(id) {
-  const { error } = await supabase.from('shops').delete().eq('id', id);
+  // Supabase doesn't error when RLS silently filters a delete down to 0 matched rows (e.g.
+  // deleting a shop you don't own) — it just "succeeds" having deleted nothing, which looks
+  // identical to a real delete from the caller's side. Request the deleted row back and treat
+  // an empty result as a failure so the UI doesn't wrongly report success.
+  const { data, error } = await supabase.from('shops').delete().eq('id', id).select();
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error('刪除失敗：找不到符合的店家，可能已被刪除或您沒有權限刪除 · Delete failed: no matching shop found — already deleted, or you don\'t have permission');
 }
 
 // Sales reps are drawn from actual registered users (public.user_directory, a view over
@@ -114,8 +102,9 @@ export async function updateDataset(id, fields) {
 }
 
 export async function deleteDataset(id) {
-  const { error } = await supabase.from('shop_datasets').delete().eq('id', id);
+  const { data, error } = await supabase.from('shop_datasets').delete().eq('id', id).select();
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error('刪除失敗：找不到符合的資料集，可能已被刪除或您沒有權限刪除 · Delete failed: no matching dataset found — already deleted, or you don\'t have permission');
 }
 
 export const STATUS_LABELS = {

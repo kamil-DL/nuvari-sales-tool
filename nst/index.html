@@ -74,6 +74,7 @@
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
 import { supabase } from './js/supabase-client.js';
+import { fetchAllPages } from '../shared/supabase-paginate.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -83,24 +84,21 @@ document.getElementById('user-email').textContent = user.email;
 document.getElementById('sign-out-btn').addEventListener('click', signOut);
 
 async function loadStats() {
-  const [shopsRes, visitsRes] = await Promise.all([
-    supabase.from('shops').select('status'),
-    supabase.from('visits').select('status, scheduled_date')
+  const [shops, visits] = await Promise.all([
+    fetchAllPages((from, to) => supabase.from('shops').select('status').range(from, to)),
+    fetchAllPages((from, to) => supabase.from('visits').select('status, scheduled_date').range(from, to))
   ]);
-  if (shopsRes.data) {
-    document.getElementById('stat-shops').textContent = shopsRes.data.length;
-    document.getElementById('stat-active').textContent = shopsRes.data.filter(s => s.status === '已合作').length;
-  }
-  if (visitsRes.data) {
-    const today = new Date();
-    const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
-    const ws = weekStart.toISOString().slice(0,10);
-    const we = weekEnd.toISOString().slice(0,10);
-    const weekVisits = visitsRes.data.filter(v => v.scheduled_date >= ws && v.scheduled_date <= we);
-    document.getElementById('stat-visits-week').textContent = weekVisits.length;
-    document.getElementById('stat-visits-planned').textContent = visitsRes.data.filter(v => v.status === 'planned').length;
-  }
+  document.getElementById('stat-shops').textContent = shops.length;
+  document.getElementById('stat-active').textContent = shops.filter(s => s.status === '已合作').length;
+
+  const today = new Date();
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+  const ws = weekStart.toISOString().slice(0,10);
+  const we = weekEnd.toISOString().slice(0,10);
+  const weekVisits = visits.filter(v => v.scheduled_date >= ws && v.scheduled_date <= we);
+  document.getElementById('stat-visits-week').textContent = weekVisits.length;
+  document.getElementById('stat-visits-planned').textContent = visits.filter(v => v.status === 'planned').length;
 }
 
 loadStats();

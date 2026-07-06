@@ -231,6 +231,7 @@ import { lookupGeoFromCoords } from '../shared/geo.js';
 import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
 import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
 import { supabase } from './js/supabase-client.js';
+import { friendlyError } from '../shared/friendly-error.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -444,7 +445,7 @@ async function refresh() {
     }
     renderShops(currentShops);
   } catch (e) {
-    showError(e.message);
+    showError(friendlyError(e));
   }
 }
 
@@ -587,7 +588,7 @@ document.getElementById('modal-save-btn').addEventListener('click', async () => 
     await refresh();
     loadFilterOptions();
   } catch (e) {
-    document.getElementById('modal-error').textContent = e.message;
+    document.getElementById('modal-error').textContent = friendlyError(e);
   } finally {
     btn.disabled = false; btn.textContent = '儲存 Save';
   }
@@ -601,7 +602,7 @@ document.getElementById('modal-delete-btn').addEventListener('click', async () =
     closeModal();
     await refresh();
   } catch (e) {
-    document.getElementById('modal-error').textContent = e.message;
+    document.getElementById('modal-error').textContent = friendlyError(e);
   }
 });
 
@@ -643,7 +644,7 @@ document.getElementById('add-dataset-btn').addEventListener('click', async () =>
     await createDataset(name, null, user.id);
     await openDatasetsModal();
   } catch (e) {
-    document.getElementById('datasets-error').textContent = e.message;
+    document.getElementById('datasets-error').textContent = friendlyError(e);
   }
 });
 
@@ -659,7 +660,7 @@ document.getElementById('datasets-list').addEventListener('click', async e => {
       await updateDataset(id, { name: newName.trim() });
       await openDatasetsModal();
     } catch (e) {
-      document.getElementById('datasets-error').textContent = e.message;
+      document.getElementById('datasets-error').textContent = friendlyError(e);
     }
   } else if (deleteBtn) {
     const id = deleteBtn.dataset.id;
@@ -669,7 +670,7 @@ document.getElementById('datasets-list').addEventListener('click', async e => {
       await deleteDataset(id);
       await openDatasetsModal();
     } catch (e) {
-      document.getElementById('datasets-error').textContent = e.message;
+      document.getElementById('datasets-error').textContent = friendlyError(e);
     }
   }
 });
@@ -932,7 +933,7 @@ document.getElementById('csv-import-btn').addEventListener('click', async () => 
       const created = await createDataset(newName, null, user.id);
       datasetId = created.id;
     } catch (e) {
-      document.getElementById('csv-error').textContent = e.message;
+      document.getElementById('csv-error').textContent = friendlyError(e);
       progress.style.display = 'none';
       btn.disabled = false;
       return;

@@ -157,6 +157,7 @@ import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
 import { getShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
 import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
+import { friendlyError } from '../shared/friendly-error.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -302,7 +303,7 @@ async function renderVisits() {
         ${v.review_notes ? `<div class="nst-card-meta" style="margin-top:4px">${esc(v.review_notes.slice(0,80))}${v.review_notes.length>80?'…':''}</div>` : ''}
       </a>`).join('');
   } catch (e) {
-    list.innerHTML = `<div class="nst-error-banner">${e.message}</div>`;
+    list.innerHTML = `<div class="nst-error-banner">${friendlyError(e)}</div>`;
   }
 }
 
@@ -315,7 +316,7 @@ try {
   renderVisits();
 } catch (e) {
   document.getElementById('loading').style.display = 'none';
-  document.getElementById('error-banner').textContent = e.message;
+  document.getElementById('error-banner').textContent = friendlyError(e);
   document.getElementById('error-banner').style.display = '';
 }
 
@@ -357,7 +358,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     document.getElementById('edit-modal').style.display = 'none';
     renderShop();
   } catch (e) {
-    document.getElementById('edit-modal-error').textContent = e.message;
+    document.getElementById('edit-modal-error').textContent = friendlyError(e);
   } finally {
     btn.disabled = false; btn.textContent = '儲存 Save';
   }
@@ -369,7 +370,7 @@ document.getElementById('edit-delete-btn').addEventListener('click', async () =>
     await deleteShop(shopId);
     location.href = 'shops.html';
   } catch (e) {
-    document.getElementById('edit-modal-error').textContent = e.message;
+    document.getElementById('edit-modal-error').textContent = friendlyError(e);
   }
 });
 
@@ -397,7 +398,7 @@ document.getElementById('visit-save-btn').addEventListener('click', async () => 
     document.getElementById('visit-modal').style.display = 'none';
     location.href = `visit-detail.html?id=${visit.id}`;
   } catch (e) {
-    document.getElementById('visit-modal-error').textContent = e.message;
+    document.getElementById('visit-modal-error').textContent = friendlyError(e);
     btn.disabled = false; btn.textContent = '建立 Create';
   }
 });
