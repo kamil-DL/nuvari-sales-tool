@@ -101,7 +101,7 @@
         <option value="北部">北部 North</option>
         <option value="中部">中部 Central</option>
         <option value="南部">南部 South</option>
-        <option value="東部">東部 East</option>
+        <option value="離島">離島 Islands</option>
       </select>
       <label class="nst-field-label">聯絡人 Contact name</label>
       <input id="ef-contact-name" type="text" class="nst-input"/>
@@ -235,7 +235,10 @@ function gmapsLink(s) {
 
 function mapPlannerLink(s) {
   if (s.lat == null || s.lng == null) return null;
-  const params = new URLSearchParams({ lat: s.lat, lng: s.lng, name: s.name || '' });
+  // id lets map.html fetch the full record and show a rich popup (status/rating/phone/etc.,
+  // same as its own Shop-DB-backed pins) — lat/lng/name stay as an immediate fallback so the
+  // map still centers and shows a name right away while that fetch is in flight.
+  const params = new URLSearchParams({ id: s.id, lat: s.lat, lng: s.lng, name: s.name || '' });
   return `../map.html?${params.toString()}`;
 }
 

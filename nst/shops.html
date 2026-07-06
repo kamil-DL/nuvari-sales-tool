@@ -36,7 +36,6 @@
       <div id="normal-actions" style="display:flex;gap:8px">
         <button id="select-mode-btn" class="nst-btn nst-btn-outline">☑ 選取 Select</button>
         <button id="manage-datasets-btn" class="nst-btn nst-btn-outline">🗂 資料集 Datasets</button>
-        <button id="backfill-region-btn" class="nst-btn nst-btn-outline" title="為已有座標但缺少地區/縣市/鄉鎮市區的店家自動填入 · Auto-fill region/county/district from coordinates for shops missing them">📍 自動填入地區 Auto-fill regions</button>
         <button id="export-csv-btn" class="nst-btn nst-btn-outline">⬇ 匯出 Export</button>
         <button id="import-csv-btn" class="nst-btn nst-btn-outline">↑ 匯入 CSV Import CSV</button>
         <button id="add-shop-btn" class="nst-btn nst-btn-primary">＋ 新增店家 Add shop</button>
@@ -59,6 +58,9 @@
       <select id="region-filter" class="nst-select" style="width:auto;min-width:130px">
         <option value="all">全部地區 All regions</option>
       </select>
+      <select id="county-filter" class="nst-select" style="width:auto;min-width:130px">
+        <option value="all">全部縣市 All counties</option>
+      </select>
       <select id="rep-filter" class="nst-select" style="width:auto;min-width:130px">
         <option value="all">全部業務員 All reps</option>
       </select>
@@ -71,14 +73,15 @@
       </label>
     </div>
 
-    <div id="selection-bar" class="nst-filter-bar" style="display:none">
+    <div id="selection-bar" class="nst-filter-bar" style="display:none;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600">
         <input type="checkbox" id="select-all-checkbox"/> 全選 Select all
       </label>
       <span id="selection-count" style="font-size:12.5px;color:var(--nst-gray)"></span>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span id="selection-progress" style="font-size:12.5px;color:var(--nst-accent);font-weight:700"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="bulk-status-select" class="nst-select" style="width:auto;min-width:170px">
-          <option value="">變更狀態為... Change status to…</option>
+          <option value="__placeholder__" selected disabled>變更狀態為... Change status to…</option>
           <option value="尚未開發">尚未開發 Not Developed</option>
           <option value="電訪過">電訪過 Phone Contacted</option>
           <option value="電訪過-拒絕">電訪過-拒絕 Phone Contacted (Declined)</option>
@@ -88,6 +91,11 @@
           <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
         </select>
         <button id="bulk-status-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
+        <select id="bulk-rep-select" class="nst-select" style="width:auto;min-width:170px">
+          <option value="__placeholder__" selected disabled>變更業務員為... Change sales rep to…</option>
+          <option value="">未指派 Unassigned</option>
+        </select>
+        <button id="bulk-rep-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
         <button id="delete-selected-btn" class="nst-btn nst-btn-danger" disabled>刪除已選 Delete selected</button>
         <button id="cancel-select-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
       </div>
@@ -130,7 +138,7 @@
         <option value="北部">北部 North</option>
         <option value="中部">中部 Central</option>
         <option value="南部">南部 South</option>
-        <option value="東部">東部 East</option>
+        <option value="離島">離島 Islands</option>
       </select>
       <label class="nst-field-label">聯絡人 Contact name</label>
       <input id="f-contact-name" type="text" class="nst-input" placeholder="e.g. 陳老闆"/>
@@ -217,7 +225,7 @@
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset } from './js/shops.js';
+import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset, countAllShopsByDataset, loadAllShopsForDupCheck } from './js/shops.js';
 import { loadLatestVisitsByShopIds, VISIT_STATUS_LABELS } from './js/visits.js';
 import { lookupGeoFromCoords } from '../shared/geo.js';
 import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
@@ -232,6 +240,11 @@ document.getElementById('user-email').textContent = user.email;
 document.getElementById('sign-out-btn').addEventListener('click', signOut);
 
 let currentShops = [];
+// Rendering thousands of cards at once (production now has 3000+ shops) is what was actually
+// slow, not the query itself — filtering stays server-side (currentShops holds the full
+// filtered result, needed for select-all/bulk-edit/CSV export), only the DOM render is paged.
+const RENDER_PAGE_SIZE = 100;
+let renderLimit = RENDER_PAGE_SIZE;
 let editingShopCreatedBy = null;
 let selectionMode = false;
 let selectedIds = new Set();
@@ -273,7 +286,8 @@ function renderShops(shops) {
     </div>`;
     return;
   }
-  list.innerHTML = shops.map(s => {
+  const visible = shops.slice(0, renderLimit);
+  list.innerHTML = visible.map(s => {
     const owned = s.created_by === user.id;
     const checked = selectedIds.has(s.id);
     const checkbox = selectionMode
@@ -298,7 +312,11 @@ function renderShops(shops) {
       </div>
       <div class="shop-card-sub">${esc(s.sales_rep || '未指派 Unassigned')} · ${esc(lastVisitText)}</div>
     </div>`;
-  }).join('');
+  }).join('') + (shops.length > visible.length
+    ? `<button id="load-more-btn" class="nst-btn nst-btn-outline nst-btn-full">顯示更多 Show more (${visible.length}/${shops.length})</button>`
+    : '');
+  const loadMoreBtn = document.getElementById('load-more-btn');
+  if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => { renderLimit += RENDER_PAGE_SIZE; renderShops(currentShops); });
 }
 
 function enterSelectionMode() {
@@ -307,7 +325,9 @@ function enterSelectionMode() {
   document.getElementById('selection-bar').style.display = '';
   document.getElementById('normal-actions').style.display = 'none';
   document.getElementById('select-all-checkbox').checked = false;
-  document.getElementById('bulk-status-select').value = '';
+  document.getElementById('bulk-status-select').value = '__placeholder__';
+  document.getElementById('bulk-rep-select').value = '__placeholder__';
+  setBulkControlsDisabled(false);
   renderShops(currentShops);
   updateSelectionBar();
 }
@@ -317,7 +337,13 @@ function exitSelectionMode() {
   selectedIds.clear();
   document.getElementById('selection-bar').style.display = 'none';
   document.getElementById('normal-actions').style.display = '';
+  document.getElementById('selection-progress').textContent = '';
   renderShops(currentShops);
+}
+
+function setBulkControlsDisabled(disabled) {
+  ['select-all-checkbox', 'bulk-status-select', 'bulk-status-apply-btn', 'bulk-rep-select', 'bulk-rep-apply-btn', 'delete-selected-btn']
+    .forEach(id => { document.getElementById(id).disabled = disabled; });
 }
 
 function updateSelectionBar() {
@@ -326,30 +352,39 @@ function updateSelectionBar() {
   document.getElementById('selection-count').textContent = n > 0 ? `已選 ${n} 筆 · ${n} selected` : '';
   document.getElementById('delete-selected-btn').disabled = n === 0;
   document.getElementById('delete-selected-btn').textContent = `刪除已選 Delete selected${n ? ` (${n})` : ''}`;
-  document.getElementById('bulk-status-apply-btn').disabled = n === 0 || !document.getElementById('bulk-status-select').value;
+  const statusVal = document.getElementById('bulk-status-select').value;
+  document.getElementById('bulk-status-apply-btn').disabled = n === 0 || statusVal === '__placeholder__';
+  const repVal = document.getElementById('bulk-rep-select').value;
+  document.getElementById('bulk-rep-apply-btn').disabled = n === 0 || repVal === '__placeholder__';
   document.getElementById('select-all-checkbox').checked = ownedShops.length > 0 && ownedShops.every(s => selectedIds.has(s.id));
 }
 
-async function bulkDelete(ids) {
-  let failed = 0;
+// Runs one write per id sequentially with a live "N/total" progress readout — a bulk edit on
+// e.g. 181 shops takes a few seconds and otherwise looks frozen with no feedback at all.
+async function runBulkOperation(ids, label, apply) {
+  setBulkControlsDisabled(true);
+  const progressEl = document.getElementById('selection-progress');
+  let done = 0, failed = 0;
   for (const id of ids) {
-    try { await deleteShop(id); } catch { failed++; }
+    progressEl.textContent = `${label}… ${done + failed}/${ids.length}`;
+    try { await apply(id); done++; } catch { failed++; }
   }
   selectedIds.clear();
   await refresh();
   exitSelectionMode();
-  if (failed) showError(`${failed} 筆刪除失敗 shop(s) failed to delete`);
+  if (failed) showError(`${failed} 筆失敗，${done} 筆成功 · ${failed} failed, ${done} succeeded`);
+}
+
+async function bulkDelete(ids) {
+  await runBulkOperation(ids, '刪除中 Deleting', id => deleteShop(id));
 }
 
 async function bulkUpdateStatus(ids, status) {
-  let failed = 0;
-  for (const id of ids) {
-    try { await updateShop(id, { status }); } catch { failed++; }
-  }
-  selectedIds.clear();
-  await refresh();
-  exitSelectionMode();
-  if (failed) showError(`${failed} 筆更新失敗 shop(s) failed to update`);
+  await runBulkOperation(ids, '更新狀態中 Updating status', id => updateShop(id, { status }));
+}
+
+async function bulkUpdateSalesRep(ids, rep) {
+  await runBulkOperation(ids, '更新業務員中 Updating sales rep', id => updateShop(id, { sales_rep: rep || null }));
 }
 
 function esc(s) {
@@ -394,11 +429,13 @@ async function refresh() {
   const status = document.getElementById('status-filter').value;
   const search = document.getElementById('search-input').value.trim();
   const region = document.getElementById('region-filter').value;
+  const county = document.getElementById('county-filter').value;
   const salesRep = document.getElementById('rep-filter').value;
   const datasetId = document.getElementById('dataset-filter').value;
   const onlyMine = document.getElementById('only-mine-checkbox').checked;
   try {
-    currentShops = await loadShops({ status, search, region, salesRep, datasetId, onlyMine, userId: user.id });
+    currentShops = await loadShops({ status, search, region, county, salesRep, datasetId, onlyMine, userId: user.id });
+    renderLimit = RENDER_PAGE_SIZE;
     document.getElementById('shops-count').textContent = `共 ${currentShops.length} 家店 · ${currentShops.length} shop${currentShops.length === 1 ? '' : 's'}`;
     try {
       latestVisitByShop = await loadLatestVisitsByShopIds(currentShops.map(s => s.id));
@@ -420,10 +457,14 @@ function showError(msg) {
 // values actually exist across all shops (not just the current filter). Sales rep instead
 // comes from public.user_directory (real registered accounts), not from shop data.
 async function loadFilterOptions() {
-  const { data } = await supabase.from('shops').select('region');
+  const { data } = await supabase.from('shops').select('region,county');
   const regions = [...new Set((data || []).map(s => s.region).filter(Boolean))].sort();
   const regionSel = document.getElementById('region-filter');
   regionSel.innerHTML = '<option value="all">全部地區 All regions</option>' + regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+  const counties = [...new Set((data || []).map(s => s.county).filter(Boolean))].sort();
+  const countySel = document.getElementById('county-filter');
+  countySel.innerHTML = '<option value="all">全部縣市 All counties</option>' + counties.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
 
   try {
     repDirectory = await loadUserDirectory();
@@ -435,6 +476,8 @@ async function loadFilterOptions() {
   repSel.innerHTML = '<option value="all">全部業務員 All reps</option>' + repOptionsHtml;
   const fRepSel = document.getElementById('f-sales-rep');
   fRepSel.innerHTML = '<option value="">未指派 Unassigned</option>' + repOptionsHtml;
+  const bulkRepSel = document.getElementById('bulk-rep-select');
+  bulkRepSel.innerHTML = '<option value="__placeholder__" selected disabled>變更業務員為... Change sales rep to…</option><option value="">未指派 Unassigned</option>' + repOptionsHtml;
 }
 
 // Datasets (public.shop_datasets) group shops so CSV imports don't all pile into one
@@ -475,6 +518,7 @@ document.getElementById('search-input').addEventListener('input', () => {
 });
 document.getElementById('status-filter').addEventListener('change', refresh);
 document.getElementById('region-filter').addEventListener('change', refresh);
+document.getElementById('county-filter').addEventListener('change', refresh);
 document.getElementById('rep-filter').addEventListener('change', refresh);
 document.getElementById('dataset-filter').addEventListener('change', refresh);
 document.getElementById('only-mine-checkbox').addEventListener('change', refresh);
@@ -579,9 +623,7 @@ function renderDatasetsList(counts) {
 
 async function openDatasetsModal() {
   await refreshDatasets();
-  const { data } = await supabase.from('shops').select('dataset_id');
-  const counts = {};
-  (data || []).forEach(s => { if (s.dataset_id) counts[s.dataset_id] = (counts[s.dataset_id] || 0) + 1; });
+  const counts = await countAllShopsByDataset();
   renderDatasetsList(counts);
   document.getElementById('new-dataset-name').value = '';
   document.getElementById('datasets-error').textContent = '';
@@ -590,33 +632,6 @@ async function openDatasetsModal() {
 
 document.getElementById('manage-datasets-btn').addEventListener('click', openDatasetsModal);
 
-document.getElementById('backfill-region-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('backfill-region-btn');
-  btn.disabled = true; const origText = btn.textContent; btn.textContent = '處理中… Working…';
-  try {
-    const { data: candidates, error } = await supabase.from('shops')
-      .select('id,lat,lng')
-      .is('region', null)
-      .not('lat', 'is', null)
-      .not('lng', 'is', null);
-    if (error) throw error;
-    let updated = 0, noMatch = 0;
-    for (const s of (candidates || [])) {
-      const geo = lookupGeoFromCoords(s.lat, s.lng);
-      if (!geo) { noMatch++; continue; }
-      await updateShop(s.id, { region: geo.region, county: geo.county, district: geo.district });
-      updated++;
-    }
-    await refresh();
-    loadFilterOptions();
-    if (!candidates || !candidates.length) showError('沒有需要補齊地區的店家 No shops need a region backfill');
-    else showError(`已補齊 ${updated} 家店的地區資訊${noMatch ? `（${noMatch} 家座標不在資料範圍內）` : ''} · Filled region for ${updated} shop(s)${noMatch ? `, ${noMatch} outside coverage` : ''}`);
-  } catch (e) {
-    showError(e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = origText;
-  }
-});
 document.getElementById('datasets-modal-close').addEventListener('click', () => { document.getElementById('datasets-modal').style.display = 'none'; refresh(); });
 document.getElementById('datasets-close-btn').addEventListener('click', () => { document.getElementById('datasets-modal').style.display = 'none'; refresh(); });
 document.getElementById('datasets-modal').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.style.display = 'none'; refresh(); } });
@@ -691,20 +706,28 @@ document.getElementById('delete-selected-btn').addEventListener('click', async (
   const n = selectedIds.size;
   if (!n) return;
   if (!confirm(`確定要刪除已選取的 ${n} 家店家嗎？此操作無法復原。\nDelete ${n} selected shops? This cannot be undone.`)) return;
-  document.getElementById('delete-selected-btn').disabled = true;
   await bulkDelete([...selectedIds]);
 });
 
 document.getElementById('bulk-status-select').addEventListener('change', updateSelectionBar);
+document.getElementById('bulk-rep-select').addEventListener('change', updateSelectionBar);
 
 document.getElementById('bulk-status-apply-btn').addEventListener('click', async () => {
   const n = selectedIds.size;
   const status = document.getElementById('bulk-status-select').value;
-  if (!n || !status) return;
+  if (!n || status === '__placeholder__') return;
   const info = STATUS_LABELS[status] || { zh: status, en: status };
   if (!confirm(`確定要將已選取的 ${n} 家店家狀態改為「${info.zh}」嗎？\nChange status of ${n} selected shops to "${info.en}"?`)) return;
-  document.getElementById('bulk-status-apply-btn').disabled = true;
   await bulkUpdateStatus([...selectedIds], status);
+});
+
+document.getElementById('bulk-rep-apply-btn').addEventListener('click', async () => {
+  const n = selectedIds.size;
+  const rep = document.getElementById('bulk-rep-select').value;
+  if (!n || rep === '__placeholder__') return;
+  const repLabelText = rep || '未指派 Unassigned';
+  if (!confirm(`確定要將已選取的 ${n} 家店家業務員改為「${repLabelText}」嗎？\nChange sales rep of ${n} selected shops to "${repLabelText}"?`)) return;
+  await bulkUpdateSalesRep([...selectedIds], rep);
 });
 
 // refreshDatasets() must resolve before the first refresh() so the "Taiwan Bike Shops" default
@@ -855,7 +878,7 @@ document.getElementById('csv-file-input').addEventListener('change', e => {
         }
       });
 
-      const { data: existingShops } = await supabase.from('shops').select('name,address,lat,lng');
+      const existingShops = await loadAllShopsForDupCheck();
       csvDupMatches = csvRows.map(row => findDuplicateMatch(row, existingShops || []));
       csvSkipSet = new Set(csvDupMatches.map((m, i) => m ? i : -1).filter(i => i >= 0));
 

@@ -1,17 +1,53 @@
 import { supabase } from './supabase-client.js';
 
-export async function loadShops({ status, search, region, salesRep, datasetId, onlyMine, userId } = {}) {
-  let q = supabase.from('shops').select('*').order('created_at', { ascending: false });
-  if (status && status !== 'all') q = q.eq('status', status);
-  if (search) q = q.ilike('name', `%${search}%`);
-  if (region && region !== 'all') q = q.eq('region', region);
-  if (salesRep && salesRep !== 'all') q = q.eq('sales_rep', salesRep);
-  if (datasetId === 'unassigned') q = q.is('dataset_id', null);
-  else if (datasetId && datasetId !== 'all') q = q.eq('dataset_id', datasetId);
-  if (onlyMine && userId) q = q.eq('created_by', userId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data;
+// PostgREST caps any single query at 1000 rows by default — a plain .select() silently
+// truncates past that. Page through with .range() until a page comes back short, same fix
+// as the map planner's fetchAllShopsForDataset(). Any query that can return >1000 rows
+// (this one, and the dataset-count tally in shops.html's openDatasetsModal) needs this.
+async function fetchAllPages(buildQuery) {
+  const PAGE_SIZE = 1000;
+  let offset = 0, all = [];
+  while (true) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
+export async function loadShops({ status, search, region, county, salesRep, datasetId, onlyMine, userId } = {}) {
+  return fetchAllPages((from, to) => {
+    let q = supabase.from('shops').select('*').order('created_at', { ascending: false });
+    if (status && status !== 'all') q = q.eq('status', status);
+    if (search) q = q.ilike('name', `%${search}%`);
+    if (region && region !== 'all') q = q.eq('region', region);
+    if (county && county !== 'all') q = q.eq('county', county);
+    if (salesRep && salesRep !== 'all') q = q.eq('sales_rep', salesRep);
+    if (datasetId === 'unassigned') q = q.is('dataset_id', null);
+    else if (datasetId && datasetId !== 'all') q = q.eq('dataset_id', datasetId);
+    if (onlyMine && userId) q = q.eq('created_by', userId);
+    return q.range(from, to);
+  });
+}
+
+// Used by CSV import's duplicate check — needs every existing shop's name/address/lat/lng
+// to compare against, not just the first 1000.
+export async function loadAllShopsForDupCheck() {
+  return fetchAllPages((from, to) =>
+    supabase.from('shops').select('name,address,lat,lng').range(from, to)
+  );
+}
+
+export async function countAllShopsByDataset() {
+  const rows = await fetchAllPages((from, to) =>
+    supabase.from('shops').select('dataset_id').range(from, to)
+  );
+  const counts = {};
+  rows.forEach(s => { if (s.dataset_id) counts[s.dataset_id] = (counts[s.dataset_id] || 0) + 1; });
+  return counts;
 }
 
 export async function getShop(id) {
