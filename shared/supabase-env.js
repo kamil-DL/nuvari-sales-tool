@@ -39,5 +39,9 @@ if (IS_STAGING) {
     banner.textContent = '⚠ DEV DATA MODE (?env=dev) — not production data';
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#E0584A;color:#fff;text-align:center;font:700 12px/1.4 sans-serif;padding:6px 8px;';
     document.body.prepend(banner);
+    // position:fixed takes the banner out of normal flow, so without this it just overlaps
+    // whatever's at the top of the page (header buttons, etc.) instead of pushing it down —
+    // and since it isn't pointer-events:none, anything underneath becomes unclickable.
+    document.body.style.paddingTop = banner.offsetHeight + 'px';
   });
 }

@@ -233,9 +233,36 @@ if(_forcedDev&&!['localhost','127.0.0.1'].includes(window.location.hostname)){
     banner.textContent='⚠ DEV DATA MODE (?env=dev) — not production data';
     banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#E0584A;color:#fff;text-align:center;font:700 12px/1.4 sans-serif;padding:6px 8px;';
     document.body.prepend(banner);
+    // .app is a fixed 100vh flex column — the banner is position:fixed (out of flow) so it was
+    // just overlapping the top of the map/toolbar instead of pushing them down, covering the
+    // topmost markers/buttons and (since it isn't pointer-events:none) blocking clicks on them.
+    const h=banner.offsetHeight;
+    document.body.style.paddingTop=h+'px';
+    const appEl=document.querySelector('.app');
+    if(appEl)appEl.style.height=`calc(100vh - ${h}px)`;
   });
 }
 let currentUser=null; // {id,email}
+
+// Sales-rep options for the Shop-DB popup's edit form — loaded once at boot from the same
+// public.user_directory view NST's dropdowns use (real registered accounts, not freeform text).
+let repDirectory=[];
+async function loadRepDirectory(){
+  try{
+    const{data,error}=await sbClient.from('user_directory').select('id,email').order('email');
+    if(!error&&data)repDirectory=data;
+  }catch(e){}
+}
+function repLabel(email){return email?email.split('@')[0]:'';}
+function repOptionsHtml(current){
+  const opts=repDirectory.map(u=>repLabel(u.email)).filter((v,i,a)=>a.indexOf(v)===i);
+  let html=`<option value=""${!current?' selected':''}>未指派 Unassigned</option>`;
+  html+=opts.map(label=>`<option value="${esc(label)}"${label===current?' selected':''}>${esc(label)}</option>`).join('');
+  if(current&&!opts.includes(current)){
+    html+=`<option value="${esc(current)}" selected>${esc(current)} (unknown)</option>`;
+  }
+  return html;
+}
 
 // Supabase silently rotates the refresh token on every use (incl. its own background
 // auto-refresh ~hourly). Without this, the nst-session-v1/nst-user-v1 cache shared with
@@ -313,6 +340,12 @@ function onAuthReady(session){
     document.getElementById('account-area').style.display='flex';
     document.getElementById('account-email').textContent=u.email;
   }
+  // Retry now that a session actually exists — the boot-time call can run before sign-in
+  // resolves. Popups are pre-rendered HTML strings (bindPopup), not regenerated per-open, so if
+  // any markers already rendered before the directory loaded, their rep dropdown would be stuck
+  // showing "(unknown)" for the signed-in user even after repDirectory is populated — refresh
+  // them once the directory is actually ready.
+  loadRepDirectory().then(()=>{ if(csvLayers.length>0)rebuildBikeshopMarkers(); });
   // Verify in background and update if needed
   sbClient.auth.getUser().then(({data})=>{
     if(data?.user){
@@ -1230,16 +1263,18 @@ function buildBikeshopPopup(shop){
   const phoneLine=shop.contact_phone?`<div class="bs-addr">Tel: ${esc(shop.contact_phone)}</div>`:'';
   // Shop-DB-backed rows can be edited in place (status/sales rep/notes) without leaving the
   // map — same RLS as delete (only the row's creator can write), checked at save time below.
+  const fullEditHref=shop._dbId?`nst/shop-detail.html?id=${encodeURIComponent(shop._dbId)}${_forcedDev?'&env=dev':''}`:'';
   const editBlock=shop._dbId?`
     <button class="btn bs-edit-toggle-btn" style="font-size:10px;padding:3px 8px;margin-top:4px;width:100%;">✏️ 編輯 Edit</button>
     <div class="bs-edit-form" style="display:none;margin-top:6px;">
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">狀態 Status</label>
       <select class="bs-edit-status" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${statusOptionsHtml(shop.status)}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">業務員 Sales rep</label>
-      <input type="text" class="bs-edit-rep" value="${esc(shop.sales_rep||'')}" placeholder="未指派 Unassigned" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;"/>
+      <select class="bs-edit-rep" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${repOptionsHtml(shop.sales_rep||'')}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">備註 Notes</label>
       <textarea class="bs-edit-notes" rows="2" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;resize:vertical;">${esc(shop.notes||'')}</textarea>
       <button class="btn btn-teal bs-edit-save-btn" style="font-size:10px;padding:3px 8px;width:100%;">💾 儲存 Save</button>
+      <a href="${fullEditHref}" target="_blank" rel="noopener" class="btn" style="font-size:10px;padding:3px 8px;margin-top:6px;width:100%;display:block;text-align:center;box-sizing:border-box;">🔗 開啟完整編輯 Open full edit</a>
     </div>`:'';
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
@@ -2221,6 +2256,7 @@ function loadSession(){
   initMap();
   bindControls();
   loadSession();
+  loadRepDirectory();
   document.getElementById('radiusInput').value=targetRadiusKm;
   document.querySelectorAll('#colorModeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===colorMode));
   document.querySelectorAll('#detailLevelSeg button').forEach(b=>b.classList.toggle('active',b.dataset.level===detailLevel));
