@@ -1155,6 +1155,51 @@ function rebuildBikeshopMarkers(){
           toast(`已移除「${shop.name}」Removed`);
         });
       }
+      const editToggleBtn=el.querySelector('.bs-edit-toggle-btn');
+      const editForm=el.querySelector('.bs-edit-form');
+      if(editToggleBtn&&editForm){
+        editToggleBtn.addEventListener('click',()=>{
+          const showing=editForm.style.display!=='none';
+          editForm.style.display=showing?'none':'';
+          editToggleBtn.textContent=showing?'✏️ 編輯 Edit':'✕ 取消編輯 Cancel edit';
+        });
+        const saveBtn=el.querySelector('.bs-edit-save-btn');
+        saveBtn.addEventListener('click',async()=>{
+          const newStatus=el.querySelector('.bs-edit-status').value;
+          const newRep=el.querySelector('.bs-edit-rep').value.trim()||null;
+          const newNotes=el.querySelector('.bs-edit-notes').value.trim()||null;
+          saveBtn.disabled=true;saveBtn.textContent='儲存中… Saving…';
+          // Same RLS as delete (creator-only write) — a 0-row result means "not your shop",
+          // not a network error, so it needs its own message rather than looking like success.
+          const{data,error}=await sbClient.from('shops')
+            .update({status:newStatus,sales_rep:newRep,notes:newNotes})
+            .eq('id',shop._dbId).select();
+          if(error){
+            toast('儲存失敗 Failed to save: '+error.message,'err');
+            saveBtn.disabled=false;saveBtn.textContent='💾 儲存 Save';
+            return;
+          }
+          if(!data||data.length===0){
+            toast('無法儲存 — 您可能不是此店家的建立者 Could not save — you may not be the owner','err');
+            saveBtn.disabled=false;saveBtn.textContent='💾 儲存 Save';
+            return;
+          }
+          shop.status=newStatus;shop.sales_rep=newRep;shop.notes=newNotes;
+          const layer=csvLayers.find(l=>l.id===shop._layerId);
+          if(layer){
+            const orig=layer.data.find(s=>s._dbId===shop._dbId);
+            if(orig){orig.status=newStatus;orig.sales_rep=newRep;orig.notes=newNotes;}
+            // Status filter is a per-layer whitelist Set — without this, changing a shop to a
+            // status that isn't currently checked would make it silently vanish from view,
+            // looking like the edit failed or deleted it.
+            if(layer.statusFilters)layer.statusFilters.add(newStatus);
+          }
+          persistBikeshops();
+          rebuildBikeshopMarkers();
+          renderShopsTab();
+          toast(`已更新「${shop.name}」Updated`);
+        });
+      }
     });
   });
   updateShopsLayerBtn();
@@ -1183,6 +1228,19 @@ function buildBikeshopPopup(shop){
   const googleRatingBadge=shop.google_rating!=null?`<span class="bs-badge" style="background:#FFF3E0;color:#E65100;margin-left:5px;">★ ${shop.google_rating}${shop.google_rating_count!=null?` (${shop.google_rating_count})`:''}</span>`:'';
   const categoryLine=shop.category?`<div class="bs-addr" style="color:var(--soft,#798BA5);">${esc(shop.category)}${shop.business_status&&shop.business_status!=='OPERATIONAL'?` · ${esc(shop.business_status)}`:''}</div>`:'';
   const phoneLine=shop.contact_phone?`<div class="bs-addr">Tel: ${esc(shop.contact_phone)}</div>`:'';
+  // Shop-DB-backed rows can be edited in place (status/sales rep/notes) without leaving the
+  // map — same RLS as delete (only the row's creator can write), checked at save time below.
+  const editBlock=shop._dbId?`
+    <button class="btn bs-edit-toggle-btn" style="font-size:10px;padding:3px 8px;margin-top:4px;width:100%;">✏️ 編輯 Edit</button>
+    <div class="bs-edit-form" style="display:none;margin-top:6px;">
+      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">狀態 Status</label>
+      <select class="bs-edit-status" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${statusOptionsHtml(shop.status)}</select>
+      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">業務員 Sales rep</label>
+      <input type="text" class="bs-edit-rep" value="${esc(shop.sales_rep||'')}" placeholder="未指派 Unassigned" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;"/>
+      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">備註 Notes</label>
+      <textarea class="bs-edit-notes" rows="2" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;resize:vertical;">${esc(shop.notes||'')}</textarea>
+      <button class="btn btn-teal bs-edit-save-btn" style="font-size:10px;padding:3px 8px;width:100%;">💾 儲存 Save</button>
+    </div>`:'';
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
     ${layer?`<div style="font-size:10px;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(layer.color)};margin-right:4px;vertical-align:middle;"></span>${esc(layer.name)}</div>`:''}
@@ -1192,8 +1250,12 @@ function buildBikeshopPopup(shop){
     ${phoneLine}
     <div style="margin:6px 0;">${swatches}</div>
     ${gmapsLink}
+    ${editBlock}
     ${delBtn}
   </div>`;
+}
+function statusOptionsHtml(current){
+  return Object.keys(STATUS_STYLE).filter(k=>k!=='default').map(k=>`<option value="${esc(k)}"${k===current?' selected':''}>${esc(STATUS_STYLE[k].label)}</option>`).join('');
 }
 
 /* ══ CSV parser ══ */
