@@ -320,7 +320,7 @@ async function doSignIn(){
     try{localStorage.setItem('nst-user-v1',JSON.stringify({id:data.user.id,email:data.user.email}));}catch(e){}
     try{localStorage.setItem('nst-session-project-v1',SUPABASE_URL);}catch(e){}
   }
-  location.href='index.html';
+  location.href='../index.html';
 }
 
 async function doSetPassword(){

@@ -15,10 +15,14 @@ cp -R nst stable/nst
 cp -R shared stable/shared
 
 # stable/map.html and stable/nst/*.html are one level deeper than their root counterparts.
+# The location.href rule fixes the post-sign-in redirect specifically — it's a bare JS string
+# literal ('index.html'), not an HTML attribute, so the href="..." rule above doesn't catch it.
+# Missing this once sent a freshly-signed-in Stable user to a 404 at stable/index.html.
 sed -i '' \
   -e 's/src="assets\//src="..\/assets\//g' \
   -e 's/href="index\.html"/href="..\/index.html"/g' \
   -e 's/url(assets\//url(..\/assets\//g' \
+  -e "s/location\.href='index\.html'/location.href='..\/index.html'/g" \
   stable/map.html
 
 for f in stable/nst/*.html; do
