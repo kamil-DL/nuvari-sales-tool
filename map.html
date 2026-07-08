@@ -227,6 +227,13 @@ const _isLocal=['localhost','127.0.0.1'].includes(window.location.hostname)||_fo
 const SUPABASE_URL=_isLocal?'https://iytzwajjacmuffebuuzd.supabase.co':'https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY=_isLocal?'sb_publishable_F6xTfWNcQflW305r0iw37Q_ZBf91uDy':'sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';
 const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+// Beta (this file) and Stable (stable/map.html) share the same origin, so a single unscoped
+// localStorage key would let cached shop-layer data (with real DB row ids) leak between dev and
+// prod — e.g. caching a layer while pointed at prod, then loading that same cache while in dev
+// mode, produces pins whose _dbId only exists in the OTHER database. "Open full edit" on one of
+// those then 404s/"Cannot coerce the result to a single JSON object" since the id doesn't exist
+// in whichever database the link points at. Scoping the key by environment prevents this.
+const BIKESHOPS_STORAGE_KEY='nuvari_bikeshops_'+(_isLocal?'dev':'prod');
 if(_forcedDev&&!['localhost','127.0.0.1'].includes(window.location.hostname)){
   document.addEventListener('DOMContentLoaded',()=>{
     const banner=document.createElement('div');
@@ -2345,7 +2352,7 @@ function persistBikeshops(){
       gRatingBucketFilters:l.gRatingBucketFilters?[...l.gRatingBucketFilters]:[],
       rCountBucketFilters:l.rCountBucketFilters?[...l.rCountBucketFilters]:[]
     }));
-    localStorage.setItem('nuvari_bikeshops',JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
+    localStorage.setItem(BIKESHOPS_STORAGE_KEY,JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
     const badge=document.getElementById('shopTabBadge');if(badge&&bikeshopData.length>0)badge.textContent=`(${bikeshopData.length})`;
   }catch(e){}
 }
@@ -2355,7 +2362,7 @@ function loadSession(){
   // showing whatever pins were left over from a previous, unsaved session.
   try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;if(s.defaultPinColor)defaultPinColor=s.defaultPinColor;if(s.defaultIsochroneMinutes)defaultIsochroneMinutes=s.defaultIsochroneMinutes;if(s.clusterEnabled!==undefined)clusterEnabled=s.clusterEnabled;}}catch{}
   try{
-    const v=localStorage.getItem('nuvari_bikeshops');
+    const v=localStorage.getItem(BIKESHOPS_STORAGE_KEY);
     if(v){
       const b=JSON.parse(v);
       if(b.layers&&b.layers.length>0){

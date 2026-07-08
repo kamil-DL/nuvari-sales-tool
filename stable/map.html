@@ -214,6 +214,9 @@ const SUPABASE_URL='https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';
 const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const _forcedDev=false; // referenced elsewhere (e.g. the map's "open full edit" deep link)
+// Scoped separately from Beta's cache (see root map.html) so cached shop layers never leak
+// between dev and prod — Beta and Stable share the same origin/localStorage.
+const BIKESHOPS_STORAGE_KEY='nuvari_bikeshops_prod';
 let currentUser=null; // {id,email}
 // Delete is restricted to one account (see shared/delete-policy.js — this is a duplicate since
 // map.html is a classic script and can't import it synchronously; keep both in sync). Everyone
@@ -671,19 +674,29 @@ function groupHeader(label,layerId,field,extraBtnHtml){
    map/list display AND the per-dataset export button, so exporting always matches what's shown.
    Convention throughout: an empty (zero-selected) filter Set behaves like an inactive filter
    (shows everything) — deselecting every option isn't the same as excluding every shop. */
-function shopPassesLayerFilters(shop,layer){
-  if(!layer.statusFilters.has(shop.status))return false;
-  if(!layer.priorityFilters.has(priorityKey(shop)))return false;
+// exceptField lets a chip's own displayed count skip its own filter dimension while still
+// respecting every OTHER active filter — e.g. the 台東縣 chip's count should reflect "how many
+// Taitung shops match given the status/priority/etc. filters you already have active", not the
+// raw county total. Without this, chip counts and the actual "N/total shown" figure could
+// disagree wildly (e.g. a county chip showing 54 while a status filter elsewhere had already
+// narrowed the true visible set down to 18), which read as the filters "conflicting".
+function shopPassesLayerFilters(shop,layer,exceptField){
+  if(exceptField!=='statusFilters' && !layer.statusFilters.has(shop.status))return false;
+  if(exceptField!=='priorityFilters' && !layer.priorityFilters.has(priorityKey(shop)))return false;
   // tier/region/sales-rep filters: a shop with no value for that field always passes through
   // (not excluded just because it lacks that particular piece of data)
-  if(shop.ratingGroup && layer.ratingFilters.size>0 && !layer.ratingFilters.has(shop.ratingGroup))return false;
-  if(shop.region && layer.regionFilters.size>0 && !layer.regionFilters.has(shop.region))return false;
-  if(shop.county && layer.countyFilters.size>0 && !layer.countyFilters.has(shop.county))return false;
-  if(shop.sales_rep && layer.salesRepFilters.size>0 && !layer.salesRepFilters.has(shop.sales_rep))return false;
-  const grb=gRatingBucketKey(shop.google_rating);
-  if(layer.gRatingBucketFilters.size>0 && !layer.gRatingBucketFilters.has(grb))return false;
-  const rcb=rCountBucketKey(shop.google_rating_count);
-  if(layer.rCountBucketFilters.size>0 && !layer.rCountBucketFilters.has(rcb))return false;
+  if(exceptField!=='ratingFilters' && shop.ratingGroup && layer.ratingFilters.size>0 && !layer.ratingFilters.has(shop.ratingGroup))return false;
+  if(exceptField!=='regionFilters' && shop.region && layer.regionFilters.size>0 && !layer.regionFilters.has(shop.region))return false;
+  if(exceptField!=='countyFilters' && shop.county && layer.countyFilters.size>0 && !layer.countyFilters.has(shop.county))return false;
+  if(exceptField!=='salesRepFilters' && shop.sales_rep && layer.salesRepFilters.size>0 && !layer.salesRepFilters.has(shop.sales_rep))return false;
+  if(exceptField!=='gRatingBucketFilters'){
+    const grb=gRatingBucketKey(shop.google_rating);
+    if(layer.gRatingBucketFilters.size>0 && !layer.gRatingBucketFilters.has(grb))return false;
+  }
+  if(exceptField!=='rCountBucketFilters'){
+    const rcb=rCountBucketKey(shop.google_rating_count);
+    if(layer.rCountBucketFilters.size>0 && !layer.rCountBucketFilters.has(rcb))return false;
+  }
   return true;
 }
 function rebuildBikeshopDataFromLayers(){
@@ -1806,47 +1819,47 @@ function renderShopsTab(){
     const showRatingFilters=kind!=='infrastructure';
     const statChips=[...new Set(layer.data.map(s=>s.status))].map(st=>{
       const style=statusStyle(st);
-      const cnt=layer.data.filter(s=>s.status===st).length;
+      const cnt=layer.data.filter(s=>s.status===st&&shopPassesLayerFilters(s,layer,'statusFilters')).length;
       const active=layer.statusFilters.has(st);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-status="${esc(st)}" style="--dot-color:${esc(style.color)};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(st)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const priorityChips=PRIORITY_ORDER.map(p=>{
-      const cnt=layer.data.filter(s=>priorityKey(s)===p.key).length;
+      const cnt=layer.data.filter(s=>priorityKey(s)===p.key&&shopPassesLayerFilters(s,layer,'priorityFilters')).length;
       const active=layer.priorityFilters.has(p.key);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-priority="${p.key}" style="--dot-color:${p.color};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(p.label)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const ratingGroups=[...new Set(layer.data.map(s=>s.ratingGroup).filter(Boolean))].sort();
     const ratingChips=ratingGroups.map(rg=>{
-      const cnt=layer.data.filter(s=>s.ratingGroup===rg).length;
+      const cnt=layer.data.filter(s=>s.ratingGroup===rg&&shopPassesLayerFilters(s,layer,'ratingFilters')).length;
       const active=layer.ratingFilters.has(rg);
       const col=RATING_COLORS[rg]||'#798BA5';
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-rating="${esc(rg)}" style="--dot-color:${col};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(rg)} 級<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const gRatingChips=GRATING_BUCKETS.map(b=>{
-      const cnt=layer.data.filter(s=>gRatingBucketKey(s.google_rating)===b.key).length;
+      const cnt=layer.data.filter(s=>gRatingBucketKey(s.google_rating)===b.key&&shopPassesLayerFilters(s,layer,'gRatingBucketFilters')).length;
       const active=layer.gRatingBucketFilters.has(b.key);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-gratingbucket="${b.key}" style="--dot-color:#E65100;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(b.label)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const rCountChips=RCOUNT_BUCKETS.map(b=>{
-      const cnt=layer.data.filter(s=>rCountBucketKey(s.google_rating_count)===b.key).length;
+      const cnt=layer.data.filter(s=>rCountBucketKey(s.google_rating_count)===b.key&&shopPassesLayerFilters(s,layer,'rCountBucketFilters')).length;
       const active=layer.rCountBucketFilters.has(b.key);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-rcountbucket="${b.key}" style="--dot-color:#D97706;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(b.label)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const regions=[...new Set(layer.data.map(s=>s.region).filter(Boolean))].sort();
     const regionChips=regions.map(rg=>{
-      const cnt=layer.data.filter(s=>s.region===rg).length;
+      const cnt=layer.data.filter(s=>s.region===rg&&shopPassesLayerFilters(s,layer,'regionFilters')).length;
       const active=layer.regionFilters.has(rg);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-region="${esc(rg)}" style="--dot-color:#3B6FD9;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(rg)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const counties=[...new Set(layer.data.map(s=>s.county).filter(Boolean))].sort((a,b)=>countyNSRankZH(a)-countyNSRankZH(b));
     const countyChips=counties.map(cty=>{
-      const cnt=layer.data.filter(s=>s.county===cty).length;
+      const cnt=layer.data.filter(s=>s.county===cty&&shopPassesLayerFilters(s,layer,'countyFilters')).length;
       const active=layer.countyFilters.has(cty);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-county="${esc(cty)}" style="--dot-color:#1FA67A;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(cty)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const salesReps=[...new Set(layer.data.map(s=>s.sales_rep).filter(Boolean))].sort();
     const salesRepChips=salesReps.map(sr=>{
-      const cnt=layer.data.filter(s=>s.sales_rep===sr).length;
+      const cnt=layer.data.filter(s=>s.sales_rep===sr&&shopPassesLayerFilters(s,layer,'salesRepFilters')).length;
       const active=layer.salesRepFilters.has(sr);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-salesrep="${esc(sr)}" style="--dot-color:#8B5CF6;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(sr)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
@@ -1873,9 +1886,12 @@ function renderShopsTab(){
         <button class="btn layer-export-btn" data-lid="${esc(layer.id)}" title="匯出此資料集（依目前篩選）Export this dataset (respects active filters)" style="font-size:12px;padding:5px 9px;">⬇</button>
         <button class="btn btn-red layer-del-btn" data-lid="${esc(layer.id)}" style="font-size:12px;padding:5px 11px;">✕</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${filtersOpen?'6px':'0'};">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${filtersOpen?'6px':'0'};gap:6px;">
         <span style="font-size:10px;color:var(--soft);">${visCount} / ${layer.data.length} shops shown</span>
-        <button class="btn layer-filters-btn" data-lid="${esc(layer.id)}" style="font-size:10.5px;padding:3px 9px;${filtersOpen?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">⚙ 篩選 Filters${filtersOpen?' ▾':' ▸'}</button>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button class="btn layer-zoom-btn" data-lid="${esc(layer.id)}" title="縮放地圖至目前篩選出的店家 Zoom the map to fit the shops currently shown" style="font-size:10.5px;padding:3px 9px;">🔍 縮放 Zoom</button>
+          <button class="btn layer-filters-btn" data-lid="${esc(layer.id)}" style="font-size:10.5px;padding:3px 9px;${filtersOpen?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">⚙ 篩選 Filters${filtersOpen?' ▾':' ▸'}</button>
+        </div>
       </div>
       ${filtersOpen?`<div class="layer-filters-panel">${filterGroups}</div>`:''}
     </div>`;
@@ -1921,6 +1937,15 @@ function renderShopsTab(){
       downloadCSV(`${layer.name.replace(/[^\w一-鿿-]+/g,'_')}-${new Date().toISOString().slice(0,10)}.csv`,rows,
         ['name','status','priority','category','address','region','county','district','sales_rep','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status']);
       toast(`已匯出 ${rows.length} 筆（共 ${layer.data.length} 筆）Exported ${rows.length} of ${layer.data.length}`);
+    });
+  });
+  el.querySelectorAll('.layer-zoom-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
+      ensureLayerFilterDefaults(layer);
+      const rows=layer.data.filter(s=>shopPassesLayerFilters(s,layer));
+      if(!rows.length){toast('目前篩選下沒有符合的店家可縮放至 No shops match the current filters to zoom to','err');return;}
+      map.fitBounds(L.latLngBounds(rows.map(s=>[s.lat,s.lng])),{padding:[40,40]});
     });
   });
   el.querySelectorAll('.layer-del-btn').forEach(btn=>{
@@ -2295,7 +2320,7 @@ function persistBikeshops(){
       gRatingBucketFilters:l.gRatingBucketFilters?[...l.gRatingBucketFilters]:[],
       rCountBucketFilters:l.rCountBucketFilters?[...l.rCountBucketFilters]:[]
     }));
-    localStorage.setItem('nuvari_bikeshops',JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
+    localStorage.setItem(BIKESHOPS_STORAGE_KEY,JSON.stringify({layers:serializableLayers,activeLayerIds:[...activeLayerIds]}));
     const badge=document.getElementById('shopTabBadge');if(badge&&bikeshopData.length>0)badge.textContent=`(${bikeshopData.length})`;
   }catch(e){}
 }
@@ -2305,7 +2330,7 @@ function loadSession(){
   // showing whatever pins were left over from a previous, unsaved session.
   try{const v=localStorage.getItem('nuvari_settings');if(v){const s=JSON.parse(v);if(s.targetRadiusKm)targetRadiusKm=Math.min(20,Math.max(0.5,s.targetRadiusKm));if(s.colorMode)colorMode=s.colorMode;if(s.detailLevel)detailLevel=s.detailLevel;if(s.basemapMode)basemapMode=s.basemapMode;if(s.defaultPinShape)defaultPinShape=s.defaultPinShape;if(s.defaultPinColor)defaultPinColor=s.defaultPinColor;if(s.defaultIsochroneMinutes)defaultIsochroneMinutes=s.defaultIsochroneMinutes;if(s.clusterEnabled!==undefined)clusterEnabled=s.clusterEnabled;}}catch{}
   try{
-    const v=localStorage.getItem('nuvari_bikeshops');
+    const v=localStorage.getItem(BIKESHOPS_STORAGE_KEY);
     if(v){
       const b=JSON.parse(v);
       if(b.layers&&b.layers.length>0){
