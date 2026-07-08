@@ -304,10 +304,19 @@ function regionBadge(region) {
     : `<span class="nst-badge badge-gray">${esc(region)}</span>`;
 }
 
-function priorityBadge(priority) {
-  if (!priority) return '';
-  const info = PRIORITY_LABELS[priority] || { zh: priority, color: 'badge-gray' };
-  return `<span class="nst-badge ${info.color}">${esc(info.zh)}</span>`;
+// Editable directly from the list — no need to open the shop to just flag/change priority.
+// Colors are inlined per-option's hex (shared with the map's PRIORITY_STYLE) since a <select>'s
+// own color has to be set from JS, not a CSS class keyed to the currently selected value.
+function priorityInlineSelect(s) {
+  const cur = s.priority || '';
+  const info = cur ? PRIORITY_LABELS[cur] : null;
+  const color = info ? info.hex : '#798BA5';
+  const bg = info ? `${info.hex}1A` : '#EDEFF2';
+  const opts = ['', 'P1', 'P2', 'P3'].map(v => {
+    const label = v || '無 None';
+    return `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
+  }).join('');
+  return `<select class="nst-badge-select priority-inline-select" data-id="${esc(s.id)}" style="background:${bg};color:${color};border-color:${color}66;">${opts}</select>`;
 }
 
 function renderShops(shops) {
@@ -340,7 +349,7 @@ function renderShops(shops) {
         ${checkbox}
         <span class="shop-card-name">${esc(s.name)}</span>
         <div class="shop-card-tags">
-          ${priorityBadge(s.priority)}
+          ${priorityInlineSelect(s)}
           ${statusBadge(s.status)}
           ${regionBadge(s.region)}
           ${dsName ? `<span class="nst-badge badge-gray">🗂 ${esc(dsName)}</span>` : ''}
@@ -354,6 +363,23 @@ function renderShops(shops) {
     : '');
   const loadMoreBtn = document.getElementById('load-more-btn');
   if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => { renderLimit += RENDER_PAGE_SIZE; renderShops(currentShops); });
+  list.querySelectorAll('.priority-inline-select').forEach(sel => {
+    sel.addEventListener('click', e => e.stopPropagation()); // don't let selection-mode's card-click toggle fire
+    sel.addEventListener('change', async () => {
+      const id = sel.dataset.id;
+      const priority = sel.value || null;
+      sel.disabled = true;
+      try {
+        await updateShop(id, { priority });
+        const shop = currentShops.find(s => s.id === id);
+        if (shop) shop.priority = priority;
+        renderShops(currentShops);
+      } catch (e) {
+        sel.disabled = false;
+        showError(friendlyError(e));
+      }
+    });
+  });
 }
 
 function enterSelectionMode() {
@@ -732,8 +758,9 @@ document.getElementById('shops-list').addEventListener('click', e => {
   if (!selectionMode) return; // normal mode: only the ↗ link inside the card navigates
   e.preventDefault(); // also stops the ↗ link from navigating while selecting
   const id = card.dataset.id;
-  const shop = currentShops.find(s => s.id === id);
-  if (!shop || shop.created_by !== user.id) return; // can only select/delete shops you created
+  // Selection is for bulk status/rep/priority edits too, which anyone can do — only the actual
+  // delete button (gated by iAmDeleter) is restricted, so selecting isn't limited to shops you
+  // created.
   if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
   renderShops(currentShops);
   updateSelectionBar();

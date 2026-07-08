@@ -25,6 +25,28 @@ function lookupIslandRegion(lat, lng) {
   return box ? { region: '離島', county: box.county, district: null } : null;
 }
 
+// Geographic north-to-south order for county filter chips/dropdowns, so they read like a real
+// map sweep instead of alphabetical. Grouped by county so both the 台/臺 spelling variants seen
+// in the data (taiwan-towns.js predominantly uses 台, but a few rows use 臺) sort identically.
+const COUNTY_NS_GROUPS = [
+  ['基隆市'], ['台北市', '臺北市'], ['新北市'], ['桃園市'], ['新竹市'], ['新竹縣'], ['宜蘭縣'],
+  ['苗栗縣'], ['台中市', '臺中市'], ['彰化縣'], ['南投縣'], ['雲林縣'],
+  ['嘉義市'], ['嘉義縣'], ['台南市', '臺南市'], ['高雄市'], ['屏東縣'],
+  ['花蓮縣'], ['台東縣', '臺東縣'],
+  ['澎湖縣'], ['金門縣'], ['連江縣'],
+];
+const COUNTY_NS_RANK = {};
+COUNTY_NS_GROUPS.forEach((names, i) => names.forEach(n => { COUNTY_NS_RANK[n] = i; }));
+
+// Unranked/unrecognized county names sort after everything else, in their original relative
+// order (stable sort), rather than being silently dropped.
+export function countyNSRank(name) {
+  return COUNTY_NS_RANK[name] !== undefined ? COUNTY_NS_RANK[name] : 999;
+}
+export function sortCountiesNS(counties) {
+  return [...counties].sort((a, b) => countyNSRank(a) - countyNSRank(b));
+}
+
 function computeBBox(geometry) {
   let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
   const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;

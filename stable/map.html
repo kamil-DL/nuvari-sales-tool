@@ -467,13 +467,9 @@ window.onPwGatePassed=async function(){
       <div id="tab-scenarios" class="tab-panel">
         <div class="scenario-form">
           <input type="text" id="scenarioNameInput" placeholder="方案名稱 e.g. 北中10km初稿…"/>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <div class="seg" id="scenarioVisibilitySeg" style="flex:1;">
-              <button data-vis="private" class="active" style="flex:1;">🔒 私人</button>
-              <button data-vis="shared" style="flex:1;">🌐 共用</button>
-            </div>
-            <button class="btn btn-teal" id="saveScenarioBtn">儲存</button>
-          </div>
+          <!-- Scenarios are private to their creator now (see supabase/migrations/0008) — no
+               more public/private toggle, so this is just the save action. -->
+          <button class="btn btn-teal" id="saveScenarioBtn" style="width:100%;">儲存 Save</button>
         </div>
         <div id="scenarioList"></div>
       </div>
@@ -501,6 +497,20 @@ function bynsOrder(a,b){
   const ia=COUNTY_NS_ORDER.indexOf(a),ib=COUNTY_NS_ORDER.indexOf(b);
   return(ia===-1?999:ia)-(ib===-1?999:ib);
 }
+/* Same north→south ordering as above, but for the Shop-DB layer's county filter chips, which
+   key off shop.county — a Chinese string (from CSV/geo lookup), not COUNTY_DATA's English keys.
+   Duplicate of shared/geo.js's countyNSRank/sortCountiesNS (kept for classic-script simplicity —
+   this is a small static list, not worth an async import() for). Keep both in sync. */
+const COUNTY_NS_GROUPS_ZH=[
+  ['基隆市'],['台北市','臺北市'],['新北市'],['桃園市'],['新竹市'],['新竹縣'],['宜蘭縣'],
+  ['苗栗縣'],['台中市','臺中市'],['彰化縣'],['南投縣'],['雲林縣'],
+  ['嘉義市'],['嘉義縣'],['台南市','臺南市'],['高雄市'],['屏東縣'],
+  ['花蓮縣'],['台東縣','臺東縣'],
+  ['澎湖縣'],['金門縣'],['連江縣']
+];
+const COUNTY_NS_RANK_ZH={};
+COUNTY_NS_GROUPS_ZH.forEach((names,i)=>names.forEach(n=>{COUNTY_NS_RANK_ZH[n]=i;}));
+function countyNSRankZH(name){ return COUNTY_NS_RANK_ZH[name]!==undefined?COUNTY_NS_RANK_ZH[name]:999; }
 const COUNTY_DATA={'Taipei City':{zh:'臺北市',region:'north',pop:2500000,area:271.80},'New Taipei City':{zh:'新北市',region:'north',pop:4002000,area:2052.57},'Keelung City':{zh:'基隆市',region:'north',pop:367000,area:132.76},'Taoyuan City':{zh:'桃園市',region:'north',pop:2300000,area:1220.95},'Hsinchu City':{zh:'新竹市',region:'north',pop:451000,area:104.15},'Hsinchu County':{zh:'新竹縣',region:'north',pop:580000,area:1427.51},'Yilan County':{zh:'宜蘭縣',region:'north',pop:451000,area:2143.62},'Taichung City':{zh:'臺中市',region:'central',pop:2816000,area:2214.90},'Miaoli County':{zh:'苗栗縣',region:'central',pop:538000,area:1820.31},'Changhua County':{zh:'彰化縣',region:'central',pop:1222000,area:1074.40},'Nantou County':{zh:'南投縣',region:'central',pop:480000,area:4106.43},'Yunlin County':{zh:'雲林縣',region:'central',pop:660000,area:1290.83},'Tainan City':{zh:'臺南市',region:'south',pop:1860000,area:2191.65},'Kaohsiung City':{zh:'高雄市',region:'south',pop:2765000,area:2951.85},'Pingtung County':{zh:'屏東縣',region:'south',pop:790000,area:2775.60},'Chiayi City':{zh:'嘉義市',region:'south',pop:264000,area:60.03},'Chiayi County':{zh:'嘉義縣',region:'south',pop:488000,area:1901.64},'Hualien County':{zh:'花蓮縣',region:'south',pop:313000,area:4628.57},'Taitung County':{zh:'臺東縣',region:'south',pop:209000,area:3515.25}};
 
 /* ══ DISTRICT (town-level) GEOJSON + lookup table (injected) ══ */
@@ -559,12 +569,12 @@ function statusStyle(s){ return STATUS_STYLE[s]||STATUS_STYLE['default']; }
 const PRIORITY_STYLE={
   'P1':{color:'#D93025',bg:'#FEE8E7',label:'P1'},
   'P2':{color:'#E65100',bg:'#FFF3E0',label:'P2'},
-  'P3':{color:'#137ECE',bg:'#E8F3FB',label:'P3'},
+  'P3':{color:'#CA8A04',bg:'#FEF9C3',label:'P3'},
 };
 const PRIORITY_ORDER=[
   {key:'P1',label:'P1',color:'#D93025'},
   {key:'P2',label:'P2',color:'#E65100'},
-  {key:'P3',label:'P3',color:'#137ECE'},
+  {key:'P3',label:'P3',color:'#CA8A04'},
   {key:'none',label:'無 None',color:'#AEB4BD'}
 ];
 function priorityKey(shop){ return shop.priority||'none'; }
@@ -634,6 +644,28 @@ function ensureLayerFilterDefaults(layer){
   // with no priority set needs its own selectable "none" bucket rather than always passing.
   if(!layer.priorityFilters)layer.priorityFilters=new Set(PRIORITY_ORDER.map(p=>p.key));
   if(!layer.kind)layer.kind='sales';
+}
+/* "Select all / Deselect all" per filter group — recomputes the same key list each chip group
+   is built from (rather than passing it through HTML) so the button always matches whatever's
+   currently rendered. */
+function allKeysForField(layer,field){
+  switch(field){
+    case'statusFilters':return[...new Set(layer.data.map(s=>s.status))];
+    case'priorityFilters':return PRIORITY_ORDER.map(p=>p.key);
+    case'ratingFilters':return[...new Set(layer.data.map(s=>s.ratingGroup).filter(Boolean))];
+    case'gRatingBucketFilters':return GRATING_BUCKETS.map(b=>b.key);
+    case'rCountBucketFilters':return RCOUNT_BUCKETS.map(b=>b.key);
+    case'regionFilters':return[...new Set(layer.data.map(s=>s.region).filter(Boolean))];
+    case'countyFilters':return[...new Set(layer.data.map(s=>s.county).filter(Boolean))];
+    case'salesRepFilters':return[...new Set(layer.data.map(s=>s.sales_rep).filter(Boolean))];
+    default:return[];
+  }
+}
+function groupHeader(label,layerId,field,extraBtnHtml){
+  // extraBtnHtml (the priority group's "color by priority" toggle) gets its own row below the
+  // label — cramming it into the same line as the label + All/None buttons made the label text
+  // wrap mid-word in the sidebar's narrow width.
+  return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-size:9px;color:var(--soft);">${label}</span><span style="display:flex;gap:4px;flex-shrink:0;"><button class="btn sf-all-btn" data-lid="${esc(layerId)}" data-field="${field}" style="font-size:9px;padding:1px 6px;">全選 All</button><button class="btn sf-none-btn" data-lid="${esc(layerId)}" data-field="${field}" style="font-size:9px;padding:1px 6px;">清除 None</button></span></div>${extraBtnHtml?`<div style="margin-bottom:4px;">${extraBtnHtml}</div>`:''}`;
 }
 /* single source of truth for "does this shop pass the layer's active filters" — used by the
    map/list display AND the per-dataset export button, so exporting always matches what's shown.
@@ -840,6 +872,13 @@ function initMap(){
   tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri Maxar',maxZoom:19});
   tileLight.addTo(map);
   L.control.layers({'簡約 Light':tileLight,'街道 Streets':tileStreets,'衛星 Satellite':tileSat},null,{position:'topright',collapsed:true}).addTo(map);
+  // Shop-DB pins (L.circleMarker, a vector layer) render in the same default overlayPane as the
+  // county/district choropleth polygons (also vector layers) — so whichever was most recently
+  // added/re-added to the map (e.g. switching detail level re-adds the polygon layer) ends up on
+  // top in the DOM and swallows clicks meant for the pins underneath. A dedicated pane above
+  // overlayPane (400) guarantees pins are always clickable regardless of add/re-add order.
+  map.createPane('shopPane');
+  map.getPane('shopPane').style.zIndex=450;
   markersLayer=L.layerGroup().addTo(map);
   circlesLayer=L.layerGroup().addTo(map);
   bikeshopGroup=createBikeshopGroup().addTo(map);
@@ -928,7 +967,9 @@ function setBasemap(mode){
 }
 
 /* ══ dealer pin icon ══ */
-const PIN_COLORS=['#282828','#137ECE','#E08E2C','#3B6FD9','#1FA67A','#8B5CF6','#E0584A','#D97706','#059669','#DB2777'];
+// Red/orange/yellow are reserved for priority (P1/P2/P3, see PRIORITY_STYLE) so a custom pin
+// color is never visually confusable with a priority-colored pin.
+const PIN_COLORS=['#282828','#137ECE','#3B6FD9','#1FA67A','#8B5CF6','#059669','#DB2777'];
 function renderDefaultColorSwatches(){
   const el=document.getElementById('defaultColorSwatches');
   if(!el)return;
@@ -1129,7 +1170,7 @@ function rebuildBikeshopMarkers(){
       ?(PRIORITY_STYLE[shop.priority]?PRIORITY_STYLE[shop.priority].color:'#AEB4BD')
       :(shop.customColor||shop._layerColor||statusStyle(shop.status).color);
     const m=L.circleMarker([shop.lat,shop.lng],{
-      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9
+      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9,pane:'shopPane'
     }).addTo(bikeshopGroup);
     m.bindPopup(buildBikeshopPopup(shop),{maxWidth:230,closeOnClick:false});
     m.on('click',e=>L.DomEvent.stopPropagation(e));
@@ -1797,7 +1838,7 @@ function renderShopsTab(){
       const active=layer.regionFilters.has(rg);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-region="${esc(rg)}" style="--dot-color:#3B6FD9;font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(rg)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
-    const counties=[...new Set(layer.data.map(s=>s.county).filter(Boolean))].sort();
+    const counties=[...new Set(layer.data.map(s=>s.county).filter(Boolean))].sort((a,b)=>countyNSRankZH(a)-countyNSRankZH(b));
     const countyChips=counties.map(cty=>{
       const cnt=layer.data.filter(s=>s.county===cty).length;
       const active=layer.countyFilters.has(cty);
@@ -1812,15 +1853,16 @@ function renderShopsTab(){
     // All applicable filter groups for this layer, gated by kind — collapsed by default behind
     // the "⚙ Filters" button so a growing number of datasets/filter dimensions doesn't clutter
     // the list. layer._filtersOpen is in-memory UI state, not persisted.
+    const priorityColorBtn=`<button class="btn layer-priority-color-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:1px 6px;${layer.colorByPriority?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 依優先順序著色 Color by priority</button>`;
     const filterGroups=[
-      showStatusRep?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${statChips}</div>`:'',
-      showStatusRep?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-size:9px;color:var(--soft);">優先順序 Priority</span><button class="btn layer-priority-color-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByPriority?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 圖釘依優先順序著色 Color pins by priority</button></div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${priorityChips}</div>`:'',
-      (showStatusRep&&ratingGroups.length)?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">店家等級 Shop rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${ratingChips}</div>`:'',
-      showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評分 Google rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${gRatingChips}</div>`:'',
-      showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評論數 Review count</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${rCountChips}</div>`:'',
-      regions.length?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">地區 Region</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${regionChips}</div>`:'',
-      counties.length?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">縣市 County</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${countyChips}</div>`:'',
-      (showStatusRep&&salesReps.length)?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">業務員 Sales rep</div><div style="display:flex;flex-wrap:wrap;gap:4px;">${salesRepChips}</div>`:''
+      showStatusRep?`${groupHeader('狀態 Status',layer.id,'statusFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${statChips}</div>`:'',
+      showStatusRep?`${groupHeader('優先順序 Priority',layer.id,'priorityFilters',priorityColorBtn)}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${priorityChips}</div>`:'',
+      (showStatusRep&&ratingGroups.length)?`${groupHeader('店家等級 Shop rating',layer.id,'ratingFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${ratingChips}</div>`:'',
+      showRatingFilters?`${groupHeader('Google 評分 Google rating',layer.id,'gRatingBucketFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${gRatingChips}</div>`:'',
+      showRatingFilters?`${groupHeader('Google 評論數 Review count',layer.id,'rCountBucketFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${rCountChips}</div>`:'',
+      regions.length?`${groupHeader('地區 Region',layer.id,'regionFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${regionChips}</div>`:'',
+      counties.length?`${groupHeader('縣市 County',layer.id,'countyFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${countyChips}</div>`:'',
+      (showStatusRep&&salesReps.length)?`${groupHeader('業務員 Sales rep',layer.id,'salesRepFilters')}<div style="display:flex;flex-wrap:wrap;gap:4px;">${salesRepChips}</div>`:''
     ].filter(Boolean).join('');
     const filtersOpen=!!layer._filtersOpen;
     layersHtml+=`<div class="layer-card" style="border:1.5px solid ${isActive?layer.color:'var(--border)'};border-radius:9px;padding:9px 11px;margin-bottom:8px;">
@@ -1904,6 +1946,20 @@ function renderShopsTab(){
       persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
     });
   });
+  el.querySelectorAll('.sf-all-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
+      layer[btn.dataset.field]=new Set(allKeysForField(layer,btn.dataset.field));
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
+    });
+  });
+  el.querySelectorAll('.sf-none-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
+      layer[btn.dataset.field]=new Set();
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
+    });
+  });
   el.querySelectorAll('.sf-chip[data-lid]').forEach(chip=>{
     chip.addEventListener('click',()=>{
       const lid=chip.dataset.lid;
@@ -1958,7 +2014,6 @@ function setupDropzone(zone){
 }
 
 /* ══ scenarios ══ */
-let scenarioSaveAsShared=false;
 let scenarioCache=[];
 async function fetchScenarios(){
   if(!currentUser)return[];
@@ -1978,10 +2033,10 @@ async function renderScenarios(){
     const shopsArr=p.shops||[];
     const d=new Date(sc.created_at);
     const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    const visBadge=isOwner
-      ?`<button class="badge badge-toggle vis-toggle-btn" data-shared="${sc.is_shared?'1':'0'}" style="${sc.is_shared?'border-color:var(--accent);color:var(--accent);':''}" title="點擊切換公開/私人 Click to toggle visibility">${sc.is_shared?'🌐 共用':'🔒 私人'}</button>`
-      :`<span class="badge" style="${sc.is_shared?'border-color:var(--accent);color:var(--accent);':''}">${sc.is_shared?'🌐 共用':'🔒 私人'}</span>`;
-    const authorLine=sc.is_shared?`<div class="sc-author">${esc((sc.created_by_email||'').split('@')[0])}</div>`:'';
+    // Scenarios are private to their creator now (supabase/migrations/0008) — the only way to
+    // see someone else's is being the one account with cross-user visibility, so show whose it
+    // is whenever it isn't yours (previously only shown for scenarios explicitly marked shared).
+    const authorLine=!isOwner?`<div class="sc-author">${esc((sc.created_by_email||'').split('@')[0])}</div>`:'';
     return`<div class="scenario-card" data-id="${esc(sc.id)}">
       <div class="sc-top"><div>
         <div class="sc-name">${esc(sc.name)}${isActive?` <span style="font-size:10px;color:var(--accent)">● 已載入</span>`:''}</div>
@@ -1990,15 +2045,13 @@ async function renderScenarios(){
       </div><div class="sc-actions">
         <button class="load-btn">載入</button>${isOwner?'<button class="del-btn">刪除</button>':''}
       </div></div>
-      <div class="sc-badges">${visBadge}${REGION_ORDER.map(rk=>{const c=shopsArr.filter(s=>s.county&&COUNTY_DATA[s.county]&&COUNTY_DATA[s.county].region===rk).length;return c>0?`<span class="badge">${REGIONS[rk].label} ${c}</span>`:''}).join('')}<span class="badge">${p.colorMode||'density'}</span></div>
+      <div class="sc-badges">${REGION_ORDER.map(rk=>{const c=shopsArr.filter(s=>s.county&&COUNTY_DATA[s.county]&&COUNTY_DATA[s.county].region===rk).length;return c>0?`<span class="badge">${REGIONS[rk].label} ${c}</span>`:''}).join('')}<span class="badge">${p.colorMode||'density'}</span></div>
     </div>`;
   }).join('');
   el.querySelectorAll('.scenario-card').forEach(card=>{
     card.querySelector('.load-btn').addEventListener('click',()=>loadScenario(card.dataset.id));
     const delBtn=card.querySelector('.del-btn');
     if(delBtn)delBtn.addEventListener('click',()=>deleteScenario(card.dataset.id));
-    const visBtn=card.querySelector('.vis-toggle-btn');
-    if(visBtn)visBtn.addEventListener('click',()=>toggleScenarioVisibility(card.dataset.id,visBtn.dataset.shared==='1'));
   });
 }
 async function saveCurrentScenario(){
@@ -2010,7 +2063,7 @@ async function saveCurrentScenario(){
   btn.disabled=true;
   const payload={shops:JSON.parse(JSON.stringify(shops)),targetRadiusKm,colorMode};
   const{data,error}=await sbClient.from('scenarios').insert({
-    name,created_by:currentUser.id,created_by_email:currentUser.email,is_shared:scenarioSaveAsShared,payload
+    name,created_by:currentUser.id,created_by_email:currentUser.email,payload
   }).select().single();
   btn.disabled=false;
   if(error){console.error(error);toast('儲存失敗 Save failed','err');return;}
@@ -2035,15 +2088,6 @@ async function deleteScenario(id){
   if(error){console.error(error);toast('刪除失敗 Delete failed','err');return;}
   if(activeScenarioId===id)activeScenarioId=null;
   if(sc)toast(`已刪除方案「${sc.name}」`);
-  renderScenarios();
-}
-async function toggleScenarioVisibility(id,currentlyShared){
-  const sc=scenarioCache.find(s=>s.id===id);
-  const newVal=!currentlyShared;
-  const{error}=await sbClient.from('scenarios').update({is_shared:newVal}).eq('id',id);
-  if(error){console.error(error);toast('更新失敗 Update failed','err');return;}
-  if(sc)sc.is_shared=newVal;
-  toast(newVal?`「${sc?sc.name:''}」已設為共用 Now shared`:`「${sc?sc.name:''}」已設為私人 Now private`);
   renderScenarios();
 }
 
@@ -2225,11 +2269,6 @@ function bindControls(){
   });
   document.getElementById('saveScenarioBtn').addEventListener('click',saveCurrentScenario);
   document.getElementById('scenarioNameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveCurrentScenario();});
-  document.getElementById('scenarioVisibilitySeg').addEventListener('click',e=>{
-    const btn=e.target.closest('button');if(!btn)return;
-    scenarioSaveAsShared=btn.dataset.vis==='shared';
-    document.querySelectorAll('#scenarioVisibilitySeg button').forEach(b=>b.classList.toggle('active',b.dataset.vis===btn.dataset.vis));
-  });
   // global drag-drop on map area
   const mapEl=document.getElementById('map');
   mapEl.addEventListener('dragover',e=>e.preventDefault());
