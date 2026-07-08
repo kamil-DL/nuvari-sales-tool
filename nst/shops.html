@@ -250,7 +250,7 @@ import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
 import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, PRIORITY_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset, countAllShopsByDataset, loadAllShopsForDupCheck } from './js/shops.js';
 import { loadLatestVisitsByShopIds, VISIT_STATUS_LABELS } from './js/visits.js';
-import { lookupGeoFromCoords } from '../shared/geo.js';
+import { lookupGeoFromCoords, sortCountiesNS } from '../shared/geo.js';
 import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
 import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
 import { supabase } from './js/supabase-client.js';
@@ -507,7 +507,7 @@ async function loadFilterOptions() {
   const regionSel = document.getElementById('region-filter');
   regionSel.innerHTML = '<option value="all">全部地區 All regions</option>' + regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
 
-  const counties = [...new Set((data || []).map(s => s.county).filter(Boolean))].sort();
+  const counties = sortCountiesNS([...new Set((data || []).map(s => s.county).filter(Boolean))]);
   const countySel = document.getElementById('county-filter');
   countySel.innerHTML = '<option value="all">全部縣市 All counties</option>' + counties.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
 

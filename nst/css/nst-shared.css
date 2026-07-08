@@ -270,6 +270,7 @@ img { max-width: 100%; }
 .badge-orange { background: #FFF3E0; color: #E65100; }
 .badge-teal   { background: #E3F6F4; color: #0F8A80; }
 .badge-purple { background: #F2ECFB; color: #7C3AED; }
+.badge-yellow { background: #FEF9C3; color: #CA8A04; }
 
 /* ── Buttons ── */
 .nst-btn {

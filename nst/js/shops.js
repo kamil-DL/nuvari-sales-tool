@@ -125,5 +125,5 @@ export const STATUS_LABELS = {
 export const PRIORITY_LABELS = {
   P1: { zh: 'P1', en: 'High priority', color: 'badge-red',    hex: '#D93025' },
   P2: { zh: 'P2', en: 'Medium priority', color: 'badge-orange', hex: '#E65100' },
-  P3: { zh: 'P3', en: 'Low priority',  color: 'badge-blue',   hex: '#137ECE' },
+  P3: { zh: 'P3', en: 'Low priority',  color: 'badge-yellow', hex: '#CA8A04' },
 };
