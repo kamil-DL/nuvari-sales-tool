@@ -32,6 +32,12 @@ done
 # stable/nst/css/nst-shared.css is 3 levels deep from repo root under stable/.
 sed -i '' -e "s#url('\.\./\.\./assets/#url('../../../assets/#g" stable/nst/css/nst-shared.css
 
+# nst/js/auth.js's post-sign-in redirect (the NST login modal, separate from map.html's own
+# account gate above) is also a bare JS string literal ('../index.html'), not an HTML attribute
+# — same bug class as the location.href fix above, just in a different file. Missed this once
+# too: it sent a freshly-signed-in Stable Shop DB user to the same stable/index.html 404.
+sed -i '' -e "s/location\.href = '\.\.\/index\.html';/location.href = '..\/..\/index.html';/g" stable/nst/js/auth.js
+
 # Stable must always be production data, full stop — no ?env=dev override, no sessionStorage
 # stickiness, no dev-mode banner. Root's env-detection logic is meant for Beta/local dev testing;
 # leaving it in stable/ meant a browser tab that had visited Beta (?env=dev) earlier could bleed

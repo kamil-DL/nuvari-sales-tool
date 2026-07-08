@@ -152,7 +152,7 @@ async function doSignIn() {
   }
   saveSession(session, data.user);
   hideModal();
-  location.href = '../index.html';
+  location.href = '../../index.html';
 }
 
 async function doSetPassword() {
@@ -170,7 +170,7 @@ async function doSetPassword() {
   const { data: sd } = await supabase.auth.getSession();
   if (sd.session) saveSession(sd.session, data.user);
   hideModal();
-  location.href = '../index.html';
+  location.href = '../../index.html';
 }
 
 export function requireAuth() {
