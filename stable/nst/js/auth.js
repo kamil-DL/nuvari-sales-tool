@@ -1,9 +1,13 @@
 import { supabase } from './supabase-client.js';
 import { LOGO } from './logo.js';
 
-const SESSION_KEY = 'nst-session-v1';
-const USER_KEY    = 'nst-user-v1';
-const PROJECT_KEY = 'nst-session-project-v1'; // which Supabase project the cached session belongs to
+// Beta and Stable (dev vs prod) share the same origin, so a fixed key here would let a session
+// cached in one environment get treated as valid (or get wiped as "stale") in the other. Scoping
+// by project means both can stay signed in independently in the same browser — matching
+// supabase-client.js's env-scoped storageKey and map.html's own copy of this same cache.
+const envTag = supabase.supabaseUrl.split('//')[1].split('.')[0];
+const SESSION_KEY = `nst-session-v1-${envTag}`;
+const USER_KEY    = `nst-user-v1-${envTag}`;
 
 function saveSession(session, user) {
   if (session?.access_token) {
@@ -11,7 +15,6 @@ function saveSession(session, user) {
       access_token:  session.access_token,
       refresh_token: session.refresh_token
     }));
-    localStorage.setItem(PROJECT_KEY, supabase.supabaseUrl);
   }
   if (user?.id) {
     localStorage.setItem(USER_KEY, JSON.stringify({ id: user.id, email: user.email }));
@@ -28,8 +31,7 @@ function loadTokens() {
 function clearAll() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(PROJECT_KEY);
-  localStorage.removeItem('nst-auth');
+  localStorage.removeItem(`nst-auth-${envTag}`);
   // Clear any Supabase default storage keys
   const sbKeys = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -37,16 +39,6 @@ function clearAll() {
     if (k && k.startsWith('sb-')) sbKeys.push(k);
   }
   sbKeys.forEach(k => localStorage.removeItem(k));
-}
-
-// A cached session/user is only valid for the Supabase project it was issued by. Switching
-// between the prod and dev/test projects (see /shared/supabase-env.js) on the same origin
-// otherwise leaves a stale, unusable session that *looks* signed in (via the cached user
-// identity in USER_KEY) but silently fails every DB call as `anon`, since the cached tokens
-// can never validate against a different project's signing keys. Detect and clear it.
-function isCachedSessionStale() {
-  const cachedProject = localStorage.getItem(PROJECT_KEY);
-  return !!cachedProject && cachedProject !== supabase.supabaseUrl;
 }
 
 // Restore Supabase client auth state in background so DB queries work
@@ -176,8 +168,6 @@ async function doSetPassword() {
 export function requireAuth() {
   return new Promise(async resolve => {
     injectModal();
-
-    if (isCachedSessionStale()) clearAll();
 
     const hash = window.location.hash || '';
     const isInviteOrRecovery = /type=(invite|recovery)/.test(hash);

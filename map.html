@@ -227,6 +227,11 @@ const _isLocal=['localhost','127.0.0.1'].includes(window.location.hostname)||_fo
 const SUPABASE_URL=_isLocal?'https://iytzwajjacmuffebuuzd.supabase.co':'https://mdznetxdongeinthqgtp.supabase.co';
 const SUPABASE_ANON_KEY=_isLocal?'sb_publishable_F6xTfWNcQflW305r0iw37Q_ZBf91uDy':'sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';
 const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+// Same cross-environment leakage problem as BIKESHOPS_STORAGE_KEY below, but for the
+// nst-session-v1/nst-user-v1 auth cache shared with NST (see onPwGatePassed/doSignIn) — reused
+// here so a session cached while signed into one environment doesn't get wiped as "stale" (and
+// force a fresh login) the instant you open the other one in the same browser.
+const NST_ENV_TAG=SUPABASE_URL.split('//')[1].split('.')[0];
 // Beta (this file) and Stable (stable/map.html) share the same origin, so a single unscoped
 // localStorage key would let cached shop-layer data (with real DB row ids) leak between dev and
 // prod — e.g. caching a layer while pointed at prod, then loading that same cache while in dev
@@ -284,25 +289,10 @@ function repOptionsHtml(current){
 // user as signed in. Keep the shared cache in sync with whatever Supabase currently has.
 sbClient.auth.onAuthStateChange((_event,session)=>{
   if(session){
-    try{localStorage.setItem('nst-session-v1',JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));}catch(e){}
-    try{localStorage.setItem('nst-user-v1',JSON.stringify({id:session.user.id,email:session.user.email}));}catch(e){}
-    try{localStorage.setItem('nst-session-project-v1',SUPABASE_URL);}catch(e){}
+    try{localStorage.setItem(`nst-session-v1-${NST_ENV_TAG}`,JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));}catch(e){}
+    try{localStorage.setItem(`nst-user-v1-${NST_ENV_TAG}`,JSON.stringify({id:session.user.id,email:session.user.email}));}catch(e){}
   }
 });
-
-// A cached session/user in the shared nst-session-v1/nst-user-v1 cache is only valid for the
-// Supabase project it was issued by. Switching between the prod and dev/test projects on the
-// same origin otherwise leaves a stale, unusable session that *looks* signed in (via the
-// cached user identity) but silently fails every DB call as `anon`. Detect and clear it.
-function isSharedSessionStale(){
-  const cachedProject=localStorage.getItem('nst-session-project-v1');
-  return !!cachedProject&&cachedProject!==SUPABASE_URL;
-}
-function clearStaleSharedSession(){
-  localStorage.removeItem('nst-session-v1');
-  localStorage.removeItem('nst-user-v1');
-  localStorage.removeItem('nst-session-project-v1');
-}
 
 function showAcctGate(mode){
   document.getElementById('acct-gate').style.display='flex';
@@ -323,9 +313,8 @@ async function doSignIn(){
   btn.disabled=false;btn.textContent='Sign in';
   if(error){errEl.textContent='Incorrect email or password.';return;}
   if(data.session){
-    try{localStorage.setItem('nst-session-v1',JSON.stringify({access_token:data.session.access_token,refresh_token:data.session.refresh_token}));}catch(e){}
-    try{localStorage.setItem('nst-user-v1',JSON.stringify({id:data.user.id,email:data.user.email}));}catch(e){}
-    try{localStorage.setItem('nst-session-project-v1',SUPABASE_URL);}catch(e){}
+    try{localStorage.setItem(`nst-session-v1-${NST_ENV_TAG}`,JSON.stringify({access_token:data.session.access_token,refresh_token:data.session.refresh_token}));}catch(e){}
+    try{localStorage.setItem(`nst-user-v1-${NST_ENV_TAG}`,JSON.stringify({id:data.user.id,email:data.user.email}));}catch(e){}
   }
   location.href='index.html';
 }
@@ -372,14 +361,13 @@ function onAuthReady(session){
 
 // Entry point, called once the password gate is passed (immediately if already passed)
 window.onPwGatePassed=async function(){
-  if(isSharedSessionStale())clearStaleSharedSession();
   const hash=window.location.hash||'';
   const isInviteOrRecovery=/type=(invite|recovery)/.test(hash);
   let{data:{session}}=await sbClient.auth.getSession();
   // Fallback: restore from NST shared localStorage keys
   if(!session){
     try{
-      const stored=localStorage.getItem('nst-session-v1');
+      const stored=localStorage.getItem(`nst-session-v1-${NST_ENV_TAG}`);
       if(stored){
         const{access_token,refresh_token}=JSON.parse(stored);
         const{data}=await sbClient.auth.setSession({access_token,refresh_token});
@@ -395,7 +383,7 @@ window.onPwGatePassed=async function(){
   } else {
     // Also check stored user identity for map-only access
     try{
-      const u=JSON.parse(localStorage.getItem('nst-user-v1')||'null');
+      const u=JSON.parse(localStorage.getItem(`nst-user-v1-${NST_ENV_TAG}`)||'null');
       if(u&&u.id){currentUser=u;const pill=document.getElementById('account-area');pill.style.display='flex';document.getElementById('account-email').textContent=u.email;if(typeof onUserReady==='function')onUserReady();return;}
     }catch(e){}
     showAcctGate('signin');
@@ -2477,11 +2465,12 @@ function buildDeepLinkPopup(shop){
 <script>
 window.onPwGatePassed();
 document.getElementById('account-signout').addEventListener('click',async()=>{
-  // Clear all auth storage — multiple Supabase clients use different keys
-  localStorage.removeItem('nst-session-v1');
-  localStorage.removeItem('nst-user-v1');
-  localStorage.removeItem('nst-session-project-v1');
-  localStorage.removeItem('nst-auth');
+  // Clear all auth storage for THIS environment only — Beta and Stable each keep their own
+  // scoped session cache now (see NST_ENV_TAG), so signing out of one doesn't sign you out of
+  // the other if both happen to be logged in in the same browser.
+  localStorage.removeItem(`nst-session-v1-${NST_ENV_TAG}`);
+  localStorage.removeItem(`nst-user-v1-${NST_ENV_TAG}`);
+  localStorage.removeItem(`nst-auth-${NST_ENV_TAG}`);
   const sbKeys=[];
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('sb-'))sbKeys.push(k);}
   sbKeys.forEach(k=>localStorage.removeItem(k));

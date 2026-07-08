@@ -56,8 +56,9 @@ replacement = (
     "const SUPABASE_ANON_KEY='sb_publishable_EUskeusj4mfPYeJUuDJIcQ_fHbBHPS9';\n"
     "const sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);\n"
     "const _forcedDev=false; // referenced elsewhere (e.g. the map's \"open full edit\" deep link)\n"
-    "// Scoped separately from Beta's cache (see root map.html) so cached shop layers never leak\n"
-    "// between dev and prod — Beta and Stable share the same origin/localStorage.\n"
+    "// Scoped separately from Beta's cache (see root map.html) so cached shop layers/sessions\n"
+    "// never leak between dev and prod — Beta and Stable share the same origin/localStorage.\n"
+    "const NST_ENV_TAG=SUPABASE_URL.split('//')[1].split('.')[0];\n"
     "const BIKESHOPS_STORAGE_KEY='nuvari_bikeshops_prod';\n"
 )
 text = text[:start] + replacement + text[end:]
