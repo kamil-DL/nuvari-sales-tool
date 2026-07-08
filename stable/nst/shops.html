@@ -64,6 +64,13 @@
       <select id="rep-filter" class="nst-select" style="width:auto;min-width:130px">
         <option value="all">全部業務員 All reps</option>
       </select>
+      <select id="priority-filter" class="nst-select" style="width:auto;min-width:130px">
+        <option value="all">全部優先順序 All priority</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+        <option value="none">無 None</option>
+      </select>
       <select id="dataset-filter" class="nst-select" style="width:auto;min-width:150px">
         <option value="all">全部資料集 All datasets</option>
         <option value="unassigned">未分類 Unassigned</option>
@@ -96,6 +103,14 @@
           <option value="">未指派 Unassigned</option>
         </select>
         <button id="bulk-rep-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
+        <select id="bulk-priority-select" class="nst-select" style="width:auto;min-width:170px">
+          <option value="__placeholder__" selected disabled>變更優先順序為... Change priority to…</option>
+          <option value="P1">P1</option>
+          <option value="P2">P2</option>
+          <option value="P3">P3</option>
+          <option value="">無 None</option>
+        </select>
+        <button id="bulk-priority-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
         <button id="delete-selected-btn" class="nst-btn nst-btn-danger" disabled>刪除已選 Delete selected</button>
         <button id="cancel-select-btn" class="nst-btn nst-btn-ghost">取消 Cancel</button>
       </div>
@@ -129,6 +144,13 @@
         <option value="拜訪過-拒絕">拜訪過-拒絕 Visited (Declined)</option>
         <option value="已合作">已合作 Partnered</option>
         <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
+      </select>
+      <label class="nst-field-label">優先順序 Priority</label>
+      <select id="f-priority" class="nst-select">
+        <option value="">無 None</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
       </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="f-address" type="text" class="nst-input" placeholder="e.g. 台北市信義區松壽路 12 號"/>
@@ -174,8 +196,9 @@
     <div class="nst-modal-body">
       <div style="font-size:13px;color:var(--nst-gray);margin-bottom:14px;line-height:1.6">
         CSV 欄位（首行為標題，與地圖規劃工具共用同一標準）：<br/>
-        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, address, contact_name, contact_phone, sales_rep, notes, lat/GISY, lng/GISX</code><br/>
+        <code style="font-size:11.5px;color:var(--nst-ink)">name, status, priority, address, contact_name, contact_phone, sales_rep, notes, lat/GISY, lng/GISX</code><br/>
         <span style="font-size:12px">status 可填：尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失（預設 尚未開發）</span><br/>
+        <span style="font-size:12px">priority 可填：P1 / P2 / P3（可留空 optional）</span><br/>
         <span style="font-size:12px">也會儲存：地區、縣市、鄉鎮市區、座標狀態、category、google_* 等欄位 · Also stored: region/county/district/coord_status/category/google_* columns if present</span><br/>
         <span style="font-size:12px">資料集在下方選擇，不是 CSV 欄位 · Dataset is chosen below, not a CSV column</span>
       </div>
@@ -225,13 +248,14 @@
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset, countAllShopsByDataset, loadAllShopsForDupCheck } from './js/shops.js';
+import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, PRIORITY_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset, countAllShopsByDataset, loadAllShopsForDupCheck } from './js/shops.js';
 import { loadLatestVisitsByShopIds, VISIT_STATUS_LABELS } from './js/visits.js';
 import { lookupGeoFromCoords } from '../shared/geo.js';
 import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
 import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
 import { supabase } from './js/supabase-client.js';
 import { friendlyError } from '../shared/friendly-error.js';
+import { canDeleteShops } from '../shared/delete-policy.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -239,6 +263,9 @@ const user = await requireAuth();
 document.getElementById('app').style.display = '';
 document.getElementById('user-email').textContent = user.email;
 document.getElementById('sign-out-btn').addEventListener('click', signOut);
+// Delete is restricted to one account (see shared/delete-policy.js) — everyone can still
+// add/edit shops and bulk-change status/sales rep/priority.
+const iAmDeleter = canDeleteShops(user.email);
 
 let currentShops = [];
 // Rendering thousands of cards at once (production now has 3000+ shops) is what was actually
@@ -277,6 +304,12 @@ function regionBadge(region) {
     : `<span class="nst-badge badge-gray">${esc(region)}</span>`;
 }
 
+function priorityBadge(priority) {
+  if (!priority) return '';
+  const info = PRIORITY_LABELS[priority] || { zh: priority, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}">${esc(info.zh)}</span>`;
+}
+
 function renderShops(shops) {
   const list = document.getElementById('shops-list');
   if (!shops.length) {
@@ -289,10 +322,12 @@ function renderShops(shops) {
   }
   const visible = shops.slice(0, renderLimit);
   list.innerHTML = visible.map(s => {
-    const owned = s.created_by === user.id;
     const checked = selectedIds.has(s.id);
+    // Selection is for bulk status/rep/priority changes too, which anyone can do — only
+    // deleting is restricted (see iAmDeleter / delete-selected-btn), so selecting a shop here
+    // isn't gated by who created it.
     const checkbox = selectionMode
-      ? `<span class="nst-card-check${checked ? ' checked' : ''}${owned ? '' : ' disabled'}" title="${owned ? '' : '只能刪除自己新增的店家 · Only shops you created can be deleted'}">${checked ? '✓' : ''}</span>`
+      ? `<span class="nst-card-check${checked ? ' checked' : ''}">${checked ? '✓' : ''}</span>`
       : '';
     const dsName = s.dataset_id ? (datasetName(s.dataset_id) || '—') : null;
     const lastVisit = latestVisitByShop[s.id];
@@ -305,6 +340,7 @@ function renderShops(shops) {
         ${checkbox}
         <span class="shop-card-name">${esc(s.name)}</span>
         <div class="shop-card-tags">
+          ${priorityBadge(s.priority)}
           ${statusBadge(s.status)}
           ${regionBadge(s.region)}
           ${dsName ? `<span class="nst-badge badge-gray">🗂 ${esc(dsName)}</span>` : ''}
@@ -328,6 +364,7 @@ function enterSelectionMode() {
   document.getElementById('select-all-checkbox').checked = false;
   document.getElementById('bulk-status-select').value = '__placeholder__';
   document.getElementById('bulk-rep-select').value = '__placeholder__';
+  document.getElementById('bulk-priority-select').value = '__placeholder__';
   setBulkControlsDisabled(false);
   renderShops(currentShops);
   updateSelectionBar();
@@ -343,21 +380,23 @@ function exitSelectionMode() {
 }
 
 function setBulkControlsDisabled(disabled) {
-  ['select-all-checkbox', 'bulk-status-select', 'bulk-status-apply-btn', 'bulk-rep-select', 'bulk-rep-apply-btn', 'delete-selected-btn']
+  ['select-all-checkbox', 'bulk-status-select', 'bulk-status-apply-btn', 'bulk-rep-select', 'bulk-rep-apply-btn', 'bulk-priority-select', 'bulk-priority-apply-btn', 'delete-selected-btn']
     .forEach(id => { document.getElementById(id).disabled = disabled; });
 }
 
 function updateSelectionBar() {
-  const ownedShops = currentShops.filter(s => s.created_by === user.id);
   const n = selectedIds.size;
   document.getElementById('selection-count').textContent = n > 0 ? `已選 ${n} 筆 · ${n} selected` : '';
+  document.getElementById('delete-selected-btn').style.display = iAmDeleter ? '' : 'none';
   document.getElementById('delete-selected-btn').disabled = n === 0;
   document.getElementById('delete-selected-btn').textContent = `刪除已選 Delete selected${n ? ` (${n})` : ''}`;
   const statusVal = document.getElementById('bulk-status-select').value;
   document.getElementById('bulk-status-apply-btn').disabled = n === 0 || statusVal === '__placeholder__';
   const repVal = document.getElementById('bulk-rep-select').value;
   document.getElementById('bulk-rep-apply-btn').disabled = n === 0 || repVal === '__placeholder__';
-  document.getElementById('select-all-checkbox').checked = ownedShops.length > 0 && ownedShops.every(s => selectedIds.has(s.id));
+  const priorityVal = document.getElementById('bulk-priority-select').value;
+  document.getElementById('bulk-priority-apply-btn').disabled = n === 0 || priorityVal === '__placeholder__';
+  document.getElementById('select-all-checkbox').checked = currentShops.length > 0 && currentShops.every(s => selectedIds.has(s.id));
 }
 
 // Runs one write per id sequentially with a live "N/total" progress readout — a bulk edit on
@@ -388,12 +427,16 @@ async function bulkUpdateSalesRep(ids, rep) {
   await runBulkOperation(ids, '更新業務員中 Updating sales rep', id => updateShop(id, { sales_rep: rep || null }));
 }
 
+async function bulkUpdatePriority(ids, priority) {
+  await runBulkOperation(ids, '更新優先順序中 Updating priority', id => updateShop(id, { priority: priority || null }));
+}
+
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── CSV export — same unified column standard as the map planner's export ──
-const EXPORT_COLUMNS = ['name','status','category','address','region','county','district','sales_rep','dataset','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status'];
+const EXPORT_COLUMNS = ['name','status','priority','category','address','region','county','district','sales_rep','dataset','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status'];
 function csvCell(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
@@ -432,10 +475,11 @@ async function refresh() {
   const region = document.getElementById('region-filter').value;
   const county = document.getElementById('county-filter').value;
   const salesRep = document.getElementById('rep-filter').value;
+  const priority = document.getElementById('priority-filter').value;
   const datasetId = document.getElementById('dataset-filter').value;
   const onlyMine = document.getElementById('only-mine-checkbox').checked;
   try {
-    currentShops = await loadShops({ status, search, region, county, salesRep, datasetId, onlyMine, userId: user.id });
+    currentShops = await loadShops({ status, search, region, county, salesRep, priority, datasetId, onlyMine, userId: user.id });
     renderLimit = RENDER_PAGE_SIZE;
     document.getElementById('shops-count').textContent = `共 ${currentShops.length} 家店 · ${currentShops.length} shop${currentShops.length === 1 ? '' : 's'}`;
     try {
@@ -521,6 +565,7 @@ document.getElementById('status-filter').addEventListener('change', refresh);
 document.getElementById('region-filter').addEventListener('change', refresh);
 document.getElementById('county-filter').addEventListener('change', refresh);
 document.getElementById('rep-filter').addEventListener('change', refresh);
+document.getElementById('priority-filter').addEventListener('change', refresh);
 document.getElementById('dataset-filter').addEventListener('change', refresh);
 document.getElementById('only-mine-checkbox').addEventListener('change', refresh);
 
@@ -531,6 +576,7 @@ function openModal(shop = null) {
   document.getElementById('modal-shop-id').value = shop ? shop.id : '';
   document.getElementById('f-name').value = shop ? shop.name : '';
   document.getElementById('f-status').value = shop ? shop.status : '尚未開發';
+  document.getElementById('f-priority').value = shop ? (shop.priority || '') : '';
   document.getElementById('f-address').value = shop ? (shop.address || '') : '';
   document.getElementById('f-region').value = shop ? (shop.region || '') : '';
   document.getElementById('f-contact-name').value = shop ? (shop.contact_name || '') : '';
@@ -546,7 +592,7 @@ function openModal(shop = null) {
   document.getElementById('f-notes').value = shop ? (shop.notes || '') : '';
   document.getElementById('modal-error').textContent = '';
   editingShopCreatedBy = shop ? shop.created_by : null;
-  const canDelete = isEdit && shop.created_by === user.id;
+  const canDelete = isEdit && iAmDeleter;
   document.getElementById('modal-delete-btn').style.display = canDelete ? '' : 'none';
   document.getElementById('modal-save-btn').textContent = isEdit ? '儲存 Save' : '新增 Add';
   document.getElementById('shop-modal').style.display = '';
@@ -570,6 +616,7 @@ document.getElementById('modal-save-btn').addEventListener('click', async () => 
   const fields = {
     name,
     status: document.getElementById('f-status').value,
+    priority: document.getElementById('f-priority').value || null,
     address: document.getElementById('f-address').value.trim() || null,
     region: document.getElementById('f-region').value.trim() || null,
     contact_name: document.getElementById('f-contact-name').value.trim() || null,
@@ -696,8 +743,7 @@ document.getElementById('select-mode-btn').addEventListener('click', enterSelect
 document.getElementById('cancel-select-btn').addEventListener('click', exitSelectionMode);
 
 document.getElementById('select-all-checkbox').addEventListener('change', e => {
-  const ownedShops = currentShops.filter(s => s.created_by === user.id);
-  if (e.target.checked) ownedShops.forEach(s => selectedIds.add(s.id));
+  if (e.target.checked) currentShops.forEach(s => selectedIds.add(s.id));
   else selectedIds.clear();
   renderShops(currentShops);
   updateSelectionBar();
@@ -712,6 +758,7 @@ document.getElementById('delete-selected-btn').addEventListener('click', async (
 
 document.getElementById('bulk-status-select').addEventListener('change', updateSelectionBar);
 document.getElementById('bulk-rep-select').addEventListener('change', updateSelectionBar);
+document.getElementById('bulk-priority-select').addEventListener('change', updateSelectionBar);
 
 document.getElementById('bulk-status-apply-btn').addEventListener('click', async () => {
   const n = selectedIds.size;
@@ -731,6 +778,15 @@ document.getElementById('bulk-rep-apply-btn').addEventListener('click', async ()
   await bulkUpdateSalesRep([...selectedIds], rep);
 });
 
+document.getElementById('bulk-priority-apply-btn').addEventListener('click', async () => {
+  const n = selectedIds.size;
+  const priority = document.getElementById('bulk-priority-select').value;
+  if (!n || priority === '__placeholder__') return;
+  const priorityLabelText = priority || '無 None';
+  if (!confirm(`確定要將已選取的 ${n} 家店家優先順序改為「${priorityLabelText}」嗎？\nChange priority of ${n} selected shops to "${priorityLabelText}"?`)) return;
+  await bulkUpdatePriority([...selectedIds], priority);
+});
+
 // refreshDatasets() must resolve before the first refresh() so the "Taiwan Bike Shops" default
 // filter (set inside refreshDatasets) is in place before shops are loaded — otherwise refresh()
 // would read the stale "all datasets" value from the static HTML.
@@ -739,6 +795,7 @@ await refresh();
 
 // ── CSV Import ──
 const VALID_STATUSES = new Set(['尚未開發','電訪過','電訪過-拒絕','拜訪過','拜訪過-拒絕','已合作','已合作-流失']);
+const VALID_PRIORITIES = new Set(['P1','P2','P3']);
 let csvRows = [];
 let csvDupMatches = []; // parallel to csvRows — matched existing shop {name,address} or null
 let csvSkipSet = new Set(); // indices into csvRows that will be skipped on import (defaults to all duplicates)
@@ -801,9 +858,11 @@ function normaliseRow(row) {
   // Flexible column name mapping
   const name = row.name || row['店家名稱'] || row['shop_name'] || '';
   const status = (row.status || row['狀態'] || '尚未開發').trim();
+  const priority = (row.priority || row['優先順序'] || '').trim().toUpperCase();
   return {
     name: name.trim(),
     status: VALID_STATUSES.has(status) ? status : '尚未開發',
+    priority: VALID_PRIORITIES.has(priority) ? priority : null,
     address: (row.address || row['地址'] || '').trim() || null,
     contact_name: (row.contact_name || row['聯絡人'] || '').trim() || null,
     contact_phone: (row.contact_phone || row['聯絡電話'] || row.phone || '').trim() || null,

@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { fetchAllPages } from '../../shared/supabase-paginate.js';
 
-export async function loadShops({ status, search, region, county, salesRep, datasetId, onlyMine, userId } = {}) {
+export async function loadShops({ status, search, region, county, salesRep, priority, datasetId, onlyMine, userId } = {}) {
   return fetchAllPages((from, to) => {
     let q = supabase.from('shops').select('*').order('created_at', { ascending: false });
     if (status && status !== 'all') q = q.eq('status', status);
@@ -9,6 +9,8 @@ export async function loadShops({ status, search, region, county, salesRep, data
     if (region && region !== 'all') q = q.eq('region', region);
     if (county && county !== 'all') q = q.eq('county', county);
     if (salesRep && salesRep !== 'all') q = q.eq('sales_rep', salesRep);
+    if (priority === 'none') q = q.is('priority', null);
+    else if (priority && priority !== 'all') q = q.eq('priority', priority);
     if (datasetId === 'unassigned') q = q.is('dataset_id', null);
     else if (datasetId && datasetId !== 'all') q = q.eq('dataset_id', datasetId);
     if (onlyMine && userId) q = q.eq('created_by', userId);
@@ -115,4 +117,13 @@ export const STATUS_LABELS = {
   '拜訪過-拒絕': { zh: '拜訪過-拒絕', en: 'Visited (Declined)',        color: 'badge-red' },
   '已合作':      { zh: '已合作',      en: 'Partnered',                 color: 'badge-green' },
   '已合作-流失': { zh: '已合作-流失', en: 'Partnered (Churned)',       color: 'badge-purple' },
+};
+
+// Priority is independent of pipeline status — flags which shops to talk to first when
+// planning. Same hex colors as the map planner's PRIORITY_COLORS (map.html), kept in sync
+// manually since map.html is a classic script and can't import this.
+export const PRIORITY_LABELS = {
+  P1: { zh: 'P1', en: 'High priority', color: 'badge-red',    hex: '#D93025' },
+  P2: { zh: 'P2', en: 'Medium priority', color: 'badge-orange', hex: '#E65100' },
+  P3: { zh: 'P3', en: 'Low priority',  color: 'badge-blue',   hex: '#137ECE' },
 };

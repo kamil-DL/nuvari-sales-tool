@@ -93,6 +93,13 @@
         <option value="已合作">已合作 Partnered</option>
         <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
       </select>
+      <label class="nst-field-label">優先順序 Priority</label>
+      <select id="ef-priority" class="nst-select">
+        <option value="">無 None</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+      </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="ef-address" type="text" class="nst-input"/>
       <label class="nst-field-label">地區 Region</label>
@@ -155,9 +162,10 @@
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { getShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
+import { getShop, updateShop, deleteShop, STATUS_LABELS, PRIORITY_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
 import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
 import { friendlyError } from '../shared/friendly-error.js';
+import { canDeleteShops } from '../shared/delete-policy.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -165,6 +173,8 @@ const user = await requireAuth();
 document.getElementById('app').style.display = '';
 document.getElementById('user-email').textContent = user.email;
 document.getElementById('sign-out-btn').addEventListener('click', signOut);
+// Delete is restricted to one account (see shared/delete-policy.js) — everyone can still edit.
+const iAmDeleter = canDeleteShops(user.email);
 
 const params = new URLSearchParams(location.search);
 const shopId = params.get('id');
@@ -257,6 +267,12 @@ function statusBadge(s) {
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
 }
 
+function priorityBadge(priority) {
+  if (!priority) return '';
+  const info = PRIORITY_LABELS[priority] || { zh: priority, en: priority, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}" style="margin-left:6px">${info.zh} ${info.en}</span>`;
+}
+
 function visitStatusBadge(s) {
   const info = VISIT_STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
@@ -264,7 +280,7 @@ function visitStatusBadge(s) {
 
 function renderShop() {
   document.getElementById('shop-name').textContent = shop.name;
-  document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status);
+  document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status) + priorityBadge(shop.priority);
   document.getElementById('f-address').textContent = shop.address || '—';
   document.getElementById('f-region').textContent = shop.region || '—';
   document.getElementById('f-contact-name').textContent = shop.contact_name || '—';
@@ -277,9 +293,10 @@ function renderShop() {
     document.getElementById('f-notes').textContent = shop.notes;
     document.getElementById('notes-row').style.display = '';
   }
-  if (shop.created_by === user.id) {
-    document.getElementById('edit-btn').style.display = '';
-  }
+  // Any authenticated team member can edit a shop (see supabase/migrations/0003 — update is
+  // any-authenticated, not creator-only). Delete stays locked to iAmDeleter, gated separately
+  // when the edit modal opens below.
+  document.getElementById('edit-btn').style.display = '';
   document.getElementById('visit-shop-name').textContent = shop.name;
 }
 
@@ -324,6 +341,7 @@ try {
 document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('ef-name').value = shop.name;
   document.getElementById('ef-status').value = shop.status;
+  document.getElementById('ef-priority').value = shop.priority || '';
   document.getElementById('ef-address').value = shop.address || '';
   document.getElementById('ef-region').value = shop.region || '';
   document.getElementById('ef-contact-name').value = shop.contact_name || '';
@@ -332,6 +350,7 @@ document.getElementById('edit-btn').addEventListener('click', () => {
   populateDatasetSelect(shop.dataset_id || '');
   document.getElementById('ef-notes').value = shop.notes || '';
   document.getElementById('edit-modal-error').textContent = '';
+  document.getElementById('edit-delete-btn').style.display = iAmDeleter ? '' : 'none';
   document.getElementById('edit-modal').style.display = '';
 });
 document.getElementById('edit-close-btn').addEventListener('click', () => document.getElementById('edit-modal').style.display = 'none');
@@ -347,6 +366,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     shop = await updateShop(shopId, {
       name,
       status: document.getElementById('ef-status').value,
+      priority: document.getElementById('ef-priority').value || null,
       address: document.getElementById('ef-address').value.trim() || null,
       region: document.getElementById('ef-region').value.trim() || null,
       contact_name: document.getElementById('ef-contact-name').value.trim() || null,
