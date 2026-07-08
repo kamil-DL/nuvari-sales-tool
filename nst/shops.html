@@ -665,7 +665,7 @@ function renderDatasetsList(counts) {
       <span style="flex:1;font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.name)}">${esc(d.name)}</span>
       <span style="font-size:11.5px;color:var(--nst-gray);white-space:nowrap">${counts[d.id] || 0} 家 shops</span>
       <button class="nst-btn nst-btn-outline nst-btn-sm dataset-rename-btn" data-id="${esc(d.id)}">✎</button>
-      <button class="nst-btn nst-btn-danger nst-btn-sm dataset-delete-btn" data-id="${esc(d.id)}">✕</button>
+      ${iAmDeleter ? `<button class="nst-btn nst-btn-danger nst-btn-sm dataset-delete-btn" data-id="${esc(d.id)}">✕</button>` : ''}
     </div>`).join('');
 }
 
