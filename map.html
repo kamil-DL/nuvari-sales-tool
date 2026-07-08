@@ -576,6 +576,22 @@ const STATUS_STYLE={
 };
 function statusStyle(s){ return STATUS_STYLE[s]||STATUS_STYLE['default']; }
 
+/* priority is independent of pipeline status — flags which shops to talk to first when
+   planning, e.g. "show me only P1". Same hex colors as NST Shop DB's PRIORITY_LABELS
+   (nst/js/shops.js) — one shared standard across both tools, same as STATUS_STYLE above. */
+const PRIORITY_STYLE={
+  'P1':{color:'#D93025',bg:'#FEE8E7',label:'P1'},
+  'P2':{color:'#E65100',bg:'#FFF3E0',label:'P2'},
+  'P3':{color:'#137ECE',bg:'#E8F3FB',label:'P3'},
+};
+const PRIORITY_ORDER=[
+  {key:'P1',label:'P1',color:'#D93025'},
+  {key:'P2',label:'P2',color:'#E65100'},
+  {key:'P3',label:'P3',color:'#137ECE'},
+  {key:'none',label:'無 None',color:'#AEB4BD'}
+];
+function priorityKey(shop){ return shop.priority||'none'; }
+
 /* ══ state ══ */
 let shops=[];          // dealer coverage pins (draggable)
 let csvLayers=[];      // [{id, name, color, data:[...shops], statusFilters:Set, visible:bool}]
@@ -636,6 +652,10 @@ function ensureLayerFilterDefaults(layer){
   if(!layer.salesRepFilters)layer.salesRepFilters=new Set([...new Set(layer.data.map(s=>s.sales_rep).filter(Boolean))]);
   if(!layer.gRatingBucketFilters)layer.gRatingBucketFilters=new Set(GRATING_BUCKETS.map(b=>b.key));
   if(!layer.rCountBucketFilters)layer.rCountBucketFilters=new Set(RCOUNT_BUCKETS.map(b=>b.key));
+  // Priority is a strict whitelist like statusFilters (not the "empty = show everything"
+  // convention below) — the whole point is being able to narrow down to just P1, so a shop
+  // with no priority set needs its own selectable "none" bucket rather than always passing.
+  if(!layer.priorityFilters)layer.priorityFilters=new Set(PRIORITY_ORDER.map(p=>p.key));
   if(!layer.kind)layer.kind='sales';
 }
 /* single source of truth for "does this shop pass the layer's active filters" — used by the
@@ -644,6 +664,7 @@ function ensureLayerFilterDefaults(layer){
    (shows everything) — deselecting every option isn't the same as excluding every shop. */
 function shopPassesLayerFilters(shop,layer){
   if(!layer.statusFilters.has(shop.status))return false;
+  if(!layer.priorityFilters.has(priorityKey(shop)))return false;
   // tier/region/sales-rep filters: a shop with no value for that field always passes through
   // (not excluded just because it lacks that particular piece of data)
   if(shop.ratingGroup && layer.ratingFilters.size>0 && !layer.ratingFilters.has(shop.ratingGroup))return false;
@@ -1123,7 +1144,13 @@ function rebuildBikeshopMarkers(){
   if(csvLayers.length===0)return;
   rebuildBikeshopDataFromLayers();
   bikeshopData.forEach(shop=>{
-    const fillColor=shop.customColor||shop._layerColor||statusStyle(shop.status).color;
+    const layerForColor=csvLayers.find(l=>l.id===shop._layerId);
+    // "Color by priority" is an opt-in per-layer toggle next to the priority filter chips —
+    // pins turn red/orange/blue/gray by P1/P2/P3/none instead of the usual custom-color/status
+    // color, so a priority-filtered view (e.g. only P1) is also visually obvious at a glance.
+    const fillColor=(layerForColor&&layerForColor.colorByPriority)
+      ?(PRIORITY_STYLE[shop.priority]?PRIORITY_STYLE[shop.priority].color:'#AEB4BD')
+      :(shop.customColor||shop._layerColor||statusStyle(shop.status).color);
     const m=L.circleMarker([shop.lat,shop.lng],{
       radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9
     }).addTo(bikeshopGroup);
@@ -1199,13 +1226,14 @@ function rebuildBikeshopMarkers(){
         const saveBtn=el.querySelector('.bs-edit-save-btn');
         saveBtn.addEventListener('click',async()=>{
           const newStatus=el.querySelector('.bs-edit-status').value;
+          const newPriority=el.querySelector('.bs-edit-priority').value||null;
           const newRep=el.querySelector('.bs-edit-rep').value.trim()||null;
           const newNotes=el.querySelector('.bs-edit-notes').value.trim()||null;
           saveBtn.disabled=true;saveBtn.textContent='儲存中… Saving…';
           // Same RLS as delete (creator-only write) — a 0-row result means "not your shop",
           // not a network error, so it needs its own message rather than looking like success.
           const{data,error}=await sbClient.from('shops')
-            .update({status:newStatus,sales_rep:newRep,notes:newNotes})
+            .update({status:newStatus,priority:newPriority,sales_rep:newRep,notes:newNotes})
             .eq('id',shop._dbId).select();
           if(error){
             toast('儲存失敗 Failed to save: '+error.message,'err');
@@ -1217,15 +1245,16 @@ function rebuildBikeshopMarkers(){
             saveBtn.disabled=false;saveBtn.textContent='💾 儲存 Save';
             return;
           }
-          shop.status=newStatus;shop.sales_rep=newRep;shop.notes=newNotes;
+          shop.status=newStatus;shop.priority=newPriority;shop.sales_rep=newRep;shop.notes=newNotes;
           const layer=csvLayers.find(l=>l.id===shop._layerId);
           if(layer){
             const orig=layer.data.find(s=>s._dbId===shop._dbId);
-            if(orig){orig.status=newStatus;orig.sales_rep=newRep;orig.notes=newNotes;}
-            // Status filter is a per-layer whitelist Set — without this, changing a shop to a
-            // status that isn't currently checked would make it silently vanish from view,
-            // looking like the edit failed or deleted it.
+            if(orig){orig.status=newStatus;orig.priority=newPriority;orig.sales_rep=newRep;orig.notes=newNotes;}
+            // Status/priority filters are per-layer whitelist Sets — without this, changing a
+            // shop to a status/priority that isn't currently checked would make it silently
+            // vanish from view, looking like the edit failed or deleted it.
             if(layer.statusFilters)layer.statusFilters.add(newStatus);
+            if(layer.priorityFilters)layer.priorityFilters.add(newPriority||'none');
           }
           persistBikeshops();
           rebuildBikeshopMarkers();
@@ -1269,6 +1298,8 @@ function buildBikeshopPopup(shop){
     <div class="bs-edit-form" style="display:none;margin-top:6px;">
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">狀態 Status</label>
       <select class="bs-edit-status" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${statusOptionsHtml(shop.status)}</select>
+      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">優先順序 Priority</label>
+      <select class="bs-edit-priority" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${priorityOptionsHtml(shop.priority)}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">業務員 Sales rep</label>
       <select class="bs-edit-rep" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${repOptionsHtml(shop.sales_rep||'')}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">備註 Notes</label>
@@ -1276,10 +1307,11 @@ function buildBikeshopPopup(shop){
       <button class="btn btn-teal bs-edit-save-btn" style="font-size:10px;padding:3px 8px;width:100%;">💾 儲存 Save</button>
       <a href="${fullEditHref}" target="_blank" rel="noopener" class="btn" style="font-size:10px;padding:3px 8px;margin-top:6px;width:100%;display:block;text-align:center;box-sizing:border-box;">🔗 開啟完整編輯 Open full edit</a>
     </div>`:'';
+  const priorityBadge=shop.priority&&PRIORITY_STYLE[shop.priority]?`<span class="bs-badge" style="background:${esc(PRIORITY_STYLE[shop.priority].bg)};color:${esc(PRIORITY_STYLE[shop.priority].color)};margin-left:5px;">${esc(PRIORITY_STYLE[shop.priority].label)}</span>`:'';
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
     ${layer?`<div style="font-size:10px;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(layer.color)};margin-right:4px;vertical-align:middle;"></span>${esc(layer.name)}</div>`:''}
-    <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>${ratingBadge}${googleRatingBadge}
+    <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>${priorityBadge}${ratingBadge}${googleRatingBadge}
     ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
     ${categoryLine}
     ${phoneLine}
@@ -1291,6 +1323,11 @@ function buildBikeshopPopup(shop){
 }
 function statusOptionsHtml(current){
   return Object.keys(STATUS_STYLE).filter(k=>k!=='default').map(k=>`<option value="${esc(k)}"${k===current?' selected':''}>${esc(STATUS_STYLE[k].label)}</option>`).join('');
+}
+function priorityOptionsHtml(current){
+  const cur=current||'';
+  return`<option value=""${cur===''?' selected':''}>無 None</option>`+
+    Object.keys(PRIORITY_STYLE).map(k=>`<option value="${esc(k)}"${k===cur?' selected':''}>${esc(PRIORITY_STYLE[k].label)}</option>`).join('');
 }
 
 /* ══ CSV parser ══ */
@@ -1340,6 +1377,7 @@ async function parseCSV(text){
   const nameI=detectCol(headers,'name','名稱','店名','shop_name','shopname','title');
   const addrI=detectCol(headers,'address','addr','地址','location','address1');
   const stI=detectCol(headers,'status','狀態','狀況','state');
+  const priorityI=detectCol(headers,'priority','優先順序','優先');
   const ratingI=detectCol(headers,'rating','等級','評級','評等','grade','tier','rank');
   // unified CSV standard (shared with NST Shop DB) — optional reference/CRM columns, carried
   // through on import even though this tool doesn't surface all of them in the UI yet
@@ -1365,11 +1403,13 @@ async function parseCSV(text){
     if(isNaN(lat)||isNaN(lng))return null;
     const rawStatus=stI>=0?(vals[stI]||'').trim():'尚未開發';
     const status=rawStatus||'尚未開發';
+    const rawPriority=priorityI>=0?(vals[priorityI]||'').trim().toUpperCase():'';
+    const priority=['P1','P2','P3'].includes(rawPriority)?rawPriority:null;
     const rawRating=ratingI>=0?(vals[ratingI]||'').trim():'';
     const rating=rawRating||null; // e.g. "A+", "B", "C" — exact text as uploaded
     const ratingGroup=ratingTier(rawRating); // grouped: "A", "B", "C"...
     return{
-      name:nameI>=0?vals[nameI]:'Unnamed',address:addrI>=0?vals[addrI]:'',lat,lng,status,rating,ratingGroup,
+      name:nameI>=0?vals[nameI]:'Unnamed',address:addrI>=0?vals[addrI]:'',lat,lng,status,priority,rating,ratingGroup,
       category:catI>=0?(vals[catI]||null):null,
       contact_name:contactNameI>=0?(vals[contactNameI]||null):null,
       contact_phone:contactPhoneI>=0?(vals[contactPhoneI]||null):null,
@@ -1428,7 +1468,7 @@ async function refreshShopDbDatasets(){
   if(document.getElementById('tab-shops'))renderShopsTab();
 }
 
-const SHOP_FETCH_COLUMNS='id,name,address,lat,lng,status,contact_name,contact_phone,notes,region,county,district,coord_status,category,sales_rep,google_name,google_address,google_place_id,google_rating,google_rating_count,business_status,dataset_id';
+const SHOP_FETCH_COLUMNS='id,name,address,lat,lng,status,priority,contact_name,contact_phone,notes,region,county,district,coord_status,category,sales_rep,google_name,google_address,google_place_id,google_rating,google_rating_count,business_status,dataset_id';
 /* PostgREST caps rows per request at a server-configured max (1000 by default on Supabase) —
    a single query silently truncates instead of erroring, which is how "Taiwan Bike Shops"
    (2,550 rows) previously showed as exactly 1000/1000. Page through with .range() until a
@@ -1479,6 +1519,7 @@ async function loadFromShopDB(datasetFilter='all'){
       lat:s.lat,
       lng:s.lng,
       status:s.status||'尚未開發',
+      priority:s.priority||null,
       ratingGroup:null,
       contact_name:s.contact_name||null,
       contact_phone:s.contact_phone||null,
@@ -1725,7 +1766,7 @@ function renderShopsTab(){
     ?`<div class="upload-zone" id="uploadZone">
         <div class="uz-icon">📋</div>
         <div class="uz-title">上傳資料集 Upload dataset</div>
-        <div class="uz-sub">CSV 格式，需含 lat/GISY, lng/GISX 欄位（與 Shop DB 共用標準）<br>columns: name, status, address, category, contact_name, contact_phone, notes, rating, lat, lng<br>status: 尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失</div>
+        <div class="uz-sub">CSV 格式，需含 lat/GISY, lng/GISX 欄位（與 Shop DB 共用標準）<br>columns: name, status, priority, address, category, contact_name, contact_phone, notes, rating, lat, lng<br>status: 尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-拒絕 / 已合作 / 已合作-流失<br>priority: P1 / P2 / P3（optional）</div>
       </div>${dbBtn}`
     :`<button class="btn btn-teal" id="addLayerBtn" style="width:100%;margin-bottom:8px;">＋ 新增位置資料集 Add location dataset</button>${dbBtn}`;
 
@@ -1745,6 +1786,11 @@ function renderShopsTab(){
       const cnt=layer.data.filter(s=>s.status===st).length;
       const active=layer.statusFilters.has(st);
       return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-status="${esc(st)}" style="--dot-color:${esc(style.color)};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(st)}<span class="sf-count">${cnt}</span></span>`;
+    }).join('');
+    const priorityChips=PRIORITY_ORDER.map(p=>{
+      const cnt=layer.data.filter(s=>priorityKey(s)===p.key).length;
+      const active=layer.priorityFilters.has(p.key);
+      return`<span class="sf-chip${active?' active':''}" data-lid="${esc(layer.id)}" data-priority="${p.key}" style="--dot-color:${p.color};font-size:10px;padding:2px 7px;"><span class="sf-dot"></span>${esc(p.label)}<span class="sf-count">${cnt}</span></span>`;
     }).join('');
     const ratingGroups=[...new Set(layer.data.map(s=>s.ratingGroup).filter(Boolean))].sort();
     const ratingChips=ratingGroups.map(rg=>{
@@ -1786,6 +1832,7 @@ function renderShopsTab(){
     // the list. layer._filtersOpen is in-memory UI state, not persisted.
     const filterGroups=[
       showStatusRep?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${statChips}</div>`:'',
+      showStatusRep?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-size:9px;color:var(--soft);">優先順序 Priority</span><button class="btn layer-priority-color-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByPriority?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 圖釘依優先順序著色 Color pins by priority</button></div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${priorityChips}</div>`:'',
       (showStatusRep&&ratingGroups.length)?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">店家等級 Shop rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${ratingChips}</div>`:'',
       showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評分 Google rating</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${gRatingChips}</div>`:'',
       showRatingFilters?`<div style="font-size:9px;color:var(--soft);margin-bottom:3px;">Google 評論數 Review count</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${rCountChips}</div>`:'',
@@ -1848,7 +1895,7 @@ function renderShopsTab(){
       const rows=layer.data.filter(s=>shopPassesLayerFilters(s,layer));
       if(!rows.length){toast('目前篩選下沒有可匯出的店家 Nothing to export with current filters','err');return;}
       downloadCSV(`${layer.name.replace(/[^\w一-鿿-]+/g,'_')}-${new Date().toISOString().slice(0,10)}.csv`,rows,
-        ['name','status','category','address','region','county','district','sales_rep','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status']);
+        ['name','status','priority','category','address','region','county','district','sales_rep','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status']);
       toast(`已匯出 ${rows.length} 筆（共 ${layer.data.length} 筆）Exported ${rows.length} of ${layer.data.length}`);
     });
   });
@@ -1868,6 +1915,13 @@ function renderShopsTab(){
       renderShopsTab();
     });
   });
+  el.querySelectorAll('.layer-priority-color-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
+      layer.colorByPriority=!layer.colorByPriority;
+      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
+    });
+  });
   el.querySelectorAll('.sf-chip[data-lid]').forEach(chip=>{
     chip.addEventListener('click',()=>{
       const lid=chip.dataset.lid;
@@ -1875,6 +1929,9 @@ function renderShopsTab(){
       if(chip.dataset.status!==undefined){
         const st=chip.dataset.status;
         if(layer.statusFilters.has(st))layer.statusFilters.delete(st);else layer.statusFilters.add(st);
+      } else if(chip.dataset.priority!==undefined){
+        const pk=chip.dataset.priority;
+        if(layer.priorityFilters.has(pk))layer.priorityFilters.delete(pk);else layer.priorityFilters.add(pk);
       } else if(chip.dataset.rating!==undefined){
         const rg=chip.dataset.rating;
         if(layer.ratingFilters.has(rg))layer.ratingFilters.delete(rg);else layer.ratingFilters.add(rg);
@@ -2209,6 +2266,7 @@ function persistBikeshops(){
     // two new bucket filters below since they'd have hit the exact same bug.)
     const serializableLayers=csvLayers.map(l=>({...l,
       statusFilters:[...l.statusFilters],
+      priorityFilters:l.priorityFilters?[...l.priorityFilters]:[],
       ratingFilters:l.ratingFilters?[...l.ratingFilters]:[],
       regionFilters:l.regionFilters?[...l.regionFilters]:[],
       countyFilters:l.countyFilters?[...l.countyFilters]:[],
@@ -2235,6 +2293,7 @@ function loadSession(){
         // passed straight into `new Set(...)` (not iterable) — fall back to empty instead.
         csvLayers=b.layers.map(l=>({...l,
           statusFilters:new Set(Array.isArray(l.statusFilters)?l.statusFilters:[]),
+          priorityFilters:new Set(Array.isArray(l.priorityFilters)?l.priorityFilters:PRIORITY_ORDER.map(p=>p.key)),
           ratingFilters:new Set(Array.isArray(l.ratingFilters)?l.ratingFilters:[]),
           regionFilters:new Set(Array.isArray(l.regionFilters)?l.regionFilters:[]),
           countyFilters:new Set(Array.isArray(l.countyFilters)?l.countyFilters:[]),
@@ -2321,13 +2380,14 @@ async function loadDeepLinkPopup(shopId,marker){
 // button since this pin isn't part of any loaded, editable dataset layer.
 function buildDeepLinkPopup(shop){
   const st=statusStyle(shop.status);
+  const priorityBadge=shop.priority&&PRIORITY_STYLE[shop.priority]?`<span class="bs-badge" style="background:${esc(PRIORITY_STYLE[shop.priority].bg)};color:${esc(PRIORITY_STYLE[shop.priority].color)};margin-left:5px;">${esc(PRIORITY_STYLE[shop.priority].label)}</span>`:'';
   const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
   const googleRatingBadge=shop.google_rating!=null?`<span class="bs-badge" style="background:#FFF3E0;color:#E65100;margin-left:5px;">★ ${shop.google_rating}${shop.google_rating_count!=null?` (${shop.google_rating_count})`:''}</span>`:'';
   const categoryLine=shop.category?`<div class="bs-addr" style="color:var(--soft,#798BA5);">${esc(shop.category)}${shop.business_status&&shop.business_status!=='OPERATIONAL'?` · ${esc(shop.business_status)}`:''}</div>`:'';
   const phoneLine=shop.contact_phone?`<div class="bs-addr">Tel: ${esc(shop.contact_phone)}</div>`:'';
   return`<div class="bs-popup">
     <div class="bs-name">${esc(shop.name)}</div>
-    <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>${googleRatingBadge}
+    <span class="bs-badge" style="background:${esc(st.bg)};color:${esc(st.color)}">${esc(st.label)}</span>${priorityBadge}${googleRatingBadge}
     ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
     ${categoryLine}
     ${phoneLine}

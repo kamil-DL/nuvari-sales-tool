@@ -93,6 +93,13 @@
         <option value="已合作">已合作 Partnered</option>
         <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
       </select>
+      <label class="nst-field-label">優先順序 Priority</label>
+      <select id="ef-priority" class="nst-select">
+        <option value="">無 None</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+      </select>
       <label class="nst-field-label">地址 Address</label>
       <input id="ef-address" type="text" class="nst-input"/>
       <label class="nst-field-label">地區 Region</label>
@@ -155,7 +162,7 @@
 <script type="module">
 import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
-import { getShop, updateShop, deleteShop, STATUS_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
+import { getShop, updateShop, deleteShop, STATUS_LABELS, PRIORITY_LABELS, loadUserDirectory, repLabel, loadDatasets } from './js/shops.js';
 import { loadVisits, addVisit, VISIT_STATUS_LABELS } from './js/visits.js';
 import { friendlyError } from '../shared/friendly-error.js';
 
@@ -257,6 +264,12 @@ function statusBadge(s) {
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
 }
 
+function priorityBadge(priority) {
+  if (!priority) return '';
+  const info = PRIORITY_LABELS[priority] || { zh: priority, en: priority, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}" style="margin-left:6px">${info.zh} ${info.en}</span>`;
+}
+
 function visitStatusBadge(s) {
   const info = VISIT_STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
   return `<span class="nst-badge ${info.color}">${info.zh} ${info.en}</span>`;
@@ -264,7 +277,7 @@ function visitStatusBadge(s) {
 
 function renderShop() {
   document.getElementById('shop-name').textContent = shop.name;
-  document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status);
+  document.getElementById('shop-status-badge').innerHTML = statusBadge(shop.status) + priorityBadge(shop.priority);
   document.getElementById('f-address').textContent = shop.address || '—';
   document.getElementById('f-region').textContent = shop.region || '—';
   document.getElementById('f-contact-name').textContent = shop.contact_name || '—';
@@ -324,6 +337,7 @@ try {
 document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('ef-name').value = shop.name;
   document.getElementById('ef-status').value = shop.status;
+  document.getElementById('ef-priority').value = shop.priority || '';
   document.getElementById('ef-address').value = shop.address || '';
   document.getElementById('ef-region').value = shop.region || '';
   document.getElementById('ef-contact-name').value = shop.contact_name || '';
@@ -347,6 +361,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     shop = await updateShop(shopId, {
       name,
       status: document.getElementById('ef-status').value,
+      priority: document.getElementById('ef-priority').value || null,
       address: document.getElementById('ef-address').value.trim() || null,
       region: document.getElementById('ef-region').value.trim() || null,
       contact_name: document.getElementById('ef-contact-name').value.trim() || null,
