@@ -904,6 +904,13 @@ function initMap(){
   tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri Maxar',maxZoom:19});
   tileLight.addTo(map);
   L.control.layers({'簡約 Light':tileLight,'街道 Streets':tileStreets,'衛星 Satellite':tileSat},null,{position:'topright',collapsed:true}).addTo(map);
+  // Shop-DB pins (L.circleMarker, a vector layer) render in the same default overlayPane as the
+  // county/district choropleth polygons (also vector layers) — so whichever was most recently
+  // added/re-added to the map (e.g. switching detail level re-adds the polygon layer) ends up on
+  // top in the DOM and swallows clicks meant for the pins underneath. A dedicated pane above
+  // overlayPane (400) guarantees pins are always clickable regardless of add/re-add order.
+  map.createPane('shopPane');
+  map.getPane('shopPane').style.zIndex=450;
   markersLayer=L.layerGroup().addTo(map);
   circlesLayer=L.layerGroup().addTo(map);
   bikeshopGroup=createBikeshopGroup().addTo(map);
@@ -1195,7 +1202,7 @@ function rebuildBikeshopMarkers(){
       ?(PRIORITY_STYLE[shop.priority]?PRIORITY_STYLE[shop.priority].color:'#AEB4BD')
       :(shop.customColor||shop._layerColor||statusStyle(shop.status).color);
     const m=L.circleMarker([shop.lat,shop.lng],{
-      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9
+      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9,pane:'shopPane'
     }).addTo(bikeshopGroup);
     m.bindPopup(buildBikeshopPopup(shop),{maxWidth:230,closeOnClick:false});
     m.on('click',e=>L.DomEvent.stopPropagation(e));
