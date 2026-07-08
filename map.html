@@ -243,6 +243,11 @@ if(_forcedDev&&!['localhost','127.0.0.1'].includes(window.location.hostname)){
   });
 }
 let currentUser=null; // {id,email}
+// Delete is restricted to one account (see shared/delete-policy.js — this is a duplicate since
+// map.html is a classic script and can't import it synchronously; keep both in sync). Everyone
+// can still add/edit shops and the map's own status/priority/rep/notes edit form.
+const SHOP_DELETE_ALLOWED_EMAIL='kamil.wysocki@datalake-tech.com';
+function canDeleteShops(email){ return email===SHOP_DELETE_ALLOWED_EMAIL; }
 
 // Sales-rep options for the Shop-DB popup's edit form — loaded once at boot from the same
 // public.user_directory view NST's dropdowns use (real registered accounts, not freeform text).
@@ -1201,7 +1206,7 @@ function rebuildBikeshopMarkers(){
               return;
             }
             if(!data||data.length===0){
-              toast('無法移除 — 您可能不是此店家的建立者 Could not remove — you may not be the owner','err');
+              toast('無法移除 — 僅限指定管理員可移除店家 Could not remove — only the designated admin can remove shops','err');
               delBtn.disabled=false;delBtn.textContent='🗑 移除此店家 Remove this shop';delBtn.dataset.armed='0';delBtn.classList.remove('armed');
               return;
             }
@@ -1241,7 +1246,7 @@ function rebuildBikeshopMarkers(){
             return;
           }
           if(!data||data.length===0){
-            toast('無法儲存 — 您可能不是此店家的建立者 Could not save — you may not be the owner','err');
+            toast('無法儲存 — 您可能沒有權限修改此店家 Could not save — you may not have permission to edit this shop','err');
             saveBtn.disabled=false;saveBtn.textContent='💾 儲存 Save';
             return;
           }
@@ -1271,7 +1276,12 @@ function buildBikeshopPopup(shop){
   const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
   // Infrastructure layers (e.g. YouBike docks) aren't sales prospects — no status/rating/phone/
   // color-picker, just enough to identify the location.
-  const delBtn=`<button class="btn btn-red bs-del-btn" style="font-size:10px;padding:3px 8px;margin-top:6px;width:100%;">🗑 移除此店家 Remove this shop</button>`;
+  // A CSV-only row (no _dbId) just gets removed from local layer state — no server permission
+  // involved, so anyone can do that. A Shop-DB-backed row's delete also hits the real database
+  // (see the click handler below), so it's restricted to the same single account as everywhere
+  // else (shared/delete-policy.js).
+  const canDeleteThis=!shop._dbId||(currentUser&&canDeleteShops(currentUser.email));
+  const delBtn=canDeleteThis?`<button class="btn btn-red bs-del-btn" style="font-size:10px;padding:3px 8px;margin-top:6px;width:100%;">🗑 移除此店家 Remove this shop</button>`:'';
   if(layer&&layer.kind==='infrastructure'){
     return`<div class="bs-popup">
       <div class="bs-name">${esc(shop.name)}</div>

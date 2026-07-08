@@ -255,6 +255,7 @@ import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
 import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
 import { supabase } from './js/supabase-client.js';
 import { friendlyError } from '../shared/friendly-error.js';
+import { canDeleteShops } from '../shared/delete-policy.js';
 
 document.getElementById('logo').src = LOGO;
 
@@ -262,6 +263,9 @@ const user = await requireAuth();
 document.getElementById('app').style.display = '';
 document.getElementById('user-email').textContent = user.email;
 document.getElementById('sign-out-btn').addEventListener('click', signOut);
+// Delete is restricted to one account (see shared/delete-policy.js) — everyone can still
+// add/edit shops and bulk-change status/sales rep/priority.
+const iAmDeleter = canDeleteShops(user.email);
 
 let currentShops = [];
 // Rendering thousands of cards at once (production now has 3000+ shops) is what was actually
@@ -318,10 +322,12 @@ function renderShops(shops) {
   }
   const visible = shops.slice(0, renderLimit);
   list.innerHTML = visible.map(s => {
-    const owned = s.created_by === user.id;
     const checked = selectedIds.has(s.id);
+    // Selection is for bulk status/rep/priority changes too, which anyone can do — only
+    // deleting is restricted (see iAmDeleter / delete-selected-btn), so selecting a shop here
+    // isn't gated by who created it.
     const checkbox = selectionMode
-      ? `<span class="nst-card-check${checked ? ' checked' : ''}${owned ? '' : ' disabled'}" title="${owned ? '' : '只能刪除自己新增的店家 · Only shops you created can be deleted'}">${checked ? '✓' : ''}</span>`
+      ? `<span class="nst-card-check${checked ? ' checked' : ''}">${checked ? '✓' : ''}</span>`
       : '';
     const dsName = s.dataset_id ? (datasetName(s.dataset_id) || '—') : null;
     const lastVisit = latestVisitByShop[s.id];
@@ -379,9 +385,9 @@ function setBulkControlsDisabled(disabled) {
 }
 
 function updateSelectionBar() {
-  const ownedShops = currentShops.filter(s => s.created_by === user.id);
   const n = selectedIds.size;
   document.getElementById('selection-count').textContent = n > 0 ? `已選 ${n} 筆 · ${n} selected` : '';
+  document.getElementById('delete-selected-btn').style.display = iAmDeleter ? '' : 'none';
   document.getElementById('delete-selected-btn').disabled = n === 0;
   document.getElementById('delete-selected-btn').textContent = `刪除已選 Delete selected${n ? ` (${n})` : ''}`;
   const statusVal = document.getElementById('bulk-status-select').value;
@@ -390,7 +396,7 @@ function updateSelectionBar() {
   document.getElementById('bulk-rep-apply-btn').disabled = n === 0 || repVal === '__placeholder__';
   const priorityVal = document.getElementById('bulk-priority-select').value;
   document.getElementById('bulk-priority-apply-btn').disabled = n === 0 || priorityVal === '__placeholder__';
-  document.getElementById('select-all-checkbox').checked = ownedShops.length > 0 && ownedShops.every(s => selectedIds.has(s.id));
+  document.getElementById('select-all-checkbox').checked = currentShops.length > 0 && currentShops.every(s => selectedIds.has(s.id));
 }
 
 // Runs one write per id sequentially with a live "N/total" progress readout — a bulk edit on
@@ -586,7 +592,7 @@ function openModal(shop = null) {
   document.getElementById('f-notes').value = shop ? (shop.notes || '') : '';
   document.getElementById('modal-error').textContent = '';
   editingShopCreatedBy = shop ? shop.created_by : null;
-  const canDelete = isEdit && shop.created_by === user.id;
+  const canDelete = isEdit && iAmDeleter;
   document.getElementById('modal-delete-btn').style.display = canDelete ? '' : 'none';
   document.getElementById('modal-save-btn').textContent = isEdit ? '儲存 Save' : '新增 Add';
   document.getElementById('shop-modal').style.display = '';
@@ -737,8 +743,7 @@ document.getElementById('select-mode-btn').addEventListener('click', enterSelect
 document.getElementById('cancel-select-btn').addEventListener('click', exitSelectionMode);
 
 document.getElementById('select-all-checkbox').addEventListener('change', e => {
-  const ownedShops = currentShops.filter(s => s.created_by === user.id);
-  if (e.target.checked) ownedShops.forEach(s => selectedIds.add(s.id));
+  if (e.target.checked) currentShops.forEach(s => selectedIds.add(s.id));
   else selectedIds.clear();
   renderShops(currentShops);
   updateSelectionBar();
