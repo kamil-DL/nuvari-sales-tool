@@ -341,6 +341,14 @@ function onAuthReady(session){
     document.getElementById('account-area').style.display='flex';
     document.getElementById('account-email').textContent=u.email;
   }
+  // The Shop DB layer cached in localStorage is only ever a local snapshot for instant
+  // rendering — it must never be treated as authoritative, since someone else (or you, on a
+  // different computer) may have changed shop data since it was last loaded. Re-sync every
+  // Shop-DB-backed layer with the live database as soon as we know who's signed in, so a change
+  // made elsewhere always shows up here on the next load instead of silently looking "lost".
+  csvLayers.filter(l=>l.id.startsWith('shopdb_')).forEach(l=>{
+    refreshShopDbLayer(l.id).catch(e=>console.error('Auto-refresh failed for',l.id,e));
+  });
   // Retry now that a session actually exists — the boot-time call can run before sign-in
   // resolves. Popups are pre-rendered HTML strings (bindPopup), not regenerated per-open, so if
   // any markers already rendered before the directory loaded, their rep dropdown would be stuck
@@ -1546,6 +1554,57 @@ async function fetchAllShopsForDataset(datasetFilter){
   }
   return all;
 }
+// Shared between loadFromShopDB (fresh load) and refreshShopDbLayer (re-sync an existing
+// layer's data in place) so both stay in sync with the same field mapping.
+function mapShopDbRows(mappable,layerId,layerColor){
+  return mappable.map(s=>({
+    name:s.name,
+    address:s.address||'',
+    lat:s.lat,
+    lng:s.lng,
+    status:s.status||'尚未開發',
+    priority:s.priority||null,
+    ratingGroup:null,
+    contact_name:s.contact_name||null,
+    contact_phone:s.contact_phone||null,
+    notes:s.notes||null,
+    region:s.region||null,
+    county:s.county||null,
+    district:s.district||null,
+    coord_status:s.coord_status||null,
+    category:s.category||null,
+    sales_rep:s.sales_rep||null,
+    google_name:s.google_name||null,
+    google_address:s.google_address||null,
+    google_place_id:s.google_place_id||null,
+    google_rating:s.google_rating!=null?parseFloat(s.google_rating):null,
+    google_rating_count:s.google_rating_count!=null?parseInt(s.google_rating_count,10):null,
+    business_status:s.business_status||null,
+    _layerId:layerId,
+    _layerColor:layerColor,
+    _dbId:s.id
+  }));
+}
+// Re-pulls a Shop-DB-backed layer's data from the database in place, WITHOUT rebuilding the
+// layer object — loadFromShopDB() creates a brand-new layer (resetting statusFilters/
+// priorityFilters/etc. to their "show everything" defaults), which would silently throw away
+// whatever the user had currently filtered down to. This keeps every filter selection intact
+// and only refreshes the underlying shop data (so edits made on another computer/session show
+// up here without needing to re-pick the dataset from the dropdown).
+async function refreshShopDbLayer(layerId){
+  if(!layerId.startsWith('shopdb_'))throw new Error('Not a Shop-DB-backed layer');
+  const layer=csvLayers.find(l=>l.id===layerId);
+  if(!layer)throw new Error('Layer not found');
+  const datasetFilter=layerId.slice('shopdb_'.length);
+  const data=await fetchAllShopsForDataset(datasetFilter);
+  const mappable=data.filter(s=>s.lat!=null&&s.lng!=null);
+  layer.data=mapShopDbRows(mappable,layer.id,layer.color);
+  rebuildBikeshopDataFromLayers();
+  persistBikeshops();
+  rebuildBikeshopMarkers();
+  renderShopsTab();
+  toast(`已重新載入 ${mappable.length} 家店 Refreshed ${mappable.length} shops`);
+}
 async function loadFromShopDB(datasetFilter='all'){
   if(!currentUser){toast('請先登入 Please sign in first','err');return;}
   const btn=document.getElementById('loadDbBtn');
@@ -1569,33 +1628,7 @@ async function loadFromShopDB(datasetFilter='all'){
     csvLayers=csvLayers.filter(l=>l.id!==layerId);
     activeLayerIds.delete(layerId);
     const layerColor=meta?meta.color:'#137ECE';
-    const shops=mappable.map(s=>({
-      name:s.name,
-      address:s.address||'',
-      lat:s.lat,
-      lng:s.lng,
-      status:s.status||'尚未開發',
-      priority:s.priority||null,
-      ratingGroup:null,
-      contact_name:s.contact_name||null,
-      contact_phone:s.contact_phone||null,
-      notes:s.notes||null,
-      region:s.region||null,
-      county:s.county||null,
-      district:s.district||null,
-      coord_status:s.coord_status||null,
-      category:s.category||null,
-      sales_rep:s.sales_rep||null,
-      google_name:s.google_name||null,
-      google_address:s.google_address||null,
-      google_place_id:s.google_place_id||null,
-      google_rating:s.google_rating!=null?parseFloat(s.google_rating):null,
-      google_rating_count:s.google_rating_count!=null?parseInt(s.google_rating_count,10):null,
-      business_status:s.business_status||null,
-      _layerId:layerId,
-      _layerColor:layerColor,
-      _dbId:s.id
-    }));
+    const shops=mapShopDbRows(mappable,layerId,layerColor);
     const newLayer={
       id:layerId,
       name:datasetLabel?`Shop DB — ${datasetLabel}`:'Shop DB',
@@ -1903,6 +1936,7 @@ function renderShopsTab(){
         <span style="width:11px;height:11px;border-radius:50%;background:${esc(layer.color)};flex-shrink:0;display:inline-block;"></span>
         <span style="font-weight:700;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(layer.name)}">${esc(layer.name)}</span>
         <button class="btn layer-toggle-btn" data-lid="${esc(layer.id)}" style="font-size:12px;font-weight:700;padding:5px 13px;${isActive?'background:var(--ink);color:#fff;border-color:var(--ink)':''}">${isActive?'ON':'OFF'}</button>
+        ${layer.id.startsWith('shopdb_')?`<button class="btn layer-refresh-btn" data-lid="${esc(layer.id)}" title="從資料庫重新同步（不會清除目前篩選）Re-sync with the database (keeps your current filters)" style="font-size:12px;padding:5px 9px;">🔄</button>`:''}
         <button class="btn layer-export-btn" data-lid="${esc(layer.id)}" title="匯出此資料集（依目前篩選）Export this dataset (respects active filters)" style="font-size:12px;padding:5px 9px;">⬇</button>
         <button class="btn btn-red layer-del-btn" data-lid="${esc(layer.id)}" style="font-size:12px;padding:5px 11px;">✕</button>
       </div>
@@ -1957,6 +1991,18 @@ function renderShopsTab(){
       downloadCSV(`${layer.name.replace(/[^\w一-鿿-]+/g,'_')}-${new Date().toISOString().slice(0,10)}.csv`,rows,
         ['name','status','priority','category','address','region','county','district','sales_rep','contact_name','contact_phone','notes','lat','lng','coord_status','google_name','google_address','google_place_id','google_rating','google_rating_count','business_status']);
       toast(`已匯出 ${rows.length} 筆（共 ${layer.data.length} 筆）Exported ${rows.length} of ${layer.data.length}`);
+    });
+  });
+  el.querySelectorAll('.layer-refresh-btn').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      btn.disabled=true;btn.textContent='⏳';
+      try{
+        await refreshShopDbLayer(btn.dataset.lid);
+      }catch(e){
+        console.error(e);
+        toast('重新同步失敗 Re-sync failed','err');
+        btn.disabled=false;btn.textContent='🔄';
+      }
     });
   });
   el.querySelectorAll('.layer-zoom-btn').forEach(btn=>{
