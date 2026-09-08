@@ -325,6 +325,31 @@
   }
 
   .nuvari-view-toggle {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px 14px;
+  }
+
+  .nuvari-store-app[data-mobile-view="list"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .nuvari-store-app[data-mobile-view="list"] .nuvari-map-container {
+    display: none;
+  }
+
+  .nuvari-store-app[data-mobile-view="map"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .nuvari-store-app[data-mobile-view="map"] .nuvari-sidebar {
+    border-right: none;
+  }
+
+  .nuvari-store-app[data-mobile-view="map"] .nuvari-store-list,
+  .nuvari-store-app[data-mobile-view="map"] .nuvari-empty-state {
     display: none;
   }
 
@@ -602,7 +627,7 @@
   .nuvari-popup-actions {
     display: flex;
     gap: 6px;
-    margin-top: 12px;
+    margin-top: 20px;
   }
 
   .nuvari-popup-btn {
@@ -835,12 +860,6 @@
       flex-direction: column;
     }
 
-    .nuvari-view-toggle {
-      display: flex;
-      gap: 8px;
-      padding: 0 20px 14px;
-    }
-
     .nuvari-store-list {
       max-height: none;
       height: min(68vh, 620px);
@@ -852,16 +871,6 @@
       height: min(68vh, 620px);
       height: min(68dvh, 620px);
     }
-
-    .nuvari-store-app[data-mobile-view="list"] .nuvari-map-container {
-      display: none;
-    }
-
-    .nuvari-store-app[data-mobile-view="map"] .nuvari-store-list,
-    .nuvari-store-app[data-mobile-view="map"] .nuvari-empty-state {
-      display: none;
-    }
-
   }
 
   @media (max-width: 560px) {
