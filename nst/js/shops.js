@@ -101,6 +101,21 @@ export function repLabel(email) {
   return REP_DISPLAY_NAMES[email] || email.split('@')[0];
 }
 
+// Per-rep accent colors for anything that needs to visually group by rep at a glance (campaign
+// overview's day cards, calendar chips) — same 4 hex values the September campaign Artifact used
+// (project_sept_campaign_artifact.md's REP_COLOR), carried over so returning users see the same
+// rep=color association. Falls back to a neutral gray for any rep not in this map (an account
+// added after this list, or the "未指派/unassigned" bucket).
+export const REP_COLORS = {
+  'rainlee@datalake-tech.com': '#137ECE',
+  'devin.yao@datalake-tech.com': '#0B8E6A',
+  'victor.luo@datalake-tech.com': '#B45309',
+  'kamil.wysocki@datalake-tech.com': '#7C3AED',
+};
+export function repColor(email) {
+  return REP_COLORS[email] || '#AEB4BD';
+}
+
 // Datasets group shops (e.g. one CSV import = one dataset) so imports don't all pile into
 // one undifferentiated list, and so the map planner can load a specific subset.
 export async function loadDatasets() {
@@ -195,3 +210,17 @@ export const PRIORITY_LABELS = {
   P2: { zh: 'P2', en: 'Medium priority', color: 'badge-orange', hex: '#E65100' },
   P3: { zh: 'P3', en: 'Low priority',  color: 'badge-yellow', hex: '#CA8A04' },
 };
+
+// 洽談結果 (negotiation outcome) — see 0016_add_shop_outcome.sql for why this is separate from
+// STATUS_LABELS above. Null/undefined means "no outcome tagged yet", rendered as 待拜訪 in the UI
+// but deliberately NOT stored as that value by default — so "never touched" stays distinguishable
+// from "someone explicitly set it back to 待拜訪" if that ever matters later.
+export const OUTCOME_LABELS = {
+  '待拜訪':          { zh: '待拜訪',          en: 'Awaiting Visit',        color: 'badge-gray' },
+  '拒絕':            { zh: '拒絕',            en: 'Declined',              color: 'badge-red' },
+  '要考慮':          { zh: '要考慮',          en: 'Considering',           color: 'badge-yellow' },
+  '要合作-等樣品':    { zh: '要合作-等樣品',    en: 'Partnering - Awaiting Sample', color: 'badge-blue' },
+  '要合作-樣品待組裝': { zh: '要合作-樣品待組裝', en: 'Partnering - Sample Being Assembled', color: 'badge-lime' },
+  '要合作-樣品裝好了': { zh: '要合作-樣品裝好了', en: 'Partnering - Sample Installed', color: 'badge-green' },
+};
+export const OUTCOME_OPTIONS = Object.keys(OUTCOME_LABELS);

@@ -49,6 +49,7 @@
     <a href="shops.html">店家資料庫 Shops</a>
     <a href="visits.html">拜訪計劃 Visits</a>
     <a href="planner.html" class="active">🗺️ 每日行程 Day Plans</a>
+    <a href="campaign-overview.html">📊 活動總覽 Campaign Overview</a>
   </nav>
 
   <div class="nst-page">
@@ -161,7 +162,7 @@ import { requireAuth, signOut } from './js/auth.js';
 import { LOGO } from './js/logo.js';
 import { getPlan, updatePlan, deletePlan, addStop, removeStop, reorderStops, loadPlans, PLAN_STATUS_LABELS } from './js/planner.js';
 import { addVisit } from './js/visits.js';
-import { loadShops, loadUserDirectory, repLabel, loadCampaigns, STATUS_LABELS, PRIORITY_LABELS } from './js/shops.js';
+import { loadShops, loadUserDirectory, repLabel, loadCampaigns, updateShop, STATUS_LABELS, PRIORITY_LABELS, OUTCOME_LABELS, OUTCOME_OPTIONS } from './js/shops.js';
 import { canAssignToOthers } from '../shared/delete-policy.js';
 import { buildRouteUrl, shopMapsUrl, nearestNeighborFromStart, parseStartLocation, DEFAULT_START_LOCATION, DEFAULT_START_LOCATION_LABEL } from '../shared/route-planning.js';
 
@@ -205,6 +206,16 @@ function priorityBadge(p) {
   if (!p) return '';
   const info = PRIORITY_LABELS[p];
   return info ? `<span class="nst-badge ${info.color}" style="font-size:10px">${info.zh}</span>` : '';
+}
+// Outcome dropdown, inline per stop — same "no separate save button, saves on change" pattern as
+// every other field on this page. `shop.outcome` is null until someone sets it (see
+// 0016_add_shop_outcome.sql); the select defaults to 待拜訪 for that case without writing it back.
+function outcomeSelectHtml(shop) {
+  const current = shop.outcome || '待拜訪';
+  const opts = OUTCOME_OPTIONS.map(o =>
+    `<option value="${esc(o)}" ${o === current ? 'selected' : ''}>${esc(OUTCOME_LABELS[o].zh)}</option>`
+  ).join('');
+  return `<select class="outcome-select move-day-select" data-shop-id="${shop.id}" title="洽談結果 Outcome">${opts}</select>`;
 }
 
 // Every stop/status/notes/location edit below saves immediately — there's no separate "Save"
@@ -271,6 +282,7 @@ function renderStops() {
           </div>
           <div class="stop-meta">${shop.address ? esc(shop.address) : '—'}${shop.county ? ` · ${esc(shop.county)}` : ''}</div>
         </div>
+        ${editable ? outcomeSelectHtml(shop) : `<span class="nst-badge ${OUTCOME_LABELS[shop.outcome || '待拜訪'].color}" style="font-size:10px">${esc(OUTCOME_LABELS[shop.outcome || '待拜訪'].zh)}</span>`}
         <div class="stop-actions">
           ${visited
             ? `<a href="visit-detail.html?id=${stop.visit_id}" class="nst-btn nst-btn-ghost nst-btn-sm">✅ 已拜訪 Visited</a>`
@@ -495,6 +507,22 @@ document.getElementById('stops-list').addEventListener('click', async e => {
 // a trip to the other plan's page. The stop's own visit_id (if it was already marked visited)
 // deliberately does NOT carry over — a completed visit stays tied to the day it actually happened.
 document.getElementById('stops-list').addEventListener('change', async e => {
+  if (e.target.classList.contains('outcome-select')) {
+    const sel = e.target;
+    const shopId = sel.dataset.shopId;
+    const val = sel.value;
+    sel.disabled = true;
+    try {
+      await updateShop(shopId, { outcome: val });
+      const stop = plan.visit_plan_stops.find(s => s.shop_id === shopId);
+      if (stop && stop.shops) stop.shops.outcome = val;
+      showSavedToast();
+    } catch (err) {
+      document.getElementById('error-banner').textContent = err.message;
+      document.getElementById('error-banner').style.display = '';
+    } finally { sel.disabled = false; }
+    return;
+  }
   if (!e.target.classList.contains('move-day-select')) return;
   const sel = e.target;
   const targetPlanId = sel.value;

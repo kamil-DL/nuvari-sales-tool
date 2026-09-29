@@ -1,9 +1,3 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>nuvari 門市地圖 (Cyberbiz Storefinder)</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -292,98 +286,13 @@
     outline-offset: 2px;
   }
 
-  .nuvari-nearest-btn {
+  .nuvari-line-cta {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    width: calc(100% - 40px);
-    min-height: 50px;
-    margin: 20px 20px 0;
-    border: none;
-    border-radius: var(--radius-lg);
-    background: var(--secondary-dark);
-    color: var(--primary);
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    cursor: pointer;
-    transition: all var(--transition);
-    box-shadow: var(--shadow-md);
-  }
-
-  .nuvari-nearest-btn .material-symbols-outlined {
-    font-size: 20px;
-  }
-
-  .nuvari-nearest-btn:hover {
-    background: #003a6e;
-  }
-
-  .nuvari-nearest-btn:active {
-    transform: scale(0.98);
-  }
-
-  .nuvari-nearest-btn[data-state="loading"] .material-symbols-outlined {
-    animation: nuvari-spin 0.9s linear infinite;
-  }
-
-  .nuvari-search-row {
-    position: relative;
-    margin-bottom: 10px;
-  }
-
-  .nuvari-search-row .material-symbols-outlined {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 18px;
-    color: var(--text-muted);
-    pointer-events: none;
-  }
-
-  #nuvariSearchInput {
-    width: 100%;
-    height: 42px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-light);
-    background: var(--surface-container);
-    padding: 0 12px 0 38px;
-    font-size: 14px;
-    font-family: inherit;
-    font-weight: 600;
-    color: var(--secondary-dark);
-    transition: border-color var(--transition), box-shadow var(--transition);
-  }
-
-  #nuvariSearchInput::placeholder {
-    color: var(--text-muted);
-    font-weight: 500;
-  }
-
-  #nuvariSearchInput:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(11, 198, 255, 0.15);
-  }
-
-  /* Search inputs get a native clear ("x") button in some browsers; this
-     keeps it from colliding with our own left-aligned icon layout. */
-  #nuvariSearchInput::-webkit-search-cancel-button {
-    margin-right: 2px;
-  }
-
-  .nuvari-line-cta {
-    display: inline-flex;
-    align-self: center;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
     min-height: 44px;
-    padding: 0 26px;
-    margin: 16px auto;
+    margin: 16px 20px;
     border-radius: var(--radius-full);
     background: #06c755;
     color: #ffffff !important;
@@ -401,7 +310,7 @@
   }
 
   .nuvari-results-count {
-    margin-top: 14px;
+    padding: 0 20px 12px;
     font-size: 12px;
     font-weight: 800;
     color: var(--primary);
@@ -412,7 +321,7 @@
   .nuvari-view-toggle {
     display: flex;
     gap: 8px;
-    margin-top: 10px;
+    padding: 0 20px 14px;
   }
 
   .nuvari-store-app[data-mobile-view="list"] {
@@ -475,30 +384,6 @@
     font-weight: 600;
     background: var(--surface-container);
     border-radius: var(--radius-lg);
-  }
-
-  .nuvari-list-loading[hidden] {
-    display: none;
-  }
-
-  .nuvari-list-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 8px 20px 0;
-    padding: 28px 16px;
-    text-align: center;
-    color: var(--secondary);
-    font-size: 13px;
-    font-weight: 700;
-    background: var(--primary-container);
-    border-radius: var(--radius-lg);
-  }
-
-  .nuvari-list-loading .material-symbols-outlined {
-    font-size: 18px;
-    animation: nuvari-spin 0.9s linear infinite;
   }
 
   .nuvari-store-list {
@@ -664,29 +549,11 @@
     padding: 18px;
   }
 
-  .nuvari-popup-photo {
-    margin: -18px -18px 14px;
-    height: 130px;
-    overflow: hidden;
-    background: var(--surface-container);
-  }
-
-  .nuvari-popup-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
   .nuvari-popup-header {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .nuvari-popup-inner .nuvari-badge-row {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .nuvari-popup-avatar {
@@ -741,7 +608,7 @@
     font-size: 13px;
     color: var(--text-muted);
     line-height: 1.6;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .nuvari-popup-detail .material-symbols-outlined {
@@ -753,28 +620,25 @@
 
   .nuvari-popup-actions {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     margin-top: 20px;
   }
 
   .nuvari-popup-btn {
     flex: 1;
-    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    height: 36px;
-    padding: 0 4px;
+    gap: 4px;
+    height: 34px;
     border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 800;
     text-decoration: none;
     cursor: pointer;
     border: none;
     transition: all var(--transition);
-    white-space: nowrap;
   }
 
   .nuvari-popup-btn.primary {
@@ -991,7 +855,6 @@
     }
 
     .nuvari-store-list {
-      flex: none;
       max-height: none;
       height: min(68vh, 620px);
       height: min(68dvh, 620px);
@@ -1043,8 +906,6 @@
   }
 
 </style>
-</head>
-<body>
 
 <div class="nuvari-store-page">
 
@@ -1062,18 +923,8 @@
 
   <div class="nuvari-store-app" id="nuvariStoreApp" data-mobile-view="list">
     <div class="nuvari-sidebar">
-      <button type="button" class="nuvari-nearest-btn" id="nuvariNearestBtn">
-        <span class="material-symbols-outlined" aria-hidden="true">my_location</span>
-        離我最近的服務據點在哪？
-      </button>
-
       <div class="nuvari-filters">
         <div class="nuvari-filters-title">篩選據點</div>
-
-        <div class="nuvari-search-row">
-          <span class="material-symbols-outlined" aria-hidden="true">search</span>
-          <input type="search" id="nuvariSearchInput" placeholder="搜尋店名或地址">
-        </div>
 
         <div class="nuvari-filter-row">
           <select id="nuvariCitySelect">
@@ -1110,19 +961,6 @@
             維修
           </label>
         </div>
-
-        <div class="nuvari-results-count" id="nuvariResultsCount">0 間據點</div>
-
-        <div class="nuvari-view-toggle" role="tablist" aria-label="切換列表或地圖檢視">
-          <button type="button" id="nuvariViewListBtn" class="active" aria-pressed="true">
-            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">view_list</span>
-            列表
-          </button>
-          <button type="button" id="nuvariViewMapBtn" aria-pressed="false">
-            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">map</span>
-            地圖
-          </button>
-        </div>
       </div>
 
       <a class="nuvari-line-cta" href="https://page.line.me/091vmynj" target="_blank" rel="noopener noreferrer">
@@ -1130,10 +968,19 @@
         LINE 立即預約試騎
       </a>
 
-      <div class="nuvari-list-loading" id="nuvariListLoading" hidden>
-        <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
-        正在為您定位最近的門市…
+      <div class="nuvari-results-count" id="nuvariResultsCount">0 間據點</div>
+
+      <div class="nuvari-view-toggle" role="tablist" aria-label="切換列表或地圖檢視">
+        <button type="button" id="nuvariViewListBtn" class="active" aria-pressed="true">
+          <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">view_list</span>
+          列表
+        </button>
+        <button type="button" id="nuvariViewMapBtn" aria-pressed="false">
+          <span class="material-symbols-outlined" aria-hidden="true" style="font-size:18px;">map</span>
+          地圖
+        </button>
       </div>
+
       <div class="nuvari-store-list" id="nuvariStoreList"></div>
       <div class="nuvari-empty-state" id="nuvariEmptyState" hidden>找不到符合條件的門市，請調整篩選條件。</div>
     </div>
@@ -1152,64 +999,69 @@
 <script>
 function initNuvariStoreApp() {
   const STORES = [
-    {name:"nuvari 總部",type:"direct",city:"台中市",district:"南屯區",address:"408臺中市南屯區龍鎮二街398號",phone:"04 2372 2070",tag:"nuvari總部/GO 試乘/Ultra 試乘/維修",lat:24.1333736,lng:120.626378,isHQ:true},
-    {name:"乘風單車店",type:"dealer",city:"新竹市",district:"北區",address:"300028台灣新竹市北區中山路204號",phone:"03 524 7077",tag:"GO 試乘",lat:24.8032098,lng:120.9631275,placeId:"ChIJveaEaZU1aDQRY422jarah7I"},
-    {name:"老學長單車生活館",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區光復路二段902巷2號",phone:"03 526 7318",tag:"GO 試乘",lat:24.803132,lng:120.981938,placeId:"ChIJhcV6gt41aDQRUb5mf8IVDoY"},
-    {name:"輕車熟路",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區金城一路99號",phone:"03 572 0040",tag:"GO 試乘",lat:24.7957166,lng:121.0023035,placeId:"ChIJY0kfqGw2aDQR5AOjMIv5ymc"},
-    {name:"自由行單車專賣店",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區博愛街32號",phone:"03 572 0225",tag:"GO 試乘",lat:24.7980808,lng:120.9846234,placeId:"ChIJo88k9eA1aDQRFbqBEBejqYc"},
-    {name:"百士客單車",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區關東路79號",phone:"03 563 0308",tag:"GO 試乘",lat:24.785135,lng:121.0191556,placeId:"ChIJITx9Bjo2aDQR9JdMk57JQ0A"},
-    {name:"新湖車行自行車",type:"dealer",city:"新竹縣",district:"湖口鄉",address:"303新竹縣湖口鄉中山路二段10號",phone:"03 599 2854",tag:"GO 試乘",lat:24.8996615,lng:121.0427002,placeId:"ChIJ1-zo5VAwaDQR6-U-mJasAzQ"},
-    {name:"綠生活戶外休閒館",type:"dealer",city:"台中市",district:"南區",address:"402台中市南區國光路204-1號",phone:"04 2287 9696",tag:"GO 試乘",lat:24.1262714,lng:120.6764368},
-    {name:"雲遊單車休閒館",type:"dealer",city:"台中市",district:"北屯區",address:"406029台中市北屯區崇德六路一段173號",phone:"04 2247 4709",tag:"GO 試乘",lat:24.1802559,lng:120.6910543,placeId:"ChIJF5YC8eoXaTQRD5OzCMqRxFs"},
-    {name:"維也娜車行",type:"dealer",city:"台中市",district:"大里區",address:"412臺灣台中市大里區草湖路95巷50號",phone:"04 2496 0793",tag:"GO 試乘",lat:24.0770306,lng:120.688258},
-    {name:"鐵馬王自行車行",type:"dealer",city:"台中市",district:"豐原區",address:"420台中市豐原區豐北街295號",phone:"04 2520 0901",tag:"GO 試乘",lat:24.2604084,lng:120.7163579,placeId:"ChIJzdx5bAsaaTQR-QtwNC2PtMI"},
-    {name:"鑫馬單車",type:"dealer",city:"台中市",district:"潭子區",address:"427台中市潭子區大豐路二段73號號",phone:"04 2534 9162",tag:"GO 試乘",lat:24.2177751,lng:120.6915442,placeId:"ChIJA4IO92wXaTQRjKFLsfZv_UY"},
-    {name:"美利達久大單車生活館",type:"dealer",city:"台中市",district:"潭子區",address:"427臺灣台中市潭子區福貴路655號",phone:"04 2536 0648",tag:"GO 試乘",lat:24.216495,lng:120.7125217,placeId:"ChIJIWYCOmcXaTQREDVarzHLnXk"},
-    {name:"BAISKY官方旗艦店",type:"dealer",city:"台中市",district:"大雅區",address:"428臺中市大雅區中清北街69號",phone:"04-25693341",tag:"GO 試乘",lat:24.2248816,lng:120.6462681},
-    {name:"捷安特-天華車行",type:"dealer",city:"台中市",district:"大雅區",address:"428臺中市大雅區學府路319號",phone:"04 2568 3256",tag:"GO 試乘",lat:24.2251915,lng:120.6489255},
-    {name:"修李人工坊",type:"dealer",city:"台中市",district:"沙鹿區",address:"433台中市沙鹿區北勢東路833巷2-5號",phone:"0937 266 283",tag:"GO 試乘",lat:24.22882815,lng:120.5683997},
-    {name:"美利達 清華專賣店",type:"dealer",city:"台中市",district:"沙鹿區",address:"433臺灣台中市沙鹿區日新街61巷4號",phone:"04 2662 5672",tag:"GO 試乘",lat:24.2365644,lng:120.5630143,placeId:"ChIJk_9QsPwUaTQRECqlo1cJSZ8"},
-    {name:"翔愛腳踏車店",type:"dealer",city:"台中市",district:"龍井區",address:"434台中市龍井區文昌路776號",phone:"0928 999 515",tag:"GO 試乘",lat:24.1827583,lng:120.5315466,placeId:"ChIJndRG_fY_aTQRN0NpvD0ve2s"},
-    {name:"捷安特-林清月車行 自行車&電動車專賣店",type:"dealer",city:"台中市",district:"清水區",address:"436臺中市清水區清水街47號",phone:"04 2622 1748",tag:"GO 試乘",lat:24.2696228,lng:120.5748861,placeId:"ChIJ16X0RN4VaTQR4eBqbmH97A4"},
-    {name:"騎寓自轉車",type:"dealer",city:"彰化縣",district:"社頭鄉",address:"511彰化縣社頭鄉中興路64號",phone:"04 871 0477",tag:"GO 試乘",lat:23.9030578,lng:120.581014},
-    {name:"傑輪單車休閒館 Jalen Bike Shop",type:"dealer",city:"南投縣",district:"南投市",address:"540南投縣南投市大同街17號",phone:"0921 594 356",tag:"GO 試乘",lat:23.9064304,lng:120.6882756,placeId:"ChIJdepnxooxaTQRGExt3Q3BHNo"},
-    {name:"美利達-東益店（單車銷售、出租）",type:"dealer",city:"南投縣",district:"南投市",address:"540南投縣南投市中興路16號",phone:"04 9233 7000",tag:"GO 試乘",lat:23.9389293,lng:120.6970172,placeId:"ChIJAabE8s4xaTQR72zNIdY71gA"},
-    {name:"晉榮車行",type:"dealer",city:"嘉義市",district:"東區",address:"600嘉義市東區台林街233號",phone:"05 271 9243",tag:"GO 試乘",lat:23.497817,lng:120.4551512,placeId:"ChIJFe_h98aVbjQRjXM1uL7zO-s"},
-    {name:"GIANT捷安特-金的車行 自行車&電動車專賣店",type:"dealer",city:"台中市",district:"豐原區",address:"420臺中市豐原區西安里中正路457號",phone:"04 2525 6347",tag:"GO 試乘",lat:24.2504496,lng:120.7117456,placeId:"ChIJBf3sKKgQaTQR9x7bBOvJCKc"},
-    {name:"成功行",type:"dealer",city:"台中市",district:"太平區",address:"406臺中市太平區永隆里光興路453號",phone:"04 2271 0620",tag:"GO 試乘",lat:24.103932,lng:120.7288968,placeId:"ChIJpcreBSQjaTQR_fuwWMgDuLI"},
-    {name:"佑健單車",type:"dealer",city:"彰化縣",district:"彰化市",address:"500彰化縣彰化市大竹里市長順街19號",phone:"04 722 6937",tag:"GO 試乘",lat:24.0846094,lng:120.550486,placeId:"ChIJVdLQUJU4aTQRD0y_TcS7tHI"},
-    {name:"美利達中美車行（單車、電動車）維修 買賣",type:"dealer",city:"新竹縣",district:"竹東鎮",address:"310新竹縣竹東鎮中山里東寧路二段123號",phone:"03 596 9816",tag:"GO 試乘",lat:24.7319058,lng:121.0895038,placeId:"ChIJCYh4Qt1HaDQR1qrVaSJWi_M"},
-    {name:"亞速百克單車休閒館",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區篤行路三段79號",phone:"02 2686 2336",tag:"GO 試乘",lat:24.9850522,lng:121.426967,placeId:"ChIJp5qHxzwdaDQR3l8qWzvC-Pk"},
-    {name:"捷安特大車輪",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區英士路60號",phone:"02 2251 8163",tag:"GO 試乘",lat:25.0246878,lng:121.4607709},
-    {name:"台中大明自行車",type:"dealer",city:"台中市",district:"大里區",address:"412台中市大里區塗城路694號",phone:"04 2495 3789",tag:"GO 試乘",lat:24.0896318,lng:120.6986908,placeId:"ChIJ6fm4ILo8aTQRNVZAfS1fUX0"},
-    {name:"迎風單車 / 竹北勁風",type:"dealer",city:"新竹縣",district:"竹北市",address:"302新竹縣竹北市勝利八街一段277號",phone:"03 667 6810",tag:"Ultra 試乘",lat:24.8255649,lng:121.0279442},
-    {name:"鐵騎休閒館",type:"dealer",city:"新竹縣",district:"竹北市",address:"302新竹縣竹北市六甲五路一段119號",phone:"03 658 2881",tag:"GO 試乘",lat:24.8115,lng:121.0289,placeId:"ChIJ038invA2aDQRmsbDWWqsF3A"},
-    {name:"典鑽單車",type:"dealer",city:"嘉義市",district:"西區",address:"600嘉義市西區仁愛路135號",phone:"05 285 1692",tag:"GO 試乘",lat:23.4686333,lng:120.4427284,placeId:"ChIJucNEgneVbjQR5HNvG4-Y-2M"},
-    {name:"美利達花蓮精誠",type:"dealer",city:"花蓮縣",district:"花蓮市",address:"970花蓮縣花蓮市節約街9號",phone:"03 836 1126",tag:"GO 試乘",lat:23.9782420514889,lng:121.606442301844},
-    {name:"GIANT捷安特-行千里自行車行",type:"dealer",city:"嘉義市",district:"西區",address:"600嘉義市西區中興路483號",phone:"05 291 0767",tag:"GO 試乘",lat:23.4789569,lng:120.4291784,placeId:"ChIJGT4VTpuWbjQRfeR404p_IoM"},
-    {name:"夙單車 conquer sports",type:"dealer",city:"高雄市",district:"三民區",address:"807高雄市三民區三民街73號",phone:"07 216 2629",tag:"GO 試乘",lat:22.6364036,lng:120.2943846,placeId:"ChIJv8JTZWYEbjQRAmNzgucsrXc"},
-    {name:"凱立單車工作室",type:"dealer",city:"高雄市",district:"三民區",address:"高雄市三民區市中一路456-1號",phone:"0982 150 529",tag:"GO 試乘",lat:22.6361,lng:120.2913,placeId:"ChIJHxDGzdkEbjQRbSR4cXWMai8"},
-    {name:"佶昇腳踏車行",type:"dealer",city:"台南市",district:"永康區",address:"台南市永康區永大路三段550號",phone:"06 201 1007",tag:"GO 試乘",lat:23.0375702346016,lng:120.259182713496},
-    {name:"單車-ing",type:"dealer",city:"台南市",district:"中西區",address:"台南市中西區臨安路一段126號",phone:"06 221 5087",tag:"GO 試乘",lat:23.0000188,lng:120.1919655,placeId:"ChIJLwjbTPV2bjQRUC-1pe-Xdbw"},
-    {name:"美利達-竹南",type:"dealer",city:"苗栗縣",district:"竹南鎮",address:"苗栗縣竹南鎮民族街37號",phone:"03 747 3946",tag:"GO 試乘",lat:24.6841804,lng:120.8781673,placeId:"ChIJd57sWyOzaTQRIuElBB4KfJw"},
-    {name:"GIANT捷安特-竹南加盟店",type:"dealer",city:"苗栗縣",district:"竹南鎮",address:"苗栗縣竹南鎮光復路359號",phone:"03 747 0438",tag:"GO 試乘",lat:24.6958591,lng:120.879357},
-    {name:"Bike Expert 單車專家",type:"dealer",city:"桃園市",district:"桃園區",address:"桃園市桃園區中山路811號",phone:"0903 525 888",tag:"GO 試乘",lat:24.9901437661516,lng:121.289104240519,placeId:"ChIJNdGDjhofaDQRtabuTEDFqOM"},
-    {name:"傳承單車坊(日進自行車)",type:"dealer",city:"桃園市",district:"龍潭區",address:"325台灣桃園市龍潭區上林里聖亭路6號",phone:"03 479 2942",tag:"GO 試乘",lat:24.8648967,lng:121.2107273},
-    {name:"騎士店長",type:"dealer",city:"新北市",district:"板橋區",address:"新北市板橋區茶館街37號",phone:"0973 730 404",tag:"GO 試乘",lat:25.0104488,lng:121.4561633,placeId:"ChIJT1VgQACpQjQRTTBdt03DOqs"},
-    {name:"色彩車行",type:"dealer",city:"台北市",district:"中正區",address:"台北市中正區仁愛路一段4號",phone:"02 2395 9788",tag:"GO 試乘",lat:25.0385313,lng:121.5217216,cid:"11640078125705483827"},
-    {name:"美利達自行車 (台東店)",type:"dealer",city:"台東縣",district:"台東市",address:"950台東縣台東市北平街6號",phone:"",tag:"GO 試乘",lat:22.7562,lng:121.1444,placeId:"ChIJTWzLem25bzQR9QRu_VJz5BE"},
-    {name:"月半虎單車技研",type:"dealer",city:"台北市",district:"中正區",address:"100臺北市中正區網溪里廈門街114巷1號",phone:"0982 535 035",tag:"Ultra 試乘",lat:25.023227,lng:121.517171,cid:"14175803242610242831"},
-    {name:"移動城堡單車生活館",type:"dealer",city:"新北市",district:"汐止區",address:"221新北市汐止區樟樹里大同路一段332號",phone:"02 2690 3332",tag:"Ultra 試乘",lat:25.0588534,lng:121.6378633,cid:"1397641153634515915"},
-    {name:"休閒水岸生活單車館",type:"dealer",city:"台北市",district:"中山區",address:"10491臺北市中山區新庄里新生北路三段69-2號",phone:"02 2595 7727",tag:"Ultra 試乘",lat:25.0665132,lng:121.5281107,cid:"13005106106457292443"},
-    {name:"小強單車",type:"dealer",city:"新北市",district:"新店區",address:"231新北市新店區信義里中興路三段327號",phone:"0982 162 160",tag:"GO 試乘",lat:24.9864834,lng:121.5417495,cid:"17984448430403591960"},
-    {name:"松林單車（預約制）",type:"dealer",city:"新竹縣",district:"新豐鄉",address:"304新竹縣新豐鄉松柏村文林街80號",phone:"0968 564 268",tag:"僅訂購",lat:24.871411,lng:120.9915813,cid:"111706372714394562"},
+    // --- Original Stores ---
+    {name:"nuvari 總部",type:"direct",city:"台中市",district:"南屯區",address:"408臺中市南屯區龍鎮二街398號",phone:"04 2372 2070",tag:"nuvari總部/GO 試乘/Ultra 試乘/維修",wheelStyle:"GO / Ultra",lat:24.1333736,lng:120.626378,isHQ:true},
+    {name:"乘風單車店",type:"dealer",city:"新竹市",district:"北區",address:"300028台灣新竹市北區中山路204號",phone:"03 524 7077",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.8032098,lng:120.9631275,placeId:"ChIJveaEaZU1aDQRY422jarah7I"},
+    {name:"老學長單車生活館",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區光復路二段902巷2號",phone:"03 526 7318",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.803132,lng:120.981938,placeId:"ChIJhcV6gt41aDQRUb5mf8IVDoY"},
+    {name:"輕車熟路",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區金城一路99號",phone:"03 572 0040",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.7957166,lng:121.0023035,placeId:"ChIJY0kfqGw2aDQR5AOjMIv5ymc"},
+    {name:"自由行單車專賣店",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區博愛街32號",phone:"03 572 0225",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.7980808,lng:120.9846234,placeId:"ChIJo88k9eA1aDQRFbqBEBejqYc"},
+    {name:"百士客單車",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區關東路79號",phone:"03 563 0308",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.785135,lng:121.0191556,placeId:"ChIJITx9Bjo2aDQR9JdMk57JQ0A"},
+    {name:"新湖車行自行車",type:"dealer",city:"新竹縣",district:"湖口鄉",address:"303新竹縣湖口鄉中山路二段10號",phone:"03 599 2854",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.8996615,lng:121.0427002,placeId:"ChIJ1-zo5VAwaDQR6-U-mJasAzQ"},
+    {name:"綠生活戶外休閒館",type:"dealer",city:"台中市",district:"南區",address:"402台中市南區國光路204-1號",phone:"04 2287 9696",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.1262714,lng:120.6764368},
+    {name:"雲遊單車休閒館",type:"dealer",city:"台中市",district:"北屯區",address:"406029台中市北屯區崇德六路一段173號",phone:"04 2247 4709",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.1802559,lng:120.6910543,placeId:"ChIJF5YC8eoXaTQRD5OzCMqRxFs"},
+    {name:"維也娜車行",type:"dealer",city:"台中市",district:"大里區",address:"412臺灣台中市大里區草湖路95巷50號",phone:"04 2496 0793",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.0770306,lng:120.688258},
+    {name:"鐵馬王自行車行",type:"dealer",city:"台中市",district:"豐原區",address:"420台中市豐原區豐北街295號",phone:"04 2520 0901",tag:"GO 試乘",wheelStyle:"Ultra",lat:24.2604084,lng:120.7163579,placeId:"ChIJzdx5bAsaaTQR-QtwNC2PtMI"},
+    {name:"鑫馬單車",type:"dealer",city:"台中市",district:"潭子區",address:"427台中市潭子區大豐路二段73號號",phone:"04 2534 9162",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.2177751,lng:120.6915442,placeId:"ChIJA4IO92wXaTQRjKFLsfZv_UY"},
+    {name:"美利達久大單車生活館",type:"dealer",city:"台中市",district:"潭子區",address:"427臺灣台中市潭子區福貴路655號",phone:"04 2536 0648",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.216495,lng:120.7125217,placeId:"ChIJIWYCOmcXaTQREDVarzHLnXk"},
+    {name:"BAISKY官方旗艦店",type:"dealer",city:"台中市",district:"大雅區",address:"428臺中市大雅區中清北街69號",phone:"04-25693341",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.2248816,lng:120.6462681},
+    {name:"捷安特-天華車行",type:"dealer",city:"台中市",district:"大雅區",address:"428臺中市大雅區學府路319號",phone:"04 2568 3256",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.2251915,lng:120.6489255},
+    {name:"修李人工坊",type:"dealer",city:"台中市",district:"沙鹿區",address:"433台中市沙鹿區北勢東路833巷2-5號",phone:"0937 266 283",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.22882815,lng:120.5683997},
+    {name:"美利達 清華專賣店",type:"dealer",city:"台中市",district:"沙鹿區",address:"433臺灣台中市沙鹿區日新街61巷4號",phone:"04 2662 5672",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.2365644,lng:120.5630143,placeId:"ChIJk_9QsPwUaTQRECqlo1cJSZ8"},
+    {name:"翔愛腳踏車店",type:"dealer",city:"台中市",district:"龍井區",address:"434台中市龍井區文昌路776號",phone:"0928 999 515",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.1827583,lng:120.5315466,placeId:"ChIJndRG_fY_aTQRN0NpvD0ve2s"},
+    {name:"捷安特-林清月車行 自行車&電動車專賣店",type:"dealer",city:"台中市",district:"清水區",address:"436臺中市清水區清水街47號",phone:"04 2622 1748",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.2696228,lng:120.5748861,placeId:"ChIJ16X0RN4VaTQR4eBqbmH97A4"},
+    {name:"騎寓自轉車",type:"dealer",city:"彰化縣",district:"社頭鄉",address:"511彰化縣社頭鄉中興路64號",phone:"04 871 0477",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.9030578,lng:120.581014},
+    {name:"傑輪單車休閒館 Jalen Bike Shop",type:"dealer",city:"南投縣",district:"南投市",address:"540南投縣南投市大同街17號",phone:"0921 594 356",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.9064304,lng:120.6882756,placeId:"ChIJdepnxooxaTQRGExt3Q3BHNo"},
+    {name:"美利達-東益店（單車銷售、出租）",type:"dealer",city:"南投縣",district:"南投市",address:"540南投縣南投市中興路16號",phone:"04 9233 7000",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.9389293,lng:120.6970172,placeId:"ChIJAabE8s4xaTQR72zNIdY71gA"},
+    {name:"晉榮車行",type:"dealer",city:"嘉義市",district:"東區",address:"600嘉義市東區台林街233號",phone:"05 271 9243",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.497817,lng:120.4551512,placeId:"ChIJFe_h98aVbjQRjXM1uL7zO-s"},
+    {name:"GIANT捷安特-金的車行 自行車&電動車專賣店",type:"dealer",city:"台中市",district:"豐原區",address:"420臺中市豐原區西安里中正路457號",phone:"04 2525 6347",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.2504496,lng:120.7117456,placeId:"ChIJBf3sKKgQaTQR9x7bBOvJCKc"},
+    {name:"成功行",type:"dealer",city:"台中市",district:"太平區",address:"406臺中市太平區永隆里光興路453號",phone:"04 2271 0620",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.103932,lng:120.7288968,placeId:"ChIJpcreBSQjaTQR_fuwWMgDuLI"},
+    {name:"佑健單車",type:"dealer",city:"彰化縣",district:"彰化市",address:"500彰化縣彰化市大竹里市長順街19號",phone:"04 722 6937",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.0846094,lng:120.550486,placeId:"ChIJVdLQUJU4aTQRD0y_TcS7tHI"},
+    {name:"美利達中美車行（單車、電動車）維修 買賣",type:"dealer",city:"新竹縣",district:"竹東鎮",address:"310新竹縣竹東鎮中山里東寧路二段123號",phone:"03 596 9816",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.7319058,lng:121.0895038,placeId:"ChIJCYh4Qt1HaDQR1qrVaSJWi_M"},
 
-    // --- Added 2026-09-19 (Keelung/Taoyuan/New Taipei lookup batch) ---
-    {name:"基隆宇能單車",type:"dealer",city:"基隆市",district:"信義區",address:"201基隆市信義區信一路72號",phone:"02 2428 5108",tag:"GO 試乘",lat:25.1285929,lng:121.7517292,cid:"1246862732735944743"},
-    {name:"美利達-基隆",type:"dealer",city:"基隆市",district:"仁愛區",address:"200基隆市仁愛區智仁里延平街7之1號",phone:"02 2428 0126",tag:"GO 試乘",lat:25.1271783,lng:121.7486243,cid:"1047694391700060503"},
-    {name:"GIANT 永久車行",type:"dealer",city:"桃園市",district:"桃園區",address:"330桃園市桃園區北門里民生路363號",phone:"03 338 0909",tag:"GO 試乘",lat:24.9990924,lng:121.3108303,cid:"82727870752647440"},
-    {name:"吉良單車館",type:"dealer",city:"新北市",district:"土城區",address:"新北市土城區中央路二段36號",phone:"02 2265 2843",tag:"GO 試乘",lat:24.9799192,lng:121.4425672,cid:"4770553411642391217"},
-    {name:"單車兄弟",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區福安里樂群路138號1F",phone:"02 2967 8245",tag:"GO 試乘",lat:24.9972299,lng:121.4453805,cid:"6693192259103912078"}
+    // --- Northern / Central / Eastern / Southern Partner Stores ---
+    {name:"亞速百克單車休閒館",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區篤行路三段79號",phone:"02 2686 2336",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.9850522,lng:121.426967,placeId:"ChIJp5qHxzwdaDQR3l8qWzvC-Pk"},
+    {name:"捷安特大車輪",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區英士路60號",phone:"02 2251 8163",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:25.0246878,lng:121.4607709},
+    {name:"台中大明自行車",type:"dealer",city:"台中市",district:"大里區",address:"412台中市大里區塗城路694號",phone:"04 2495 3789",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.0896318,lng:120.6986908,placeId:"ChIJ6fm4ILo8aTQRNVZAfS1fUX0"},
+    {name:"迎風單車 / 竹北勁風",type:"dealer",city:"新竹縣",district:"竹北市",address:"302新竹縣竹北市勝利八街一段277號",phone:"03 667 6810",tag:"GO 試乘",wheelStyle:"Ultra",lat:24.8255649,lng:121.0279442},
+    {name:"鐵騎休閒館",type:"dealer",city:"新竹縣",district:"竹北市",address:"302新竹縣竹北市六甲五路一段119號",phone:"03 658 2881",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:24.8115,lng:121.0289,placeId:"ChIJ038invA2aDQRmsbDWWqsF3A"},
+    {name:"典鑽單車",type:"dealer",city:"嘉義市",district:"西區",address:"600嘉義市西區仁愛路135號",phone:"05 285 1692",tag:"GO 試乘",wheelStyle:"GO-28窄",lat:23.4686333,lng:120.4427284,placeId:"ChIJucNEgneVbjQR5HNvG4-Y-2M"},
+    {name:"美利達花蓮精誠",type:"dealer",city:"花蓮縣",district:"花蓮市",address:"970花蓮縣花蓮市節約街9號",phone:"03 836 1126",tag:"GO 試乘",wheelStyle:"GO-26\", GO-28窄",lat:23.9782420514889,lng:121.606442301844},
+    {name:"GIANT捷安特-行千里自行車行",type:"dealer",city:"嘉義市",district:"西區",address:"600嘉義市西區中興路483號",phone:"05 291 0767",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.4789569,lng:120.4291784,placeId:"ChIJGT4VTpuWbjQRfeR404p_IoM"},
+
+    // --- Kaohsiung Stores ---
+    {name:"夙單車 conquer sports",type:"dealer",city:"高雄市",district:"三民區",address:"807高雄市三民區三民街73號",phone:"07 216 2629",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:22.6364036,lng:120.2943846,placeId:"ChIJv8JTZWYEbjQRAmNzgucsrXc"},
+    {name:"凱立單車工作室",type:"dealer",city:"高雄市",district:"三民區",address:"高雄市三民區市中一路456-1號",phone:"0982 150 529",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:22.6361,lng:120.2913,placeId:"ChIJHxDGzdkEbjQRbSR4cXWMai8"},
+
+    // --- Taipei, Tainan, Taoyuan, Miaoli, New Taipei, Taitung ---
+    {name:"佶昇腳踏車行",type:"dealer",city:"台南市",district:"永康區",address:"台南市永康區永大路三段550號",phone:"06 201 1007",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.0375702346016,lng:120.259182713496},
+    {name:"單車-ing",type:"dealer",city:"台南市",district:"中西區",address:"台南市中西區臨安路一段126號",phone:"06 221 5087",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:23.0000188,lng:120.1919655,placeId:"ChIJLwjbTPV2bjQRUC-1pe-Xdbw"},
+    {name:"美利達-竹南",type:"dealer",city:"苗栗縣",district:"竹南鎮",address:"苗栗縣竹南鎮民族街37號",phone:"03 747 3946",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.6841804,lng:120.8781673,placeId:"ChIJd57sWyOzaTQRIuElBB4KfJw"},
+    {name:"GIANT捷安特-竹南加盟店",type:"dealer",city:"苗栗縣",district:"竹南鎮",address:"苗栗縣竹南鎮光復路359號",phone:"03 747 0438",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.6958591,lng:120.879357},
+    {name:"Bike Expert 單車專家",type:"dealer",city:"桃園市",district:"桃園區",address:"桃園市桃園區中山路811號",phone:"0903 525 888",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.9901437661516,lng:121.289104240519,placeId:"ChIJNdGDjhofaDQRtabuTEDFqOM"},
+    {name:"騎士店長",type:"dealer",city:"新北市",district:"板橋區",address:"新北市板橋區茶館街37號",phone:"0973 730 404",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:25.0104488,lng:121.4561633,placeId:"ChIJT1VgQACpQjQRTTBdt03DOqs"},
+    {name:"色彩車行",type:"dealer",city:"台北市",district:"中正區",address:"台北市中正區仁愛路一段4號",phone:"02 2395 9788",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:25.0385313,lng:121.5217216,cid:"11640078125705483827"},
+    {name:"美利達自行車 (台東店)",type:"dealer",city:"台東縣",district:"台東市",address:"950台東縣台東市北平街6號",phone:"",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:22.7562,lng:121.1444,placeId:"ChIJTWzLem25bzQR9QRu_VJz5BE"},
+
+    // --- Added 2026-09-10 (Rain's visit reports, demo bike retrieved/installed OK) ---
+    {name:"月半虎單車技研",type:"dealer",city:"台北市",district:"中正區",address:"100臺北市中正區網溪里廈門街114巷1號",phone:"0982 535 035",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:25.023227,lng:121.517171,cid:"14175803242610242831"},
+    {name:"移動城堡單車生活館",type:"dealer",city:"新北市",district:"汐止區",address:"221新北市汐止區樟樹里大同路一段332號",phone:"02 2690 3332",tag:"GO 試乘",wheelStyle:"GO-28\"",lat:25.0588534,lng:121.6378633,cid:"1397641153634515915"},
+    // wheelStyle guessed as GO-26" (folding bike, no explicit size given in the report) — confirm/correct
+    {name:"休閒水岸生活單車館",type:"dealer",city:"台北市",district:"中山區",address:"10491臺北市中山區新庄里新生北路三段69-2號",phone:"02 2595 7727",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:25.0665132,lng:121.5281107,cid:"13005106106457292443"},
+    // wheelStyle guessed as GO-26" (orange folding bike, brand/size not given in the report) — confirm/correct
+    {name:"小強單車",type:"dealer",city:"新北市",district:"新店區",address:"231新北市新店區信義里中興路三段327號",phone:"0982 162 160",tag:"GO 試乘",wheelStyle:"GO-26\"",lat:24.9864834,lng:121.5417495,cid:"17984448430403591960"},
+
+    // --- Added 2026-09-10 (Devin's report — installation service only, no demo/test-ride unit) ---
+    {name:"松林單車（預約制）",type:"dealer",city:"新竹縣",district:"新豐鄉",address:"304新竹縣新豐鄉松柏村文林街80號",phone:"0968 564 268",tag:"僅訂購",lat:24.871411,lng:120.9915813,cid:"111706372714394562"}
   ];
 
   const map = L.map("nuvariMap", { zoomControl: false }).setView([23.7, 121], 7);
@@ -1223,7 +1075,6 @@ function initNuvariStoreApp() {
 
   let markerLayer = L.layerGroup().addTo(map);
   let cityCountLayer = L.layerGroup().addTo(map);
-  let regionBoundaryLayer = L.layerGroup().addTo(map);
   let markerById = new Map();
   let elById = new Map();
   let userLocation = null;
@@ -1238,23 +1089,15 @@ function initNuvariStoreApp() {
   const repairCheck = document.getElementById("nuvariRepairCheck");
   const resultsCount = document.getElementById("nuvariResultsCount");
   const emptyStateEl = document.getElementById("nuvariEmptyState");
-  const listLoadingEl = document.getElementById("nuvariListLoading");
   const storeAppEl = document.getElementById("nuvariStoreApp");
   const viewListBtn = document.getElementById("nuvariViewListBtn");
   const viewMapBtn = document.getElementById("nuvariViewMapBtn");
   const locateBtn = document.getElementById("nuvariLocateBtn");
-  const nearestBtn = document.getElementById("nuvariNearestBtn");
-  const searchInput = document.getElementById("nuvariSearchInput");
 
   purchaseCheck.onchange = applyFilters;
   trialGOCheck.onchange = applyFilters;
   trialUltraCheck.onchange = applyFilters;
   repairCheck.onchange = applyFilters;
-
-  searchInput.addEventListener("input", function() {
-    applyFilters();
-    setMobileView("list");
-  });
 
   function setMobileView(view) {
     storeAppEl.dataset.mobileView = view;
@@ -1282,35 +1125,16 @@ function initNuvariStoreApp() {
 
   let userMarker = null;
 
-  function setLocating(isLocating) {
-    if (isLocating) {
-      locateBtn.dataset.state = "loading";
-      nearestBtn.dataset.state = "loading";
-      nearestBtn.disabled = true;
-      listLoadingEl.hidden = false;
-      storeListEl.hidden = true;
-      emptyStateEl.hidden = true;
-    } else {
-      locateBtn.removeAttribute("data-state");
-      nearestBtn.removeAttribute("data-state");
-      nearestBtn.disabled = false;
-      listLoadingEl.hidden = true;
-      storeListEl.hidden = false;
-    }
-  }
-
-  // locateBtn (on the map) and nearestBtn (the "離我最近的服務據點在哪？" banner
-  // above the filters) both trigger this same flow, so their loading/disabled
-  // state is kept in sync via setLocating() rather than tracked separately.
   function locateUser() {
     if (!navigator.geolocation) {
       resultsCount.textContent = "此瀏覽器不支援定位功能";
       return;
     }
 
-    setLocating(true);
+    locateBtn.dataset.state = "loading";
 
     navigator.geolocation.getCurrentPosition(function(pos) {
+      locateBtn.removeAttribute("data-state");
       userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
       if (userMarker) map.removeLayer(userMarker);
@@ -1320,17 +1144,15 @@ function initNuvariStoreApp() {
       }).addTo(map);
 
       applyFilters({ fitBounds: false });
-      setLocating(false);
       setMobileView("map");
       map.flyTo([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 13), { duration: 0.8 });
     }, function() {
-      setLocating(false);
+      locateBtn.removeAttribute("data-state");
       resultsCount.textContent = "無法取得您的位置，請確認已允許定位權限";
     }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
   locateBtn.addEventListener("click", locateUser);
-  nearestBtn.addEventListener("click", locateUser);
 
   function getServices(store) {
     const tag = store.tag || "";
@@ -1491,18 +1313,9 @@ function initNuvariStoreApp() {
   function buildPopupHTML(s) {
     const meta = getStoreTypeMeta(s);
     const entryURL = storeGoogleUrl(s);
-    // Real turn-by-turn directions — distinct from entryURL (the Business Profile
-    // page). Passing destination_place_id when we have one makes Maps route to
-    // the exact storefront entrance Google has on file, not just the raw pin.
-    const directionsURL = "https://www.google.com/maps/dir/?api=1&destination=" + s.lat + "," + s.lng +
-      (s.placeId ? "&destination_place_id=" + s.placeId : "");
     const tel = (s.phone || "").replace(/\s/g, "");
-    const photoHTML = s.image
-      ? '<div class="nuvari-popup-photo"><img src="' + s.image + '" alt="' + s.name + ' 展示車款" loading="lazy"></div>'
-      : "";
 
     return '<div class="nuvari-popup-inner">' +
-      photoHTML +
       '<div class="nuvari-popup-header">' +
       '<div class="nuvari-popup-avatar ' + meta.modifier + '"><span class="material-symbols-outlined" aria-hidden="true">' + meta.icon + '</span></div>' +
       '<div>' +
@@ -1514,8 +1327,8 @@ function initNuvariStoreApp() {
       '<div class="nuvari-popup-detail"><span class="material-symbols-outlined">location_on</span><span>' + s.address + '</span></div>' +
       '<div class="nuvari-popup-detail"><span class="material-symbols-outlined">call</span><span>' + (s.phone || "（未提供）") + '</span></div>' +
       '<div class="nuvari-popup-actions">' +
-      '<a class="nuvari-popup-btn secondary" href="' + entryURL + '" target="_blank" rel="noopener" title="在 Google 地圖查看評價與照片"><span class="material-symbols-outlined" style="font-size:14px;">reviews</span>評價</a>' +
-      '<a class="nuvari-popup-btn primary" href="' + directionsURL + '" target="_blank" rel="noopener"><span class="material-symbols-outlined" style="font-size:14px;">directions</span>導航</a>' +
+      '<a class="nuvari-popup-btn primary" href="' + entryURL + '" target="_blank" rel="noopener"><span class="material-symbols-outlined" style="font-size:14px;">location_on</span>Google地圖</a>' +
+      '<a class="nuvari-popup-btn secondary" href="' + entryURL + '" target="_blank" rel="noopener"><span class="material-symbols-outlined" style="font-size:14px;">directions</span>導航</a>' +
       '<a class="nuvari-popup-btn secondary" href="tel:' + tel + '"><span class="material-symbols-outlined" style="font-size:14px;">call</span>撥打</a>' +
       '</div>' +
       '</div>';
@@ -1633,7 +1446,6 @@ function initNuvariStoreApp() {
     const needTrialGO = trialGOCheck.checked;
     const needTrialUltra = trialUltraCheck.checked;
     const needRepair = repairCheck.checked;
-    const query = searchInput.value.trim().toLowerCase();
 
     let filtered = STORES
       .filter(function(s) {
@@ -1644,11 +1456,8 @@ function initNuvariStoreApp() {
         const matchTrialGO = !needTrialGO || services.trialGO;
         const matchTrialUltra = !needTrialUltra || services.trialUltra;
         const matchRepair = !needRepair || services.repair;
-        const matchQuery = !query ||
-          s.name.toLowerCase().includes(query) ||
-          s.address.toLowerCase().includes(query);
 
-        return matchCity && matchDistrict && matchPurchase && matchTrialGO && matchTrialUltra && matchRepair && matchQuery;
+        return matchCity && matchDistrict && matchPurchase && matchTrialGO && matchTrialUltra && matchRepair;
       })
       .map(function(s, idx) {
         const item = Object.assign({}, s, { _id: s.city + "-" + s.district + "-" + s.name + "-" + idx });
@@ -1704,77 +1513,6 @@ function initNuvariStoreApp() {
     });
   }
 
-  // Highlights the selected 縣市 on the map as a translucent boundary overlay.
-  // Boundary data comes from a public county TopoJSON (g0v/twgeojson), loaded
-  // lazily over the network — if it's unreachable the overlay just never
-  // appears, the list/map filtering above still works either way.
-  const REGION_TOPOJSON_URL = "https://cdn.jsdelivr.net/gh/g0v/twgeojson@master/json/twCounty2010.topo.json";
-  const TOPOJSON_CLIENT_URL = "https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js";
-
-  // That dataset predates the 2010–2014 county/city mergers, so several of
-  // today's cities are reassembled here from more than one legacy entry
-  // (e.g. today's 新北市 is that dataset's 台北縣).
-  const REGION_NAME_MAP = {
-    "台北市": ["台北市"], "新北市": ["台北縣"], "基隆市": ["基隆市"],
-    "桃園市": ["桃園縣"], "新竹市": ["新竹市"], "新竹縣": ["新竹縣"],
-    "苗栗縣": ["苗栗縣"], "台中市": ["台中市", "台中縣"], "彰化縣": ["彰化縣"],
-    "南投縣": ["南投縣"], "雲林縣": ["雲林縣"], "嘉義市": ["嘉義市"],
-    "嘉義縣": ["嘉義縣"], "台南市": ["台南市", "台南縣"], "高雄市": ["高雄市", "高雄縣"],
-    "屏東縣": ["屏東縣"], "宜蘭縣": ["宜蘭縣"], "花蓮縣": ["花蓮縣"],
-    "台東縣": ["台東縣"], "澎湖縣": ["澎湖縣"], "金門縣": ["金門縣"],
-    "連江縣": ["連江縣"]
-  };
-
-  let regionFeaturesByCity = null;
-
-  function highlightRegion(city) {
-    regionBoundaryLayer.clearLayers();
-    if (!city || !regionFeaturesByCity || !regionFeaturesByCity[city]) return;
-
-    L.geoJSON(regionFeaturesByCity[city], {
-      interactive: false,
-      style: { color: "#137ECE", weight: 2, fillColor: "#0BC6FF", fillOpacity: 0.12 }
-    }).addTo(regionBoundaryLayer);
-  }
-
-  function loadRegionBoundaries() {
-    function withTopojsonClient(cb) {
-      if (window.topojson) { cb(); return; }
-      const s = document.createElement("script");
-      s.src = TOPOJSON_CLIENT_URL;
-      s.onload = cb;
-      s.onerror = function() {};
-      document.head.appendChild(s);
-    }
-
-    withTopojsonClient(function() {
-      if (!window.topojson) return;
-
-      fetch(REGION_TOPOJSON_URL)
-        .then(function(r) { return r.json(); })
-        .then(function(topo) {
-          const objectKey = Object.keys(topo.objects)[0];
-          const geo = topojson.feature(topo, topo.objects[objectKey]);
-
-          regionFeaturesByCity = {};
-          Object.keys(REGION_NAME_MAP).forEach(function(city) {
-            const legacyNames = REGION_NAME_MAP[city];
-            regionFeaturesByCity[city] = {
-              type: "FeatureCollection",
-              features: geo.features.filter(function(f) {
-                return legacyNames.indexOf(f.properties.COUNTYNAME) !== -1;
-              })
-            };
-          });
-
-          highlightRegion(citySelect.value);
-        })
-        .catch(function() {});
-    });
-  }
-
-  loadRegionBoundaries();
-
   sortByCityOrder(Array.from(new Set(STORES.map(function(s) {
     return s.city;
   })))).forEach(function(c) {
@@ -1800,7 +1538,6 @@ function initNuvariStoreApp() {
       districtSelect.appendChild(o);
     });
 
-    highlightRegion(city);
     applyFilters();
     setMobileView("list");
   };
@@ -1830,5 +1567,3 @@ function initNuvariStoreApp() {
 })();
 </script>
 
-</body>
-</html>

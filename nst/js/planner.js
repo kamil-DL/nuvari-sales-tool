@@ -26,12 +26,34 @@ export async function getPlan(id) {
   const { data, error } = await supabase.from('visit_plans')
     .select(`*, visit_plan_stops(
       id, stop_order, visit_id,
-      shops (id, name, address, lat, lng, county, region, status, priority, google_place_id, contact_phone)
+      shops (id, name, address, lat, lng, county, region, status, priority, outcome, google_place_id, contact_phone)
     )`)
     .eq('id', id).single();
   if (error) throw error;
   data.visit_plan_stops.sort((a, b) => a.stop_order - b.stop_order);
   return data;
+}
+
+// Overview page (campaign-overview.html): every plan in a campaign (or matching the given
+// filters) WITH its full stop/shop details in one round trip — unlike loadPlans() above, which
+// only carries stop ids/counts for the cheap flat list. Used to render every rep's whole
+// campaign at a glance without an N+1 getPlan() per card.
+export async function loadPlansWithStops({ repId, dateFrom, dateTo, campaignId } = {}) {
+  const plans = await fetchAllPages((from, to) => {
+    let q = supabase.from('visit_plans')
+      .select(`*, visit_plan_stops(
+        id, stop_order, visit_id,
+        shops (id, name, address, lat, lng, county, region, status, priority, outcome, google_place_id, contact_phone)
+      )`)
+      .order('plan_date', { ascending: true });
+    if (repId) q = q.eq('rep_id', repId);
+    if (dateFrom) q = q.gte('plan_date', dateFrom);
+    if (dateTo) q = q.lte('plan_date', dateTo);
+    if (campaignId && campaignId !== 'all') q = q.eq('campaign_id', campaignId);
+    return q.range(from, to);
+  });
+  plans.forEach(p => p.visit_plan_stops.sort((a, b) => a.stop_order - b.stop_order));
+  return plans;
 }
 
 export async function createPlan(fields, userId) {

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>活動總覽 Campaign Overview — NST</title>
+<link rel="stylesheet" href="css/nst-shared.css"/>
+<style>
+  .rep-toggle, .view-toggle { display: flex; gap: 6px; background: #fff; border: 1px solid var(--nst-border); border-radius: 999px; padding: 5px; width: fit-content; }
+  .rep-toggle-btn, .view-toggle-btn {
+    font: inherit; font-size: 12.5px; font-weight: 700; color: var(--nst-gray);
+    background: transparent; border: none; border-radius: 999px; padding: 7px 15px; cursor: pointer;
+  }
+  .rep-toggle-btn.active { background: var(--rep-color, var(--nst-ink)); color: #fff; }
+  .view-toggle-btn.active { background: var(--nst-accent); color: #fff; }
+  .rep-toggle-btn:not(.active):hover, .view-toggle-btn:not(.active):hover { color: var(--nst-ink); }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+
+  .rep-section { margin-bottom: 30px; }
+  .rep-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--nst-border); }
+  .rep-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .rep-section-head h2 { font-size: 17px; margin: 0; }
+  .rep-section-head .count { margin-left: auto; font-size: 12px; color: var(--nst-gray); }
+
+  .day-card { background: #fff; border: 1px solid var(--nst-border); border-radius: var(--nst-radius); margin-bottom: 12px; overflow: hidden; }
+  .day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--nst-bg); border-bottom: 1px solid var(--nst-border); }
+  .day-head-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--nst-accent-dark); }
+  .day-head-right { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .ov-stop-row { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--nst-border); font-size: 13px; flex-wrap: wrap; }
+  .ov-stop-row:first-of-type { border-top: none; }
+  .ov-stop-name { font-weight: 600; flex: 1; min-width: 140px; }
+  .ov-stop-name a { color: inherit; }
+  .ov-stop-name a:hover { color: var(--nst-accent); }
+  .ov-outcome-select { font: inherit; font-size: 11px; font-weight: 600; color: var(--nst-gray); background: #fff; border: 1px solid var(--nst-border); border-radius: 6px; padding: 3px 4px; }
+  .ov-visited { font-size: 11px; font-weight: 700; color: #0B8E6A; white-space: nowrap; }
+
+  .cal-month-label { font-family: inherit; font-size: 16px; font-weight: 700; text-align: center; margin: 0 14px; }
+  .cal-nav-btn { background: #fff; border: 1px solid var(--nst-border); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border: 1px solid var(--nst-border); border-radius: 12px; overflow: hidden; }
+  .cal-weekday { font-size: 10.5px; font-weight: 700; color: var(--nst-gray); background: var(--nst-bg); padding: 8px 0; text-align: center; border-bottom: 1px solid var(--nst-border); }
+  .cal-cell { min-height: 84px; padding: 5px; border-right: 1px solid var(--nst-border); border-bottom: 1px solid var(--nst-border); display: flex; flex-direction: column; gap: 3px; }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-cell-out { background: var(--nst-bg); }
+  .cal-cell-out .cal-cell-day { opacity: .4; }
+  .cal-cell-day { font-size: 11px; font-weight: 700; }
+  .cal-chip { font-size: 9.5px; font-weight: 700; border-radius: 6px; padding: 2px 5px; background: #fff; border: 1px solid var(--chip-color); color: var(--chip-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .cal-chip:hover { background: var(--chip-color); color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="app" style="display:none">
+  <header class="nst-header">
+    <div class="nst-header-left">
+      <a href="../index.html"><img id="logo" class="nst-header-logo" alt="Nuvari"/></a>
+      <span class="nst-header-title">活動總覽 Campaign Overview</span>
+    </div>
+    <div class="nst-header-right">
+      <span id="user-email" class="nst-user-email"></span>
+      <a href="../index.html" class="nst-btn nst-btn-ghost nst-btn-sm">← Dashboard</a>
+      <button id="sign-out-btn" class="nst-btn nst-btn-ghost nst-btn-sm">登出 Sign out</button>
+    </div>
+  </header>
+
+  <nav class="nst-nav">
+    <a href="index.html">首頁 Home</a>
+    <a href="shops.html">店家資料庫 Shops</a>
+    <a href="visits.html">拜訪計劃 Visits</a>
+    <a href="planner.html">🗺️ 每日行程 Day Plans</a>
+    <a href="campaign-overview.html" class="active">📊 活動總覽 Campaign Overview</a>
+  </nav>
+
+  <div class="nst-page nst-page-wide">
+    <div class="nst-page-heading">
+      <div>
+        <h1>活動總覽 Campaign Overview</h1>
+        <div class="sub">一次檢視整個活動的所有業務代表與每日行程 See every rep's full schedule for one campaign at a glance</div>
+      </div>
+      <select id="campaign-select" class="nst-select" style="width:auto;min-width:220px"></select>
+    </div>
+
+    <div id="error-banner" class="nst-error-banner" style="display:none"></div>
+    <div id="loading" class="nst-loading"><div class="nst-spinner"></div>載入中 Loading…</div>
+
+    <div id="content" style="display:none">
+      <div class="toolbar">
+        <div class="rep-toggle" id="rep-toggle"></div>
+        <div class="view-toggle" id="view-toggle">
+          <button class="view-toggle-btn active" data-view="list">📋 列表 List</button>
+          <button class="view-toggle-btn" data-view="calendar">📅 日曆 Calendar</button>
+        </div>
+      </div>
+
+      <div id="empty-state" class="nst-empty" style="display:none">
+        <div class="nst-empty-icon">📊</div>
+        <p>此活動尚無任何每日計劃 No day plans in this campaign yet</p>
+        <div class="sub">回到「每日行程」建立第一個計劃 Go to Day Plans to create one</div>
+      </div>
+
+      <div id="list-view"></div>
+
+      <div id="calendar-view" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <button id="cal-prev" class="cal-nav-btn">←</button>
+          <span class="cal-month-label" id="cal-month-label"></span>
+          <button id="cal-next" class="cal-nav-btn">→</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, signOut } from './js/auth.js';
+import { LOGO } from './js/logo.js';
+import { loadPlansWithStops, PLAN_STATUS_LABELS } from './js/planner.js';
+import { addVisit } from './js/visits.js';
+import { loadUserDirectory, repLabel, repColor, loadCampaigns, updateShop, STATUS_LABELS, PRIORITY_LABELS, OUTCOME_LABELS, OUTCOME_OPTIONS } from './js/shops.js';
+import { canAssignToOthers } from '../shared/delete-policy.js';
+import { buildRouteUrl, shopMapsUrl } from '../shared/route-planning.js';
+
+document.getElementById('logo').src = LOGO;
+
+const user = await requireAuth();
+document.getElementById('app').style.display = '';
+document.getElementById('user-email').textContent = user.email;
+document.getElementById('sign-out-btn').addEventListener('click', signOut);
+
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', weekday: 'short' });
+}
+function shopStatusBadge(s) {
+  const info = STATUS_LABELS[s] || { zh: s, en: s, color: 'badge-gray' };
+  return `<span class="nst-badge ${info.color}" style="font-size:9.5px">${info.zh}</span>`;
+}
+function priorityBadge(p) {
+  if (!p) return '';
+  const info = PRIORITY_LABELS[p];
+  return info ? `<span class="nst-badge ${info.color}" style="font-size:9.5px">${info.zh}</span>` : '';
+}
+function outcomeSelectHtml(shop) {
+  const current = shop.outcome || '待拜訪';
+  const opts = OUTCOME_OPTIONS.map(o =>
+    `<option value="${esc(o)}" ${o === current ? 'selected' : ''}>${esc(OUTCOME_LABELS[o].zh)}</option>`
+  ).join('');
+  return `<select class="ov-outcome-select" data-shop-id="${shop.id}">${opts}</select>`;
+}
+
+let campaigns = [];
+let repsById = {};
+let plans = [];       // every plan in the selected campaign, with full stops
+let activeRep = 'all';
+let activeView = 'list';
+let calMonth = new Date(); calMonth.setDate(1);
+
+try {
+  const [dir, camps] = await Promise.all([loadUserDirectory(), loadCampaigns()]);
+  dir.forEach(u => { repsById[u.id] = u.email; });
+  campaigns = camps;
+} catch (e) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-banner').textContent = e.message;
+  document.getElementById('error-banner').style.display = '';
+  throw e;
+}
+
+const campaignSelect = document.getElementById('campaign-select');
+if (!campaigns.length) {
+  campaignSelect.innerHTML = '<option value="">— 尚無活動 No campaigns —</option>';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('empty-state').style.display = '';
+  document.getElementById('content').style.display = '';
+} else {
+  campaignSelect.innerHTML = campaigns.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  const urlCampaignId = new URLSearchParams(location.search).get('campaign');
+  campaignSelect.value = (urlCampaignId && campaigns.some(c => c.id === urlCampaignId))
+    ? urlCampaignId
+    : campaigns[0].id;
+  await loadCampaignPlans();
+}
+
+async function loadCampaignPlans() {
+  document.getElementById('loading').style.display = '';
+  document.getElementById('content').style.display = 'none';
+  try {
+    plans = await loadPlansWithStops({ campaignId: campaignSelect.value });
+    plans.sort((a, b) => a.plan_date.localeCompare(b.plan_date));
+    buildRepToggle();
+    render();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = '';
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-banner').textContent = e.message;
+    document.getElementById('error-banner').style.display = '';
+  }
+}
+
+campaignSelect.addEventListener('change', () => {
+  const url = new URL(location.href);
+  url.searchParams.set('campaign', campaignSelect.value);
+  history.replaceState(null, '', url);
+  activeRep = 'all';
+  loadCampaignPlans();
+});
+
+function buildRepToggle() {
+  const repIds = [...new Set(plans.map(p => p.rep_id))];
+  repIds.sort((a, b) => (repLabel(repsById[a]) || '').localeCompare(repLabel(repsById[b]) || ''));
+  const toggle = document.getElementById('rep-toggle');
+  const btn = (id, label, color) =>
+    `<button class="rep-toggle-btn${activeRep === id ? ' active' : ''}" data-rep="${id}" style="--rep-color:${color}">${label}</button>`;
+  toggle.innerHTML = btn('all', '全部 All', 'var(--nst-ink)') +
+    repIds.map(id => btn(id, esc(repLabel(repsById[id]) || '?'), repColor(repsById[id]))).join('');
+}
+
+document.getElementById('rep-toggle').addEventListener('click', e => {
+  const b = e.target.closest('.rep-toggle-btn');
+  if (!b) return;
+  activeRep = b.dataset.rep;
+  buildRepToggle();
+  render();
+});
+
+document.getElementById('view-toggle').addEventListener('click', e => {
+  const b = e.target.closest('.view-toggle-btn');
+  if (!b) return;
+  activeView = b.dataset.view;
+  document.querySelectorAll('.view-toggle-btn').forEach(x => x.classList.toggle('active', x === b));
+  render();
+});
+
+function visibleStops(plan) {
+  return plan.visit_plan_stops.filter(s => s.shops);
+}
+
+function renderList() {
+  const filtered = plans.filter(p => activeRep === 'all' || p.rep_id === activeRep);
+  if (!filtered.length) {
+    document.getElementById('list-view').innerHTML = `<div class="nst-empty"><p>此篩選條件下尚無計劃 No plans match this filter</p></div>`;
+    return;
+  }
+  const repIds = [...new Set(filtered.map(p => p.rep_id))];
+  repIds.sort((a, b) => (repLabel(repsById[a]) || '').localeCompare(repLabel(repsById[b]) || ''));
+
+  document.getElementById('list-view').innerHTML = repIds.map(repId => {
+    const repPlans = filtered.filter(p => p.rep_id === repId);
+    const color = repColor(repsById[repId]);
+    const dayCards = repPlans.map(plan => {
+      const stops = visibleStops(plan);
+      const routeUrl = stops.length ? buildRouteUrl(plan.start_location, stops.map(s => s.shops)) : null;
+      const rows = stops.length
+        ? stops.map(stop => {
+            const shop = stop.shops;
+            const mapsUrl = shopMapsUrl(shop);
+            const editable = plan.rep_id === user.id || canAssignToOthers(user.email);
+            return `<div class="ov-stop-row" data-shop-id="${shop.id}">
+              <div class="ov-stop-name">
+                ${mapsUrl ? `<a href="${esc(mapsUrl)}" target="_blank" rel="noopener">${esc(shop.name)}</a>` : esc(shop.name)}
+                ${shopStatusBadge(shop.status)} ${priorityBadge(shop.priority)}
+              </div>
+              ${editable ? outcomeSelectHtml(shop) : `<span class="nst-badge ${OUTCOME_LABELS[shop.outcome || '待拜訪'].color}" style="font-size:9.5px">${esc(OUTCOME_LABELS[shop.outcome || '待拜訪'].zh)}</span>`}
+              ${stop.visit_id
+                ? `<a href="visit-detail.html?id=${stop.visit_id}" class="ov-visited">✅ 已拜訪</a>`
+                : (editable ? `<button class="ov-mark-visited nst-btn nst-btn-ghost nst-btn-sm" style="font-size:11px;padding:3px 8px" data-shop-id="${shop.id}" data-plan-date="${plan.plan_date}">標記已拜訪</button>` : '')}
+            </div>`;
+          }).join('')
+        : `<div style="padding:10px 16px;font-size:12.5px;color:var(--nst-gray)">尚無店家 No stops</div>`;
+      return `<div class="day-card">
+        <div class="day-head">
+          <div class="day-head-left">
+            <span class="rep-dot" style="background:${color}"></span>
+            ${fmtDate(plan.plan_date)}
+            <span class="nst-badge ${(PLAN_STATUS_LABELS[plan.status]||{}).color||'badge-gray'}" style="font-size:9.5px">${(PLAN_STATUS_LABELS[plan.status]||{}).zh||plan.status}</span>
+          </div>
+          <div class="day-head-right">
+            ${routeUrl ? `<a href="${esc(routeUrl)}" target="_blank" rel="noopener">🗺️ 路線</a>` : ''}
+            <a href="plan-detail.html?id=${plan.id}">✏️ 編輯此天</a>
+          </div>
+        </div>
+        ${rows}
+      </div>`;
+    }).join('');
+    return `<div class="rep-section">
+      <div class="rep-section-head">
+        <span class="rep-dot" style="background:${color}"></span>
+        <h2>${esc(repLabel(repsById[repId]) || '?')}</h2>
+        <span class="count">${repPlans.length} 天 · ${repPlans.reduce((n,p)=>n+visibleStops(p).length,0)} 店家</span>
+      </div>
+      ${dayCards}
+    </div>`;
+  }).join('');
+}
+
+function renderCalendar() {
+  const label = document.getElementById('cal-month-label');
+  label.textContent = calMonth.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' });
+
+  const filtered = plans.filter(p => activeRep === 'all' || p.rep_id === activeRep);
+  const byDate = {};
+  filtered.forEach(p => { (byDate[p.plan_date] = byDate[p.plan_date] || []).push(p); });
+
+  const year = calMonth.getFullYear(), month = calMonth.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const weekdays = ['日','一','二','三','四','五','六'].map(d => `<div class="cal-weekday">${d}</div>`).join('');
+  const cells = [];
+  for (let i = firstDow - 1; i >= 0; i--) cells.push({ day: daysInPrevMonth - i, out: true });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, out: false, dateStr: `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` });
+  while (cells.length % 7 !== 0) cells.push({ day: cells.length, out: true });
+
+  document.getElementById('cal-grid').innerHTML = weekdays + cells.map(c => {
+    if (c.out) return `<div class="cal-cell cal-cell-out"><span class="cal-cell-day">${c.day}</span></div>`;
+    const dayPlans = byDate[c.dateStr] || [];
+    const chips = dayPlans.map(p => {
+      const color = repColor(repsById[p.rep_id]);
+      return `<span class="cal-chip" style="--chip-color:${color}" data-plan-id="${p.id}">${esc(repLabel(repsById[p.rep_id]) || '?')} · ${visibleStops(p).length}站</span>`;
+    }).join('');
+    return `<div class="cal-cell">
+      <span class="cal-cell-day">${c.day}</span>
+      ${chips}
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('cal-grid').addEventListener('click', e => {
+  const chip = e.target.closest('.cal-chip');
+  if (chip) location.href = `plan-detail.html?id=${chip.dataset.planId}`;
+});
+document.getElementById('cal-prev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
+document.getElementById('cal-next').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
+
+function render() {
+  const hasPlans = plans.length > 0;
+  document.getElementById('empty-state').style.display = hasPlans ? 'none' : '';
+  document.getElementById('list-view').style.display = (hasPlans && activeView === 'list') ? '' : 'none';
+  document.getElementById('calendar-view').style.display = (hasPlans && activeView === 'calendar') ? '' : 'none';
+  document.querySelector('.toolbar').style.display = hasPlans ? '' : 'none';
+  if (!hasPlans) return;
+  if (activeView === 'list') renderList(); else renderCalendar();
+}
+
+// Inline outcome edits, same "save on change, no separate button" pattern as plan-detail.html.
+document.getElementById('list-view').addEventListener('change', async e => {
+  if (!e.target.classList.contains('ov-outcome-select')) return;
+  const sel = e.target;
+  const shopId = sel.dataset.shopId;
+  const val = sel.value;
+  sel.disabled = true;
+  try {
+    await updateShop(shopId, { outcome: val });
+    plans.forEach(p => p.visit_plan_stops.forEach(s => { if (s.shop_id === shopId && s.shops) s.shops.outcome = val; }));
+  } catch (err) {
+    document.getElementById('error-banner').textContent = err.message;
+    document.getElementById('error-banner').style.display = '';
+  } finally { sel.disabled = false; }
+});
+
+// Same decision as plan-detail.html's mark-visited button: always opens the real visit form
+// (project_sept_campaign_artifact.md's one-tap checkbox was deliberately NOT ported — see
+// 0013_add_visit_plans.sql's decision 3).
+document.getElementById('list-view').addEventListener('click', async e => {
+  const btn = e.target.closest('.ov-mark-visited');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '建立中…';
+  try {
+    const visit = await addVisit({ shop_id: btn.dataset.shopId, scheduled_date: btn.dataset.planDate, status: 'completed' }, user.id);
+    location.href = `visit-detail.html?id=${visit.id}`;
+  } catch (err) {
+    document.getElementById('error-banner').textContent = err.message;
+    document.getElementById('error-banner').style.display = '';
+    btn.disabled = false; btn.textContent = '標記已拜訪';
+  }
+});
+</script>
+</body>
+</html>
