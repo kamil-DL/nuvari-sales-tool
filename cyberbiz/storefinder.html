@@ -1153,7 +1153,7 @@
 function initNuvariStoreApp() {
   const STORES = [
     {name:"nuvari 總部",type:"direct",city:"台中市",district:"南屯區",address:"408臺中市南屯區龍鎮二街398號",phone:"04 2372 2070",tag:"nuvari總部/GO 試乘/Ultra 試乘/維修",lat:24.1333736,lng:120.626378,isHQ:true},
-    {name:"乘風單車店",type:"dealer",city:"新竹市",district:"北區",address:"300028台灣新竹市北區中山路204號",phone:"03 524 7077",tag:"GO 試乘",lat:24.8032098,lng:120.9631275,placeId:"ChIJveaEaZU1aDQRY422jarah7I"},
+    {name:"乘風單車店",type:"dealer",city:"新竹市",district:"北區",address:"300028台灣新竹市北區中山路204號",phone:"03 524 7077",tag:"GO 試乘",lat:24.7955893,lng:120.9246476,placeId:"ChIJveaEaZU1aDQRY422jarah7I"},
     {name:"老學長單車生活館",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區光復路二段902巷2號",phone:"03 526 7318",tag:"GO 試乘",lat:24.803132,lng:120.981938,placeId:"ChIJhcV6gt41aDQRUb5mf8IVDoY"},
     {name:"輕車熟路",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區金城一路99號",phone:"03 572 0040",tag:"GO 試乘",lat:24.7957166,lng:121.0023035,placeId:"ChIJY0kfqGw2aDQR5AOjMIv5ymc"},
     {name:"自由行單車專賣店",type:"dealer",city:"新竹市",district:"東區",address:"300台灣新竹市東區博愛街32號",phone:"03 572 0225",tag:"GO 試乘",lat:24.7980808,lng:120.9846234,placeId:"ChIJo88k9eA1aDQRFbqBEBejqYc"},
@@ -1176,7 +1176,7 @@ function initNuvariStoreApp() {
     {name:"美利達-東益店（單車銷售、出租）",type:"dealer",city:"南投縣",district:"南投市",address:"540南投縣南投市中興路16號",phone:"04 9233 7000",tag:"GO 試乘",lat:23.9389293,lng:120.6970172,placeId:"ChIJAabE8s4xaTQR72zNIdY71gA"},
     {name:"晉榮車行",type:"dealer",city:"嘉義市",district:"東區",address:"600嘉義市東區台林街233號",phone:"05 271 9243",tag:"GO 試乘",lat:23.497817,lng:120.4551512,placeId:"ChIJFe_h98aVbjQRjXM1uL7zO-s"},
     {name:"GIANT捷安特-金的車行 自行車&電動車專賣店",type:"dealer",city:"台中市",district:"豐原區",address:"420臺中市豐原區西安里中正路457號",phone:"04 2525 6347",tag:"GO 試乘",lat:24.2504496,lng:120.7117456,placeId:"ChIJBf3sKKgQaTQR9x7bBOvJCKc"},
-    {name:"成功行",type:"dealer",city:"台中市",district:"太平區",address:"406臺中市太平區永隆里光興路453號",phone:"04 2271 0620",tag:"GO 試乘",lat:24.103932,lng:120.7288968,placeId:"ChIJpcreBSQjaTQR_fuwWMgDuLI"},
+    {name:"成功行",type:"dealer",city:"台中市",district:"太平區",address:"406臺中市太平區永隆里光興路453號",phone:"04 2271 0620",tag:"GO 試乘",lat:24.103932,lng:120.5764615,placeId:"ChIJpcreBSQjaTQR_fuwWMgDuLI"},
     {name:"佑健單車",type:"dealer",city:"彰化縣",district:"彰化市",address:"500彰化縣彰化市大竹里市長順街19號",phone:"04 722 6937",tag:"GO 試乘",lat:24.0846094,lng:120.550486,placeId:"ChIJVdLQUJU4aTQRD0y_TcS7tHI"},
     {name:"美利達中美車行（單車、電動車）維修 買賣",type:"dealer",city:"新竹縣",district:"竹東鎮",address:"310新竹縣竹東鎮中山里東寧路二段123號",phone:"03 596 9816",tag:"GO 試乘",lat:24.7319058,lng:121.0895038,placeId:"ChIJCYh4Qt1HaDQR1qrVaSJWi_M"},
     {name:"亞速百克單車休閒館",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區篤行路三段79號",phone:"02 2686 2336",tag:"GO 試乘",lat:24.9850522,lng:121.426967,placeId:"ChIJp5qHxzwdaDQR3l8qWzvC-Pk"},
@@ -1209,7 +1209,17 @@ function initNuvariStoreApp() {
     {name:"美利達-基隆",type:"dealer",city:"基隆市",district:"仁愛區",address:"200基隆市仁愛區智仁里延平街7之1號",phone:"02 2428 0126",tag:"GO 試乘",lat:25.1271783,lng:121.7486243,cid:"1047694391700060503"},
     {name:"GIANT 永久車行",type:"dealer",city:"桃園市",district:"桃園區",address:"330桃園市桃園區北門里民生路363號",phone:"03 338 0909",tag:"GO 試乘",lat:24.9990924,lng:121.3108303,cid:"82727870752647440"},
     {name:"吉良單車館",type:"dealer",city:"新北市",district:"土城區",address:"新北市土城區中央路二段36號",phone:"02 2265 2843",tag:"GO 試乘",lat:24.9799192,lng:121.4425672,cid:"4770553411642391217"},
-    {name:"單車兄弟",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區福安里樂群路138號1F",phone:"02 2967 8245",tag:"GO 試乘",lat:24.9972299,lng:121.4453805,cid:"6693192259103912078"}
+    {name:"單車兄弟",type:"dealer",city:"新北市",district:"板橋區",address:"220新北市板橋區福安里樂群路138號1F",phone:"02 2967 8245",tag:"GO 試乘",lat:24.9972299,lng:121.4453805,cid:"6693192259103912078"},
+    // NOTE: address is incomplete (no house number) — only known source location is "苗栗縣竹南鎮永大路"; needs a proper address before this pin can be trusted
+    {name:"美利達-永大",type:"dealer",city:"苗栗縣",district:"竹南鎮",address:"苗栗縣竹南鎮永大路",phone:"",tag:"GO 試乘",lat:24.6853,lng:120.8752},
+
+    // --- Added 2026-09-29 (Shop DB reconciliation batch) ---
+    {name:"NUVARI宜蘭捷安特源誠",type:"dealer",city:"宜蘭縣",district:"宜蘭市",address:"260宜蘭縣宜蘭市新民里崇聖街55號",phone:"03 932 4815",tag:"GO 試乘",lat:24.7565605,lng:121.7549311,placeId:"ChIJ9wky3NrkZzQR-PDos4kGpDY"},
+    {name:"山橫一樹單車戶外樂活館",type:"dealer",city:"宜蘭縣",district:"宜蘭市",address:"260宜蘭縣宜蘭市自強路22號",phone:"03 932 1488",tag:"GO 試乘",lat:24.7443539,lng:121.7551463,placeId:"ChIJpeDuQObkZzQRzWeH8avNPbc"},
+    {name:"捷安特-伍泰單車休閒生活館",type:"dealer",city:"苗栗縣",district:"苗栗市",address:"360苗栗縣苗栗市玉苗里中山路750號",phone:"037 321 492",tag:"GO 試乘",lat:24.5557314,lng:120.8168129,placeId:"ChIJcQh3R_eraTQRo2ni10G9oU0"},
+    {name:"Vincibikefit",type:"dealer",city:"台北市",district:"大同區",address:"103臺北市大同區永樂里南京西路261號2樓",phone:"0910 366 755",tag:"GO 試乘",lat:25.0534598,lng:121.5097226,placeId:"ChIJL6LGLGWpQjQRsy3bRO2sNOM"},
+    {name:"美利達正和達展銷中心",type:"dealer",city:"宜蘭縣",district:"宜蘭市",address:"260宜蘭縣宜蘭市新民里舊城南路2號",phone:"03 931 0179",tag:"GO 試乘",lat:24.7546874,lng:121.7541955,cid:"18370134821098518142"},
+    {name:"捷安特偉展羅東",type:"dealer",city:"宜蘭縣",district:"羅東鎮",address:"265宜蘭縣羅東鎮東安里光榮路330號1樓",phone:"03 960 5504",tag:"GO 試乘",lat:24.678333,lng:121.7780069,cid:"9930504061046412895"}
   ];
 
   const map = L.map("nuvariMap", { zoomControl: false }).setView([23.7, 121], 7);
