@@ -276,6 +276,30 @@ if(_forcedDev&&!['localhost','127.0.0.1'].includes(window.location.hostname)){
   });
 }
 let currentUser=null; // {id,email}
+// True when currentUser was set from the cached nst-user-v1 identity alone, with no live,
+// valid Supabase Auth session behind it (see onPwGatePassed's "map-only access" fallback below).
+// The UI still looks signed in, but any RLS-gated read/write (e.g. the Shop DB dataset list)
+// silently fails/returns empty in this state — showDegradedSessionBanner() surfaces that instead
+// of leaving it to look like "there are no datasets."
+let sessionIsDegraded=false;
+function showDegradedSessionBanner(){
+  if(document.getElementById('degraded-session-banner'))return;
+  const banner=document.createElement('div');
+  banner.id='degraded-session-banner';
+  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#E0A83A;color:#1a1400;text-align:center;font:700 12px/1.4 sans-serif;padding:6px 8px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;';
+  const span=document.createElement('span');
+  span.textContent='⚠ 登入已過期，資料集清單等功能可能無法使用 — Your session has expired; features like the dataset list may not work.';
+  const btn=document.createElement('button');
+  btn.textContent='重新登入 Sign in again';
+  btn.style.cssText='background:#002850;color:#fff;border:none;border-radius:4px;padding:4px 10px;font:700 12px sans-serif;cursor:pointer;';
+  btn.addEventListener('click',()=>{document.getElementById('account-signout')?.click();});
+  banner.appendChild(span);banner.appendChild(btn);
+  document.body.prepend(banner);
+  const h=banner.offsetHeight;
+  document.body.style.paddingTop=h+'px';
+  const appEl=document.querySelector('.app');
+  if(appEl)appEl.style.height=`calc(100vh - ${h}px)`;
+}
 // Delete is restricted to one account (see shared/delete-policy.js — this is a duplicate since
 // map.html is a classic script and can't import it synchronously; keep both in sync). Everyone
 // can still add/edit shops and the map's own status/priority/rep/notes edit form.
@@ -424,7 +448,7 @@ window.onPwGatePassed=async function(){
     // Also check stored user identity for map-only access
     try{
       const u=JSON.parse(localStorage.getItem(`nst-user-v1-${NST_ENV_TAG}`)||'null');
-      if(u&&u.id){currentUser=u;const pill=document.getElementById('account-area');pill.style.display='flex';document.getElementById('account-email').textContent=u.email;if(typeof onUserReady==='function')onUserReady();return;}
+      if(u&&u.id){currentUser=u;sessionIsDegraded=true;showDegradedSessionBanner();const pill=document.getElementById('account-area');pill.style.display='flex';document.getElementById('account-email').textContent=u.email;if(typeof onUserReady==='function')onUserReady();return;}
     }catch(e){}
     showAcctGate('signin');
   }
@@ -1011,7 +1035,11 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ══ map init ══ */
 function initMap(){
   map=L.map('map',{zoomSnap:0.25,minZoom:7,maxZoom:18}).setView([23.75,121.0],8);
-  tileLight=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19});
+  // CARTO's basemaps.cartocdn.com tiles now require a signed-up API key (carto.com/basemaps/apikey) —
+  // anonymous requests get a watermarked placeholder instead of the actual map. Esri's Light Gray
+  // Canvas is a free, no-key alternative with the same neutral/minimal look, already trusted here
+  // for the satellite layer below (same {z}/{y}/{x} tile order convention).
+  tileLight=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri',maxZoom:19,maxNativeZoom:16});
   tileStreets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:19});
   tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri Maxar',maxZoom:19});
   tileLight.addTo(map);
