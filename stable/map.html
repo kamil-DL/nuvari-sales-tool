@@ -975,7 +975,11 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 /* ══ map init ══ */
 function initMap(){
   map=L.map('map',{zoomSnap:0.25,minZoom:7,maxZoom:18}).setView([23.75,121.0],8);
-  tileLight=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19});
+  // CARTO's basemaps.cartocdn.com tiles now require a signed-up API key (carto.com/basemaps/apikey) —
+  // anonymous requests get a watermarked placeholder instead of the actual map. Esri's Light Gray
+  // Canvas is a free, no-key alternative with the same neutral/minimal look, already trusted here
+  // for the satellite layer below (same {z}/{y}/{x} tile order convention).
+  tileLight=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri',maxZoom:19,maxNativeZoom:16});
   tileStreets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:19});
   tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'&copy; Esri Maxar',maxZoom:19});
   tileLight.addTo(map);
