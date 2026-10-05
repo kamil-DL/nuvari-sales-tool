@@ -94,6 +94,8 @@ const REP_DISPLAY_NAMES = {
   'rainlee@datalake-tech.com': 'Rain',
   'victor.luo@datalake-tech.com': 'Victor',
   'devin.yao@datalake-tech.com': 'Devin',
+  'andrew.hsu@datalake-tech.com': 'Andrew',
+  'randy.huang@datalake-tech.com': 'Randy',
 };
 
 export function repLabel(email) {
@@ -111,6 +113,8 @@ export const REP_COLORS = {
   'devin.yao@datalake-tech.com': '#0B8E6A',
   'victor.luo@datalake-tech.com': '#B45309',
   'kamil.wysocki@datalake-tech.com': '#7C3AED',
+  'andrew.hsu@datalake-tech.com': '#DB2777',
+  'randy.huang@datalake-tech.com': '#0891B2',
 };
 export function repColor(email) {
   return REP_COLORS[email] || '#AEB4BD';

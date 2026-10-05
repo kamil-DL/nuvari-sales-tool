@@ -94,6 +94,8 @@ const REP_DISPLAY_NAMES = {
   'rainlee@datalake-tech.com': 'Rain',
   'victor.luo@datalake-tech.com': 'Victor',
   'devin.yao@datalake-tech.com': 'Devin',
+  'andrew.hsu@datalake-tech.com': 'Andrew',
+  'randy.huang@datalake-tech.com': 'Randy',
 };
 
 export function repLabel(email) {
