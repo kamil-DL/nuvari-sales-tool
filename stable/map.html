@@ -1753,34 +1753,57 @@ async function exportLayerExcel(layer){
     return{set,n:m[2]?parseInt(m[2],10):set.size};
   };
   const today=new Date().toISOString().slice(0,10);
-  const HEAD=['縣市地區','鄉鎮市區','負責業務','店家名稱','拜訪優先級','已合作','已建入系統','出貨數量','地址','電話',...BR,'經銷品牌數','拜訪日期'];
+  const HEAD=['縣市地區','鄉鎮市區','負責業務','店家名稱','拜訪優先級','已合作','已建入系統','出貨數量','地址','電話',...BR,'經銷品牌數','拜訪日期','備註'];
+  const NC=HEAD.length;
+  const FONT='Microsoft JhengHei';
+  const thin={style:'thin',color:{argb:'FFD3D3D3'}};
+  const BORDER={left:thin,right:thin,top:thin,bottom:thin};
   const wb=new ExcelJS.Workbook();
-  const ws=wb.addWorksheet('開發管理總表');
-  ws.addRow(['Nuvari 自行車電輔改裝套件 — 全台責任區合作車店開發管理總表']);
-  ws.addRow([`責任區劃分：【Andrew】北區｜【Randy/Kamil】中區｜【Rain/Devin】南區｜總門市數：${rows.length} 家｜優先級標記：【S粉紅底】YOYOBIKE直攻店｜【A黃底】捷安特/美利達專賣店｜【B橘底】DOSUN店｜【C綠底】其他車店｜資料集：${layer.name}｜匯出日期：${today}`]);
-  const hr=ws.addRow(HEAD);
-  ws.getCell('A1').font={bold:true,size:14};
-  ws.getCell('A2').font={size:10,color:{argb:'FF555555'}};
-  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF002850'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};});
-  const PFILL={S:'FFF8BBD9',A:'FFFFF176',B:'FFFFB74D',C:'FFA5D6A7'};
-  rows.forEach(s=>{
+  // Layout/colors copied from the CEO's 全台298家合作車店開發管理總表: navy title band, dark-blue header,
+  // whole-row tint by 拜訪優先級 (S pink / A yellow / B orange / C green), thin light-gray borders, 80% zoom.
+  const ws=wb.addWorksheet(`全台${rows.length}家合作車店開發管理總表`,{views:[{state:'frozen',ySplit:3,zoomScale:80}]});
+  ws.mergeCells(1,1,1,NC);ws.mergeCells(2,1,2,NC);
+  const t=ws.getCell(1,1);
+  t.value='Nuvari 自行車電輔改裝套件 — 全台責任區合作車店開發管理總表';
+  t.font={name:FONT,size:16,bold:true,color:{argb:'FFFFFFFF'}};
+  t.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B365D'}};
+  t.alignment={horizontal:'center',vertical:'middle'};
+  const lg=ws.getCell(2,1);
+  lg.value=`責任區劃分：【Andrew】北區｜【Randy/Kamil】中區｜【Rain/Devin】南區｜總門市數：${rows.length} 家｜優先級標記：【S粉紅底】YOYOBIKE直攻店｜【A黃底】捷安特/美利達專賣店｜【B橘底】DOSUN店｜【C綠底】其他車店｜資料集：${layer.name}｜匯出日期：${today}`;
+  lg.font={name:FONT,size:9,bold:true,color:{argb:'FF333333'}};
+  lg.alignment={horizontal:'left',vertical:'middle'};
+  ws.getRow(1).height=40;ws.getRow(2).height=22;ws.getRow(3).height=25;
+  const hr=ws.getRow(3);
+  HEAD.forEach((h,i)=>{
+    const c=hr.getCell(i+1);c.value=h;
+    c.font={name:FONT,size:11,bold:true,color:{argb:'FFFFFFFF'}};
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2B547E'}};
+    c.alignment={horizontal:'center',vertical:'middle'};c.border=BORDER;
+  });
+  const PFILL={S:'FFF4CCCC',A:'FFFFF2CC',B:'FFFCE4D6',C:'FFE2EFDA'};
+  const LEFT_COLS=new Set([4,9,NC]); // 店家名稱 / 地址 / 備註 are left-aligned, the rest centered
+  rows.forEach((s,idx)=>{
     const b=brandsOf(s);
     const coop=/^已合作/.test(s.status||'')&&s.status!=='已合作-流失';
     const qty=(parseInt(s.go_sample_qty,10)||0)+(parseInt(s.ultra_sample_qty,10)||0);
     // UTC midnight, not local: ExcelJS writes Dates as UTC serials, so a local-midnight Date in UTC+8 would land on the previous day in Excel.
     const vm=/^(\d{4})-(\d{2})-(\d{2})/.exec(s.visit_date||'');
     const vd=vm?new Date(Date.UTC(+vm[1],+vm[2]-1,+vm[3])):null;
-    const r=ws.addRow([s.county||'',s.district||'',s.sales_rep||'',s.name||'',s.priority||'',coop?'是':'否',s._dbId?'是':'否',qty,s.address||'',s.contact_phone||'',
-      ...BR.map(x=>b.set.has(x)?'V':''),b.n,vd&&!isNaN(vd)?vd:'']);
-    const pf=PFILL[s.priority];
-    if(pf)r.getCell(5).fill={type:'pattern',pattern:'solid',fgColor:{argb:pf}};
-    r.getCell(5).alignment={horizontal:'center'};
-    const dc=r.getCell(HEAD.length);
-    if(dc.value instanceof Date)dc.numFmt='yyyy-mm-dd';
+    const vals=[s.county||'',s.district||'',s.sales_rep||'',s.name||'',s.priority||'',coop?'是':'否',s._dbId?'是':'否',qty,s.address||'',s.contact_phone||'',
+      ...BR.map(x=>b.set.has(x)?'V':''),b.n,vd||'',s.notes||''];
+    const r=ws.getRow(4+idx);r.height=20;
+    const fill=PFILL[s.priority]?{type:'pattern',pattern:'solid',fgColor:{argb:PFILL[s.priority]}}:null;
+    vals.forEach((v,i)=>{
+      const c=r.getCell(i+1);c.value=(v===''||v==null)?null:v;
+      c.font={name:FONT,size:10,bold:true};
+      c.alignment={horizontal:LEFT_COLS.has(i+1)?'left':'center',vertical:'middle'};
+      c.border=BORDER;if(fill)c.fill=fill;
+      if(v instanceof Date)c.numFmt='yyyy-mm-dd';
+    });
   });
-  [10,10,12,30,11,8,11,9,44,15,9,11,8,9,11,11,13].forEach((w,i)=>{ws.getColumn(i+1).width=w;});
-  ws.views=[{state:'frozen',ySplit:3,xSplit:4}];
-  ws.autoFilter={from:{row:3,column:1},to:{row:3,column:HEAD.length}};
+  // widths follow the CEO sheet (A14 C16 D27.7 E14 F12 G14 H12 I48 J18 K12 L14 M12 O14), new columns after
+  [14,10,16,27.7,14,12,14,12,48,18,12,14,12,10,14,12,14,50].forEach((w,i)=>{ws.getColumn(i+1).width=w;});
+  ws.autoFilter={from:{row:3,column:1},to:{row:3,column:NC}};
   const buf=await wb.xlsx.writeBuffer();
   const safe=String(layer.name||'dataset').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,40);
   const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
