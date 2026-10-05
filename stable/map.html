@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{
   --bg:#F6F7FA;--panel:#fff;--ink:#282828;--soft:#798BA5;
@@ -1407,11 +1408,15 @@ function rebuildBikeshopMarkers(){
           const newPriority=el.querySelector('.bs-edit-priority').value||null;
           const newRep=el.querySelector('.bs-edit-rep').value.trim()||null;
           const newNotes=el.querySelector('.bs-edit-notes').value.trim()||null;
+          const visitEl=el.querySelector('.bs-edit-visitdate');
+          const newVisit=visitEl?(visitEl.value||null):null;
+          const upd={status:newStatus,priority:newPriority,sales_rep:newRep,notes:newNotes};
+          if(visitEl)upd.visit_date=newVisit;
           saveBtn.disabled=true;saveBtn.textContent='儲存中… Saving…';
           // Same RLS as delete (creator-only write) — a 0-row result means "not your shop",
           // not a network error, so it needs its own message rather than looking like success.
           const{data,error}=await sbClient.from('shops')
-            .update({status:newStatus,priority:newPriority,sales_rep:newRep,notes:newNotes})
+            .update(upd)
             .eq('id',shop._dbId).select();
           if(error){
             toast('儲存失敗 Failed to save: '+error.message,'err');
@@ -1423,11 +1428,11 @@ function rebuildBikeshopMarkers(){
             saveBtn.disabled=false;saveBtn.textContent='💾 儲存 Save';
             return;
           }
-          shop.status=newStatus;shop.priority=newPriority;shop.sales_rep=newRep;shop.notes=newNotes;
+          shop.status=newStatus;shop.priority=newPriority;shop.sales_rep=newRep;shop.notes=newNotes;if(visitEl)shop.visit_date=newVisit;
           const layer=csvLayers.find(l=>l.id===shop._layerId);
           if(layer){
             const orig=layer.data.find(s=>s._dbId===shop._dbId);
-            if(orig){orig.status=newStatus;orig.priority=newPriority;orig.sales_rep=newRep;orig.notes=newNotes;}
+            if(orig){orig.status=newStatus;orig.priority=newPriority;orig.sales_rep=newRep;orig.notes=newNotes;if(visitEl)orig.visit_date=newVisit;}
             // Status/priority filters are per-layer whitelist Sets — without this, changing a
             // shop to a status/priority that isn't currently checked would make it silently
             // vanish from view, looking like the edit failed or deleted it.
@@ -1476,6 +1481,7 @@ function buildBikeshopPopup(shop){
   // Shop-DB-backed rows can be edited in place (status/sales rep/notes) without leaving the
   // map — same RLS as delete (only the row's creator can write), checked at save time below.
   const fullEditHref=shop._dbId?`nst/shop-detail.html?id=${encodeURIComponent(shop._dbId)}${_forcedDev?'&env=dev':''}`:'';
+  const visitLine=shop.visit_date?`<div class="bs-addr">📅 拜訪日期 Visit: ${esc(shop.visit_date)}</div>`:'';
   const editBlock=shop._dbId?`
     <button class="btn bs-edit-toggle-btn" style="font-size:10px;padding:3px 8px;margin-top:4px;width:100%;">✏️ 編輯 Edit</button>
     <div class="bs-edit-form" style="display:none;margin-top:6px;">
@@ -1485,6 +1491,8 @@ function buildBikeshopPopup(shop){
       <select class="bs-edit-priority" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${priorityOptionsHtml(shop.priority)}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">業務員 Sales rep</label>
       <select class="bs-edit-rep" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${repOptionsHtml(shop.sales_rep||'')}</select>
+      ${visitDateSupported?`<label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">拜訪日期 Visit date</label>
+      <input type="date" class="bs-edit-visitdate" value="${esc(shop.visit_date||'')}" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">`:''}
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">備註 Notes</label>
       <textarea class="bs-edit-notes" rows="2" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;resize:vertical;">${esc(shop.notes||'')}</textarea>
       <button class="btn btn-teal bs-edit-save-btn" style="font-size:10px;padding:3px 8px;width:100%;">💾 儲存 Save</button>
@@ -1502,6 +1510,7 @@ function buildBikeshopPopup(shop){
     ${shop.address?`<div class="bs-addr">${esc(shop.address)}</div>`:''}
     ${categoryLine}
     ${phoneLine}
+    ${visitLine}
     <div style="margin:6px 0;">${swatches}</div>
     ${gmapsLink}
     ${editBlock}
@@ -1714,6 +1723,69 @@ function campaignNameById(id){
 }
 
 const SHOP_FETCH_COLUMNS='id,name,address,lat,lng,status,priority,contact_name,contact_phone,notes,region,county,district,coord_status,category,sales_rep,google_name,google_address,google_place_id,google_rating,google_rating_count,business_status,dataset_id,sells_merida_oem,go_sample_qty,ultra_sample_qty,campaign_id';
+
+/* visit_date (0018_add_shop_visit_date.sql): if that migration hasn't been run yet, the column
+   doesn't exist and PostgREST rejects any select naming it — which would break EVERY Shop DB
+   load. So the column is requested optimistically and dropped (with the popup field hidden) the
+   first time the server says it's missing. */
+let visitDateSupported=true;
+function shopCols(){return SHOP_FETCH_COLUMNS+(visitDateSupported?',visit_date':'');}
+function isMissingVisitDate(err){return !!err&&/visit_date/i.test((err.message||'')+(err.details||''));}
+
+/* ══ Excel export — same columns/layout as the CEO's 全台合作車店開發管理總表 + 拜訪日期 ══ */
+async function exportLayerExcel(layer){
+  if(typeof ExcelJS==='undefined'){toast('Excel 匯出元件載入失敗，請重新整理頁面 Excel library failed to load','err');return;}
+  const rows=(layer.data||[]).slice();
+  if(!rows.length){toast('此資料集沒有店家 No shops in this dataset','err');return;}
+  const ORDER=['台北市','新北市','基隆市','桃園市','新竹市','新竹縣','苗栗縣','台中市','彰化縣','南投縣','雲林縣','嘉義市','嘉義縣','台南市','高雄市','屏東縣','宜蘭縣','花蓮縣','台東縣','澎湖縣','金門縣','連江縣'];
+  const norm=c=>(c||'').replace(/臺/g,'台');
+  const cIdx=c=>{const i=ORDER.indexOf(norm(c));return i<0?99:i;};
+  const PR={S:0,A:1,B:2,C:3,P1:4,P2:5,P3:6};
+  const pIdx=p=>PR[p]===undefined?9:PR[p];
+  rows.sort((a,b)=>cIdx(a.county)-cIdx(b.county)||String(a.district||'').localeCompare(String(b.district||''),'zh-Hant')||pIdx(a.priority)-pIdx(b.priority)||String(a.name).localeCompare(String(b.name),'zh-Hant'));
+  const BR=['DOSUN','CyberCycle','捷安特','美利達','YOYOBIKE'];
+  const brandsOf=s=>{
+    const m=/經銷品牌:\s*([^（(|]+)(?:[（(]共(\d+)[）)])?/.exec(s.notes||'');
+    if(!m)return{set:new Set(),n:''};
+    const set=new Set(m[1].split(/[、,，\s]+/).map(x=>x.trim()).filter(Boolean));
+    return{set,n:m[2]?parseInt(m[2],10):set.size};
+  };
+  const today=new Date().toISOString().slice(0,10);
+  const HEAD=['縣市地區','鄉鎮市區','負責業務','店家名稱','拜訪優先級','已合作','已建入系統','出貨數量','地址','電話',...BR,'經銷品牌數','拜訪日期'];
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('開發管理總表');
+  ws.addRow(['Nuvari 自行車電輔改裝套件 — 全台責任區合作車店開發管理總表']);
+  ws.addRow([`責任區劃分：【Andrew】北區｜【Randy/Kamil】中區｜【Rain/Devin】南區｜總門市數：${rows.length} 家｜優先級標記：【S粉紅底】YOYOBIKE直攻店｜【A黃底】捷安特/美利達專賣店｜【B橘底】DOSUN店｜【C綠底】其他車店｜資料集：${layer.name}｜匯出日期：${today}`]);
+  const hr=ws.addRow(HEAD);
+  ws.getCell('A1').font={bold:true,size:14};
+  ws.getCell('A2').font={size:10,color:{argb:'FF555555'}};
+  hr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF002850'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};});
+  const PFILL={S:'FFF8BBD9',A:'FFFFF176',B:'FFFFB74D',C:'FFA5D6A7'};
+  rows.forEach(s=>{
+    const b=brandsOf(s);
+    const coop=/^已合作/.test(s.status||'')&&s.status!=='已合作-流失';
+    const qty=(parseInt(s.go_sample_qty,10)||0)+(parseInt(s.ultra_sample_qty,10)||0);
+    // UTC midnight, not local: ExcelJS writes Dates as UTC serials, so a local-midnight Date in UTC+8 would land on the previous day in Excel.
+    const vm=/^(\d{4})-(\d{2})-(\d{2})/.exec(s.visit_date||'');
+    const vd=vm?new Date(Date.UTC(+vm[1],+vm[2]-1,+vm[3])):null;
+    const r=ws.addRow([s.county||'',s.district||'',s.sales_rep||'',s.name||'',s.priority||'',coop?'是':'否',s._dbId?'是':'否',qty,s.address||'',s.contact_phone||'',
+      ...BR.map(x=>b.set.has(x)?'V':''),b.n,vd&&!isNaN(vd)?vd:'']);
+    const pf=PFILL[s.priority];
+    if(pf)r.getCell(5).fill={type:'pattern',pattern:'solid',fgColor:{argb:pf}};
+    r.getCell(5).alignment={horizontal:'center'};
+    const dc=r.getCell(HEAD.length);
+    if(dc.value instanceof Date)dc.numFmt='yyyy-mm-dd';
+  });
+  [10,10,12,30,11,8,11,9,44,15,9,11,8,9,11,11,13].forEach((w,i)=>{ws.getColumn(i+1).width=w;});
+  ws.views=[{state:'frozen',ySplit:3,xSplit:4}];
+  ws.autoFilter={from:{row:3,column:1},to:{row:3,column:HEAD.length}};
+  const buf=await wb.xlsx.writeBuffer();
+  const safe=String(layer.name||'dataset').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,40);
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Nuvari_${safe}_${today}.xlsx`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast(`已匯出 ${rows.length} 家店家 Exported ${rows.length} shops to Excel`);
+}
 /* PostgREST caps rows per request at a server-configured max (1000 by default on Supabase) —
    a single query silently truncates instead of erroring, which is how "Taiwan Bike Shops"
    (2,550 rows) previously showed as exactly 1000/1000. Page through with .range() until a
@@ -1722,12 +1794,12 @@ async function fetchAllShopsForDataset(datasetFilter){
   const PAGE_SIZE=1000;
   let offset=0,all=[];
   while(true){
-    let q=sbClient.from('shops').select(SHOP_FETCH_COLUMNS);
+    let q=sbClient.from('shops').select(shopCols());
     if(datasetFilter==='unassigned')q=q.is('dataset_id',null);
     else if(datasetFilter&&datasetFilter!=='all')q=q.eq('dataset_id',datasetFilter);
     q=q.range(offset,offset+PAGE_SIZE-1);
     const{data,error}=await q;
-    if(error)throw error;
+    if(error){if(isMissingVisitDate(error)&&visitDateSupported){visitDateSupported=false;all=[];offset=0;continue;}throw error;}
     if(!data||data.length===0)break;
     all=all.concat(data);
     if(data.length<PAGE_SIZE)break;
@@ -1765,6 +1837,7 @@ function mapShopDbRows(mappable,layerId,layerColor){
     go_sample_qty:s.go_sample_qty||null,
     ultra_sample_qty:s.ultra_sample_qty||null,
     campaign_id:s.campaign_id||null,
+    visit_date:s.visit_date||null,
     _layerId:layerId,
     _layerColor:layerColor,
     _dbId:s.id
@@ -2254,6 +2327,7 @@ function renderShopsTab(){
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:${filtersOpen?'8px':'0'};">
         <button class="btn layer-priority-color-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByPriority?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 依優先順序著色</button>
+        <button class="btn layer-xlsx-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;" title="匯出此資料集為 Excel（含拜訪日期）">⬇ 匯出 Excel</button>
         <button class="btn layer-datasetcolor-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByLayer?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 整組同色</button>
         ${layer.colorByLayer?`<span style="display:flex;align-items:center;gap:1px;">${LAYER_COLORS.map(c=>`<span class="layer-color-swatch" data-lid="${esc(layer.id)}" data-color="${c}" title="${c}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin:1px;cursor:pointer;border:2px solid ${layer.color===c?'#282828':'transparent'};"></span>`).join('')}</span>`:''}
       </div>
@@ -2375,6 +2449,9 @@ function renderShopsTab(){
       if(layer._openGroups.has(field))layer._openGroups.delete(field);else layer._openGroups.add(field);
       renderShopsTab();
     });
+  });
+  el.querySelectorAll('.layer-xlsx-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(layer)exportLayerExcel(layer);});
   });
   el.querySelectorAll('.layer-priority-color-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -2800,10 +2877,15 @@ function loadSession(){
         // single "清除 None" on Status silently and permanently zero out the whole map on every
         // future load — see the "Merida shops missing" report this fixed.)
         const restoreOrDefault=arr=>Array.isArray(arr)&&arr.length>0?new Set(arr):undefined;
+        // 拜訪優先級 S/A/B/C were added after most saved sessions were written: a persisted
+        // priorityFilters Set from before then only knows P1/P2/P3/none, so S/A/B/C shops would
+        // load unchecked (= hidden). If none of the four is in the saved set, it predates them —
+        // add them so they show up checked, like a freshly loaded layer.
+        const migratePriorityFilters=set=>{if(set&&!['S','A','B','C'].some(k=>set.has(k))){['S','A','B','C'].forEach(k=>set.add(k));}return set;};
         csvLayers=b.layers.map(l=>{
           const layer={...l,
             statusFilters:restoreOrDefault(l.statusFilters),
-            priorityFilters:restoreOrDefault(l.priorityFilters),
+            priorityFilters:migratePriorityFilters(restoreOrDefault(l.priorityFilters)),
             ratingFilters:restoreOrDefault(l.ratingFilters),
             regionFilters:restoreOrDefault(l.regionFilters),
             countyFilters:restoreOrDefault(l.countyFilters),
@@ -2887,7 +2969,8 @@ function focusFromUrlParams(){
 
 async function loadDeepLinkPopup(shopId,marker){
   try{
-    const{data,error}=await sbClient.from('shops').select(SHOP_FETCH_COLUMNS).eq('id',shopId).single();
+    let{data,error}=await sbClient.from('shops').select(shopCols()).eq('id',shopId).single();
+    if(isMissingVisitDate(error)&&visitDateSupported){visitDateSupported=false;({data,error}=await sbClient.from('shops').select(shopCols()).eq('id',shopId).single());}
     if(error||!data)return;
     marker.setPopupContent(buildDeepLinkPopup(data));
     if(marker.isPopupOpen())marker.openPopup(); // re-render the already-open popup at its new size
