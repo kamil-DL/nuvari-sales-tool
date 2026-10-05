@@ -70,7 +70,11 @@
         <option value="all">全部縣市 All counties</option>
       </select>
       <select id="priority-filter" class="nst-select" style="width:auto;min-width:130px">
-        <option value="all">全部優先順序 All priority</option>
+        <option value="all">全部拜訪優先級 All priority</option>
+        <option value="S">S 粉紅｜YOYOBIKE 直攻店</option>
+        <option value="A">A 黃｜捷安特/美利達專賣店</option>
+        <option value="B">B 橘｜DOSUN 店</option>
+        <option value="C">C 綠｜其他車店</option>
         <option value="P1">P1</option>
         <option value="P2">P2</option>
         <option value="P3">P3</option>
@@ -121,7 +125,11 @@
         </select>
         <button id="bulk-rep-apply-btn" class="nst-btn nst-btn-outline" disabled>套用 Apply</button>
         <select id="bulk-priority-select" class="nst-select" style="width:auto;min-width:170px">
-          <option value="__placeholder__" selected disabled>變更優先順序為... Change priority to…</option>
+          <option value="__placeholder__" selected disabled>變更拜訪優先級為... Change priority to…</option>
+          <option value="S">S 粉紅｜YOYOBIKE 直攻店</option>
+          <option value="A">A 黃｜捷安特/美利達專賣店</option>
+          <option value="B">B 橘｜DOSUN 店</option>
+          <option value="C">C 綠｜其他車店</option>
           <option value="P1">P1</option>
           <option value="P2">P2</option>
           <option value="P3">P3</option>
@@ -170,9 +178,13 @@
         <option value="已合作-流失">已合作-流失 Partnered (Churned)</option>
         <option value="主動要合作-有意願">主動要合作-有意願 Inbound (Interested)</option>
       </select>
-      <label class="nst-field-label">優先順序 Priority</label>
+      <label class="nst-field-label">拜訪優先級 Visit priority</label>
       <select id="f-priority" class="nst-select">
         <option value="">無 None</option>
+        <option value="S">S 粉紅｜YOYOBIKE 直攻店</option>
+        <option value="A">A 黃｜捷安特/美利達專賣店</option>
+        <option value="B">B 橘｜DOSUN 店</option>
+        <option value="C">C 綠｜其他車店</option>
         <option value="P1">P1</option>
         <option value="P2">P2</option>
         <option value="P3">P3</option>
@@ -250,7 +262,7 @@
         CSV 欄位（首行為標題，與地圖規劃工具共用同一標準）：<br/>
         <code style="font-size:11.5px;color:var(--nst-ink)">name, status, priority, address, contact_name, contact_phone, sales_rep, notes, lat/GISY, lng/GISX</code><br/>
         <span style="font-size:12px">status 可填：尚未開發 / 電訪過 / 電訪過-拒絕 / 拜訪過 / 拜訪過-有意願 / 拜訪過-評估中 / 拜訪過-拒絕 / 已合作 / 已合作-流失 / 主動要合作-有意願（預設 尚未開發）</span><br/>
-        <span style="font-size:12px">priority 可填：P1 / P2 / P3（可留空 optional）</span><br/>
+        <span style="font-size:12px">priority（拜訪優先級）可填：S / A / B / C（舊值 P1 / P2 / P3 亦可，可留空 optional）</span><br/>
         <span style="font-size:12px">也會儲存：地區、縣市、鄉鎮市區、座標狀態、category、google_* 等欄位 · Also stored: region/county/district/coord_status/category/google_* columns if present</span><br/>
         <span style="font-size:12px">資料集在下方選擇，不是 CSV 欄位 · Dataset is chosen below, not a CSV column</span>
       </div>
@@ -399,7 +411,7 @@ function priorityInlineSelect(s) {
   const info = cur ? PRIORITY_LABELS[cur] : null;
   const color = info ? info.hex : '#798BA5';
   const bg = info ? `${info.hex}1A` : '#EDEFF2';
-  const opts = ['', 'P1', 'P2', 'P3'].map(v => {
+  const opts = ['', 'S', 'A', 'B', 'C', 'P1', 'P2', 'P3'].map(v => {
     const label = v || '無 None';
     return `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
   }).join('');
@@ -548,7 +560,7 @@ async function bulkUpdateSalesRep(ids, rep) {
 }
 
 async function bulkUpdatePriority(ids, priority) {
-  await runBulkOperation(ids, '更新優先順序中 Updating priority', id => updateShop(id, { priority: priority || null }));
+  await runBulkOperation(ids, '更新拜訪優先級中 Updating priority', id => updateShop(id, { priority: priority || null }));
 }
 
 async function bulkUpdateCampaign(ids, campaignId) {
@@ -1055,7 +1067,7 @@ document.getElementById('bulk-priority-apply-btn').addEventListener('click', asy
   const priority = document.getElementById('bulk-priority-select').value;
   if (!n || priority === '__placeholder__') return;
   const priorityLabelText = priority || '無 None';
-  if (!confirm(`確定要將已選取的 ${n} 家店家優先順序改為「${priorityLabelText}」嗎？\nChange priority of ${n} selected shops to "${priorityLabelText}"?`)) return;
+  if (!confirm(`確定要將已選取的 ${n} 家店家拜訪優先級改為「${priorityLabelText}」嗎？\nChange priority of ${n} selected shops to "${priorityLabelText}"?`)) return;
   await bulkUpdatePriority([...selectedIds], priority);
 });
 
@@ -1077,7 +1089,7 @@ await refresh();
 
 // ── CSV Import ──
 const VALID_STATUSES = new Set(['尚未開發','電訪過','電訪過-拒絕','拜訪過','拜訪過-有意願','拜訪過-評估中','拜訪過-拒絕','已合作','已合作-流失','主動要合作-有意願']);
-const VALID_PRIORITIES = new Set(['P1','P2','P3']);
+const VALID_PRIORITIES = new Set(['S','A','B','C','P1','P2','P3']);
 let csvRows = [];
 let csvDupMatches = []; // parallel to csvRows — matched existing shop {name,address} or null
 let csvSkipSet = new Set(); // indices into csvRows that will be skipped on import (defaults to all duplicates)
@@ -1140,7 +1152,7 @@ function normaliseRow(row) {
   // Flexible column name mapping
   const name = row.name || row['店家名稱'] || row['shop_name'] || '';
   const status = (row.status || row['狀態'] || '尚未開發').trim();
-  const priority = (row.priority || row['優先順序'] || '').trim().toUpperCase();
+  const priority = (row.priority || row['拜訪優先級'] || row['優先順序'] || '').trim().toUpperCase();
   return {
     name: name.trim(),
     status: VALID_STATUSES.has(status) ? status : '尚未開發',

@@ -191,6 +191,12 @@ export const STATUS_LABELS = {
 // planning. Same hex colors as the map planner's PRIORITY_COLORS (map.html), kept in sync
 // manually since map.html is a classic script and can't import this.
 export const PRIORITY_LABELS = {
+  // 拜訪優先級 per the CEO's master list: S 粉紅 YOYOBIKE 直攻店 · A 黃 捷安特/美利達專賣店 · B 橘 DOSUN 店 · C 綠 其他車店.
+  // P1/P2/P3 are the older scheme, still valid so existing shops keep rendering.
+  S: { zh: 'S', en: 'S · YOYOBIKE direct', color: 'badge-pink',   hex: '#DB2777' },
+  A: { zh: 'A', en: 'A · Giant/Merida',     color: 'badge-yellow', hex: '#CA8A04' },
+  B: { zh: 'B', en: 'B · DOSUN',            color: 'badge-orange', hex: '#E65100' },
+  C: { zh: 'C', en: 'C · Other',            color: 'badge-green',  hex: '#0B8E6A' },
   P1: { zh: 'P1', en: 'High priority', color: 'badge-red',    hex: '#D93025' },
   P2: { zh: 'P2', en: 'Medium priority', color: 'badge-orange', hex: '#E65100' },
   P3: { zh: 'P3', en: 'Low priority',  color: 'badge-yellow', hex: '#CA8A04' },

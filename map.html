@@ -660,11 +660,19 @@ function statusStyle(s){ return STATUS_STYLE[s]||STATUS_STYLE['default']; }
    planning, e.g. "show me only P1". Same hex colors as NST Shop DB's PRIORITY_LABELS
    (nst/js/shops.js) — one shared standard across both tools, same as STATUS_STYLE above. */
 const PRIORITY_STYLE={
+  'S':{color:'#DB2777',bg:'#FCE7F3',label:'S 直攻'},
+  'A':{color:'#CA8A04',bg:'#FEF9C3',label:'A 捷安特/美利達'},
+  'B':{color:'#E65100',bg:'#FFF3E0',label:'B DOSUN'},
+  'C':{color:'#0B8E6A',bg:'#E6F9F4',label:'C 其他'},
   'P1':{color:'#D93025',bg:'#FEE8E7',label:'P1'},
   'P2':{color:'#E65100',bg:'#FFF3E0',label:'P2'},
   'P3':{color:'#CA8A04',bg:'#FEF9C3',label:'P3'},
 };
 const PRIORITY_ORDER=[
+  {key:'S',label:'S 直攻',color:'#DB2777'},
+  {key:'A',label:'A 捷安特/美利達',color:'#CA8A04'},
+  {key:'B',label:'B DOSUN',color:'#E65100'},
+  {key:'C',label:'C 其他',color:'#0B8E6A'},
   {key:'P1',label:'P1',color:'#D93025'},
   {key:'P2',label:'P2',color:'#E65100'},
   {key:'P3',label:'P3',color:'#CA8A04'},
@@ -1529,7 +1537,7 @@ function buildBikeshopPopup(shop){
     <div class="bs-edit-form" style="display:none;margin-top:6px;">
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">狀態 Status</label>
       <select class="bs-edit-status" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${statusOptionsHtml(shop.status)}</select>
-      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">優先順序 Priority</label>
+      <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">拜訪優先級 Priority</label>
       <select class="bs-edit-priority" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${priorityOptionsHtml(shop.priority)}</select>
       <label style="font-size:9px;color:var(--soft,#798BA5);display:block;margin-bottom:2px;">業務員 Sales rep</label>
       <select class="bs-edit-rep" style="width:100%;font-size:11px;padding:3px;margin-bottom:6px;box-sizing:border-box;">${repOptionsHtml(shop.sales_rep||'')}</select>
@@ -1673,7 +1681,7 @@ async function parseCSV(text){
     const rawStatus=stI>=0?(vals[stI]||'').trim():'尚未開發';
     const status=rawStatus||'尚未開發';
     const rawPriority=priorityI>=0?(vals[priorityI]||'').trim().toUpperCase():'';
-    const priority=['P1','P2','P3'].includes(rawPriority)?rawPriority:null;
+    const priority=['S','A','B','C','P1','P2','P3'].includes(rawPriority)?rawPriority:null;
     const rawRating=ratingI>=0?(vals[ratingI]||'').trim():'';
     const rating=rawRating||null; // e.g. "A+", "B", "C" — exact text as uploaded
     const ratingGroup=ratingTier(rawRating); // grouped: "A", "B", "C"...
@@ -2271,7 +2279,7 @@ function renderShopsTab(){
     // could find the brand-color toggle without first expanding both.
     const filterGroups=[
       showStatus?filterSection(layer,'狀態','statusFilters',statChips,layer.statusFilters.size,statuses.length):'',
-      showStatus?filterSection(layer,'優先順序','priorityFilters',priorityChips,layer.priorityFilters.size,PRIORITY_ORDER.length):'',
+      showStatus?filterSection(layer,'拜訪優先級','priorityFilters',priorityChips,layer.priorityFilters.size,PRIORITY_ORDER.length):'',
       // 業務員 moved up here (was below 地區/縣市) — who's responsible gets checked at least as
       // often as status/priority when planning, so it shouldn't be buried under location filters.
       (showSalesRepAndTier&&salesReps.length)?filterSection(layer,'業務員','salesRepFilters',salesRepChips,layer.salesRepFilters.size,salesRepKeys.length):'',
