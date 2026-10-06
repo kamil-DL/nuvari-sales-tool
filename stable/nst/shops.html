@@ -163,6 +163,14 @@
     </div>
     <div class="nst-modal-body">
       <input type="hidden" id="modal-shop-id"/>
+      <div id="maplink-box" style="background:#F0F7FF;border:1px solid #CFE2FA;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+        <label class="nst-field-label" style="margin-top:0">🔗 貼上 Google 地圖連結，自動帶入 Paste Google Maps link</label>
+        <div style="display:flex;gap:8px;">
+          <input id="f-maplink" type="url" class="nst-input" placeholder="https://maps.app.goo.gl/…" style="flex:1"/>
+          <button id="f-maplink-btn" type="button" class="nst-btn nst-btn-outline">帶入 Fill</button>
+        </div>
+        <div id="f-maplink-status" style="font-size:12px;margin-top:6px;min-height:16px;white-space:pre-line;"></div>
+      </div>
       <label class="nst-field-label">店家名稱 Shop name *</label>
       <input id="f-name" type="text" class="nst-input" placeholder="e.g. 單車工坊台北店"/>
       <label class="nst-field-label">合作狀態 Status</label>
@@ -335,6 +343,7 @@ import { LOGO } from './js/logo.js';
 import { loadShops, addShop, updateShop, deleteShop, STATUS_LABELS, PRIORITY_LABELS, loadUserDirectory, repLabel, loadDatasets, createDataset, updateDataset, deleteDataset, countAllShopsByDataset, loadAllShopsForDupCheck, loadCampaigns, createCampaign, updateCampaign, deleteCampaign, countAllShopsByCampaign } from './js/shops.js';
 import { loadLatestVisitsByShopIds, VISIT_STATUS_LABELS } from './js/visits.js';
 import { lookupGeoFromCoords, sortCountiesNS, COUNTY_LIST_NS } from '../shared/geo.js';
+import { resolveMapsLink, reverseGeocodeRoad } from './js/maps-link.js';
 import { REGION_COLOR_BY_ZH } from '../shared/region-colors.js';
 import { parseCSVLine, detectDelimiter } from '../shared/csv-parser.js';
 import { supabase } from './js/supabase-client.js';
@@ -779,6 +788,7 @@ function openModal(shop = null) {
   document.getElementById('f-ultra-qty').value = shop && shop.ultra_sample_qty ? shop.ultra_sample_qty : '';
   document.getElementById('f-notes').value = shop ? (shop.notes || '') : '';
   document.getElementById('modal-error').textContent = '';
+  resetMapLink();
   editingShopCreatedBy = shop ? shop.created_by : null;
   const canDelete = isEdit && iAmDeleter;
   document.getElementById('modal-delete-btn').style.display = canDelete ? '' : 'none';
@@ -786,6 +796,61 @@ function openModal(shop = null) {
   document.getElementById('shop-modal').style.display = '';
   setTimeout(() => document.getElementById('f-name').focus(), 50);
 }
+
+// ── 貼上 Google 地圖連結 → 自動帶入名稱 / 座標 / 縣市區 / 路名 ──
+let mapLinkResult = null; // { lat, lng, cid, cidUrl } from the last successful 帶入
+function setMapLinkStatus(msg, kind) {
+  const el = document.getElementById('f-maplink-status');
+  el.textContent = msg;
+  el.style.color = kind === 'err' ? '#D93025' : kind === 'ok' ? '#0B8E6A' : kind === 'warn' ? '#B45309' : '#798BA5';
+}
+function resetMapLink() {
+  mapLinkResult = null;
+  document.getElementById('f-maplink').value = '';
+  setMapLinkStatus('', '');
+}
+function setSelectValueEnsuring(selId, value) {
+  const sel = document.getElementById(selId);
+  if (!value) return;
+  if (![...sel.options].some(o => o.value === value)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(value)}" data-extra>${esc(value)}</option>`);
+  sel.value = value;
+}
+document.getElementById('f-maplink-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('f-maplink-btn');
+  btn.disabled = true;
+  setMapLinkStatus('解析中… Reading link…', '');
+  try {
+    const p = await resolveMapsLink(document.getElementById('f-maplink').value);
+    const geo = lookupGeoFromCoords(p.lat, p.lng);
+    const road = await reverseGeocodeRoad(p.lat, p.lng);
+    if (p.name && !document.getElementById('f-name').value.trim()) document.getElementById('f-name').value = p.name;
+    if (geo) {
+      setSelectValueEnsuring('f-county', geo.county);
+      setSelectValueEnsuring('f-region', geo.region);
+      document.getElementById('f-district').value = geo.district || '';
+    }
+    const addrEl = document.getElementById('f-address');
+    const composed = (geo ? (geo.county || '') + (geo.district || '') : '') + (road && road.road ? road.road : '');
+    if (composed && !addrEl.value.trim()) addrEl.value = composed;
+    mapLinkResult = p;
+    let msg = `✓ 已帶入「${p.name || '（無名稱）'}」座標 ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    // OSM's house numbers are often a nearby guess (it said 32之16號 for a shop Google lists at 32-18號), so only the road is filled in.
+    msg += '。地址只帶到路名，請補上正確門牌號碼與電話（可對照 Google 地圖）';
+    setMapLinkStatus(msg, 'ok');
+    // heads-up if a shop is already pinned within ~80 m
+    const d = 0.0007;
+    const { data: near } = await supabase.from('shops').select('name,status').gte('lat', p.lat - d).lte('lat', p.lat + d).gte('lng', p.lng - d).lte('lng', p.lng + d).limit(5);
+    const editingId = document.getElementById('modal-shop-id').value;
+    const others = (near || []).filter(s => s.name);
+    if (others.length && !editingId) setMapLinkStatus(msg + `\n⚠ 此位置附近已有：${[...new Set(others.map(s => s.name + '（' + s.status + '）'))].join('、')} — 請確認不是重複店家`, 'warn');
+  } catch (e) {
+    mapLinkResult = null;
+    setMapLinkStatus(e.message || String(e), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+document.getElementById('f-maplink').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('f-maplink-btn').click(); } });
 
 function closeModal() {
   document.getElementById('shop-modal').style.display = 'none';
@@ -826,6 +891,14 @@ document.getElementById('modal-save-btn').addEventListener('click', async () => 
     ultra_sample_qty: document.getElementById('f-ultra-qty').value ? parseInt(document.getElementById('f-ultra-qty').value, 10) : null,
     notes: document.getElementById('f-notes').value.trim() || null,
   };
+  if (mapLinkResult) {
+    fields.lat = mapLinkResult.lat;
+    fields.lng = mapLinkResult.lng;
+    fields.coord_status = 'Google 地圖連結（精確座標）';
+    if (mapLinkResult.cidUrl && !(fields.notes || '').includes(mapLinkResult.cidUrl)) {
+      fields.notes = (fields.notes ? fields.notes + '\n' : '') + 'Google 地圖: ' + mapLinkResult.cidUrl;
+    }
+  }
   const btn = document.getElementById('modal-save-btn');
   btn.disabled = true; btn.textContent = '儲存中… Saving…';
   try {
