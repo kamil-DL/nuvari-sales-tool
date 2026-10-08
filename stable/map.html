@@ -860,8 +860,15 @@ function recolorCounties(){
 function gmapsPoint(lat,lng){return`https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}&z=17`;}
 /* opens the exact Google Business listing when we have its place_id (from CSV/Shop DB
    google_place_id), instead of just a coordinate pin */
-function gmapsPlace(placeId,name,lat,lng){
+// A shop without a Google place_id (imported/geocoded from a list, not from Places) used to open
+// a bare coordinate pin, never its listing. Prefer, in order: the place_id listing, a saved
+// "Google 地圖: …?cid=" link in the notes (written when the listing was looked up), a name+address
+// search (lands on the shop's page when Google knows it), and only then the raw coordinate pin.
+function cidLinkFromNotes(notes){const m=/https:\/\/www\.google\.com\/maps\?cid=\d+/.exec(notes||'');return m?m[0]:null;}
+function gmapsPlace(placeId,name,lat,lng,notes,address){
   if(placeId)return`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name||'')}&query_place_id=${encodeURIComponent(placeId)}`;
+  const cid=cidLinkFromNotes(notes);if(cid)return cid;
+  if(name&&address)return`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name+' '+address)}`;
   return gmapsPoint(lat,lng);
 }
 
@@ -1453,7 +1460,7 @@ function rebuildBikeshopMarkers(){
 }
 function buildBikeshopPopup(shop){
   const layer=csvLayers.find(l=>l.id===shop._layerId);
-  const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
+  const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng,shop.notes,shop.address)}" target="_blank" rel="noopener">${(shop.google_place_id||cidLinkFromNotes(shop.notes))?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
   // Infrastructure layers (e.g. YouBike docks) aren't sales prospects — no status/rating/phone/
   // color-picker, just enough to identify the location.
   // A CSV-only row (no _dbId) just gets removed from local layer state — no server permission
@@ -3008,7 +3015,7 @@ async function loadDeepLinkPopup(shopId,marker){
 function buildDeepLinkPopup(shop){
   const st=statusStyle(shop.status);
   const priorityBadge=shop.priority&&PRIORITY_STYLE[shop.priority]?`<span class="bs-badge" style="background:${esc(PRIORITY_STYLE[shop.priority].bg)};color:${esc(PRIORITY_STYLE[shop.priority].color)};margin-left:5px;">${esc(PRIORITY_STYLE[shop.priority].label)}</span>`:'';
-  const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng)}" target="_blank" rel="noopener">${shop.google_place_id?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
+  const gmapsLink=`<a class="bs-gmaps" href="${gmapsPlace(shop.google_place_id,shop.name,shop.lat,shop.lng,shop.notes,shop.address)}" target="_blank" rel="noopener">${(shop.google_place_id||cidLinkFromNotes(shop.notes))?'開啟 Google 商家頁 Open Google listing':'Google Maps'} ↗</a>`;
   const googleRatingBadge=shop.google_rating!=null?`<span class="bs-badge" style="background:#FFF3E0;color:#E65100;margin-left:5px;">★ ${shop.google_rating}${shop.google_rating_count!=null?` (${shop.google_rating_count})`:''}</span>`:'';
   const categoryLine=shop.category?`<div class="bs-addr" style="color:var(--soft,#798BA5);">${esc(shop.category)}${shop.business_status&&shop.business_status!=='OPERATIONAL'?` · ${esc(shop.business_status)}`:''}</div>`:'';
   const phoneLine=shop.contact_phone?`<div class="bs-addr">Tel: ${esc(shop.contact_phone)}</div>`:'';

@@ -322,6 +322,10 @@ function fmtDate(d) {
 function gmapsLink(s) {
   if (s.lat != null && s.lng != null) {
     if (s.google_place_id) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name||'')}&query_place_id=${encodeURIComponent(s.google_place_id)}`;
+    // saved listing link (written to notes when the shop was looked up on Google), then a name+address search
+    const cid = /https:\/\/www\.google\.com\/maps\?cid=\d+/.exec(s.notes || '');
+    if (cid) return cid[0];
+    if (s.name && s.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.address)}`;
     return `https://www.google.com/maps?q=${s.lat.toFixed(6)},${s.lng.toFixed(6)}&z=17`;
   }
   if (s.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}`;
