@@ -1,7 +1,7 @@
 /**
- * NST → Google Sheet: planned visit dates.
+ * NST → Google Sheet: planned visits.  Two modes (see MODE below).
  *
- * The team's sheet already has a 拜訪計畫 page that builds itself from the master tab
+ * MASTER mode — the team's sheet already has a 拜訪計畫 page that builds itself from the master tab
  * (經銷商總表): whatever date is in the master's 「預計拜訪日(298)」 column shows up there, sorted by
  * date. So this script does NOT write its own list — it only fills in (and clears) that one date
  * column in the master tab when someone plans a visit in NST. Nothing else in the sheet is touched.
@@ -15,6 +15,16 @@
  * One-way (NST → sheet). Setup: tools/sheet-sync/README.md
  */
 
+// MODE 'list'   : own 拜訪計畫 tab, one row per planned stop (use this in a fresh sheet)
+// MODE 'master' : only fill in the date column of an existing master tab (the team sheet whose 拜訪計畫 page is formula-driven)
+var MODE = 'list';
+
+// ---- LIST mode -------------------------------------------------------------------------------
+var SHEET_NAME = '拜訪計畫';
+var HEADERS = ['拜訪日期', '店家名稱', '地址', '拜訪優先級', '負責業務', '電話', '縣市', '排序鍵(輔助)', '目的', '計畫ID(系統)'];
+var ID_COL = HEADERS.length;   // 10 → column J
+
+// ---- MASTER mode -----------------------------------------------------------------------------
 var MASTER_SHEET = '經銷商總表';
 var COL_NAME = '店名';
 var COL_ADDRESS = '地址';
@@ -40,16 +50,95 @@ function doPost(e) {
     var version = Number(body.version || 0);
     if (version && version < last) return json_({ ok: true, skipped: 'stale' });
 
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET);
-    if (!sheet) return json_({ ok: false, error: 'tab not found: ' + MASTER_SHEET });
-    var result = applyPlan_(sheet, props, body);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var result = {};
+    if (MODE === 'list') {
+      var tab = ss.getSheetByName(SHEET_NAME);
+      if (!tab) return json_({ ok: false, error: 'tab not found: ' + SHEET_NAME + ' — run setupSheet() first' });
+      applyListPlan_(tab, body);
+    } else {
+      var master = ss.getSheetByName(MASTER_SHEET);
+      if (!master) return json_({ ok: false, error: 'tab not found: ' + MASTER_SHEET });
+      result = applyPlan_(master, props, body);
+    }
     if (body.deleted) props.deleteProperty(vkey); else props.setProperty(vkey, String(version));
-    return json_({ ok: true, matched: result.matched, unmatched: result.unmatched, skipped: result.skipped });
+    return json_({ ok: true, mode: MODE, matched: result.matched, unmatched: result.unmatched, skipped: result.skipped });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally {
     lock.releaseLock();
   }
+}
+
+// ---- LIST mode: replace one plan's rows ------------------------------------------------------
+/** Replace (or add / remove) every row belonging to one plan. */
+function applyListPlan_(sheet, snap) {
+  var n = HEADERS.length;
+  var last = sheet.getLastRow();
+  var ids = last > 1 ? sheet.getRange(2, ID_COL, last - 1, 1).getValues() : [];
+  var planId = String(snap.plan_id);
+  var first = -1, count = 0;
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === planId) { if (first < 0) first = i + 2; count++; }
+  }
+  // A plan's rows are normally one contiguous block; if someone sorted the sheet they may be
+  // scattered — then remove them all (bottom-up) and re-add the plan as a fresh block at the end.
+  if (count > 0) {
+    var contiguous = ids.slice(first - 2, first - 2 + count).every(function (r) { return String(r[0]) === planId; });
+    if (!contiguous) {
+      for (var j = ids.length - 1; j >= 0; j--) if (String(ids[j][0]) === planId) sheet.deleteRow(j + 2);
+      first = -1; count = 0;
+    }
+  }
+
+  var rows = snap.deleted ? [] : buildRows_(snap);
+  if (count > 0) {
+    if (rows.length > count) sheet.insertRowsAfter(first + count - 1, rows.length - count);
+    else if (rows.length < count) sheet.deleteRows(first + rows.length, count - rows.length);
+  } else {
+    first = sheet.getLastRow() + 1;
+  }
+  if (rows.length) {
+    sheet.getRange(first, 1, rows.length, n).setValues(rows);
+    sheet.getRange(first, 1, rows.length, 1).setNumberFormat('yyyy-mm-dd');
+    sheet.getRange(first, 6, rows.length, 1).setNumberFormat('@');   // keep phone numbers as text
+  }
+}
+function buildRows_(snap) {
+  var d = String(snap.plan_date || '').split('-');
+  var date = d.length === 3 ? new Date(Number(d[0]), Number(d[1]) - 1, Number(d[2])) : '';
+  var ymd = d.length === 3 ? d.join('') : '';
+  var stops = snap.stops || [];
+  if (!stops.length) {   // an empty plan still shows up, so the day isn't silently missing
+    return [[date, '（尚未加入店家）', '', '', snap.rep || '', '', '', ymd + '-00', snap.plan_notes || '', snap.plan_id]];
+  }
+  return stops.map(function (s) {
+    var order = Number(s.order) || 0;
+    return [date, s.name || '', s.address || '', s.priority || '', snap.rep || '', s.phone || '', s.county || '',
+            ymd + '-' + (order < 10 ? '0' : '') + order, snap.plan_notes || '', snap.plan_id];
+  });
+}
+
+/**
+ * LIST mode only. Creates the 拜訪計畫 tab with the header row. Refuses to touch a tab that already has
+ * other content (a first version of this script once overwrote a team page that had the same name).
+ */
+function setupSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (sheet) {
+    var a1 = String(sheet.getRange(1, 1).getValue()).trim();
+    if (a1 && a1 !== HEADERS[0]) throw new Error('A tab named ' + SHEET_NAME + ' already exists with other content — not touching it.');
+  } else {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
+       .setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#2B547E').setHorizontalAlignment('center');
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidth(2, 220);
+  sheet.setColumnWidth(3, 300);
+  sheet.hideColumns(ID_COL);   // 計畫ID(系統) is the key the sync uses — kept, just hidden
+  return 'ready';
 }
 
 // ---- matching helpers ------------------------------------------------------------------------
@@ -171,4 +260,4 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, addrKey_: addrKey_, ymd_: ymd_ };
+if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, addrKey_: addrKey_, ymd_: ymd_, applyListPlan_: applyListPlan_, buildRows_: buildRows_, HEADERS: HEADERS };
