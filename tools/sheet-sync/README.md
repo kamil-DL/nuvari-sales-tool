@@ -4,12 +4,13 @@ When someone saves a visit plan in NST (add/remove/reorder shops, change the dat
 Sheet updates itself within a few seconds. **One-way**: NST → Sheet. Change plans in NST, not in
 the Sheet. Rows you type yourself (no plan id in the hidden last column) are never touched.
 
-Columns: `拜訪日期 | 店家名稱 | 地址 | 拜訪優先級 | 負責業務 | 電話 | 縣市 | 排序鍵(輔助) | 目的 | 計畫ID(系統)`
-- 負責業務 = the rep doing the visit (plan owner) · 排序鍵 = `yyyymmdd-NN` (date + stop order)
-- 目的 = the plan's notes field in NST · 計畫ID(系統) = hidden key the sync uses
-
-The Sheet is never shared with anyone outside your company: the script lives *inside* the Sheet and
-only **receives** data. The Supabase database never reads the Sheet.
+**What it does.** The team's sheet already has a 拜訪計畫 page that builds itself from the master tab
+(經銷商總表) using the date column `預計拜訪日(298)`. So the sync does not write its own list: it only fills in
+(and clears) that one date column in the master tab:
+- plan saved in NST → each shop in the plan gets the plan's date
+- shop removed / date changed / plan cancelled or deleted → the old date is cleared again (only if the cell still holds it)
+- a cell holding something else (e.g. an `X` or `V` mark) is never overwritten; it is reported back instead
+- shops are matched to master rows by address (fallback: exact shop name). Shops that aren't in the master are reported, not added.
 
 ## Setup (≈ 10 min, once)
 
@@ -19,8 +20,8 @@ If the file's name shows `.xlsx` in Drive, open it and use **File → Save as Go
 
 ### 1. Apps Script
 1. In the Sheet: **Extensions → Apps Script**. Delete the sample code, paste all of `Code.gs`.
-2. Line 1 of the code: `SHEET_NAME` — the tab to write into. Set it to the **exact name of your existing
-   tab** (or leave `拜訪計畫` and run `setupSheet()` to create a new tab with the header row).
+2. Check the top of the code: `MASTER_SHEET` must be the exact name of the master tab (`經銷商總表`) and the column
+   names below it must match the master's header row. Run `checkSetup()` to verify (see the Execution log).
 3. Pick a long random secret (e.g. 40 random characters — a password manager works). In `saveSecret()`
    replace `PASTE-THE-SAME-SECRET-HERE` with it, select `saveSecret` in the toolbar and press **Run**
    (approve the permissions). Then **delete the secret from the code again** — it now lives in Script Properties.
@@ -42,13 +43,12 @@ If the file's name shows `.xlsx` in Drive, open it and use **File → Save as Go
 3. Fill the sheet with all existing plans once: `select public.sheet_sync_all();`
 
 ### 3. Check
-Create or edit a plan in NST → within ~5–10 s its rows appear/update in the Sheet.
+Create or edit a plan in NST → within ~5–10 s the shops' 預計拜訪日(298) cells in 經銷商總表 change, and the 拜訪計畫 page picks them up.
 Look at `select * from net._http_response order by created desc limit 5;` in the SQL editor if nothing
 arrives (status 200 + `{"ok":true}` = working; `unauthorized` = the two secrets differ).
 
 ## Notes
 - Saving a plan never fails because of the sync — errors are only logged.
-- A plan with no shops yet shows one row "（尚未加入店家）"; cancelling or deleting a plan removes its rows.
 - Out-of-order deliveries are handled (each snapshot carries a version; stale ones are ignored).
 - Test the script logic locally: `node tools/sheet-sync/test.js`.
 - To stop syncing: `delete from public.sheet_sync_config;`

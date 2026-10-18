@@ -1,23 +1,24 @@
 /**
- * NST → Google Sheet: live mirror of visit plans.
+ * NST → Google Sheet: planned visit dates.
  *
- * Receives a complete snapshot of ONE visit plan from the Supabase database
- * (supabase/migrations/0019_sheet_sync.sql) and rewrites that plan's rows in the sheet.
- * One-way only: edits made in the sheet do not flow back to NST — change a plan in NST.
- * Rows without a plan id in the hidden last column (e.g. rows you typed yourself) are never touched.
+ * The team's sheet already has a 拜訪計畫 page that builds itself from the master tab
+ * (經銷商總表): whatever date is in the master's 「預計拜訪日(298)」 column shows up there, sorted by
+ * date. So this script does NOT write its own list — it only fills in (and clears) that one date
+ * column in the master tab when someone plans a visit in NST. Nothing else in the sheet is touched.
  *
- * Columns (same as the team's sheet):
- *   拜訪日期 | 店家名稱 | 地址 | 拜訪優先級 | 負責業務 | 電話 | 縣市 | 排序鍵(輔助) | 目的 | 計畫ID(系統)
- *   - 負責業務 = the rep who is doing the visit (the plan's owner in NST)
- *   - 排序鍵(輔助) = yyyymmdd-NN (visit date + stop order) for sorting
- *   - 目的 = the plan's notes field in NST
+ * - NST plan saved   → every shop in the plan gets the plan's date in 預計拜訪日(298)
+ * - shop removed from a plan / date changed / plan cancelled or deleted
+ *                    → the old date is cleared again (only if the cell still holds that date)
+ * - a cell that holds something else (e.g. an "X" or "V" mark) is never overwritten; it is reported back instead
+ * - shops are matched to master rows by address (falls back to exact shop name)
  *
- * Setup: see tools/sheet-sync/README.md
+ * One-way (NST → sheet). Setup: tools/sheet-sync/README.md
  */
 
-var SHEET_NAME = '拜訪計畫';
-var HEADERS = ['拜訪日期', '店家名稱', '地址', '拜訪優先級', '負責業務', '電話', '縣市', '排序鍵(輔助)', '目的', '計畫ID(系統)'];
-var ID_COL = HEADERS.length;   // 10 → column J
+var MASTER_SHEET = '經銷商總表';
+var COL_NAME = '店名';
+var COL_ADDRESS = '地址';
+var COL_DATE = '預計拜訪日(298)';
 
 function doGet() {
   return json_({ ok: true, service: 'nst-sheet-sync' });
@@ -34,14 +35,16 @@ function doPost(e) {
     if (!body.plan_id) return json_({ ok: false, error: 'no plan_id' });
 
     // pg_net delivery order isn't guaranteed — ignore a snapshot older than one already applied.
-    var key = 'v_' + body.plan_id;
-    var last = Number(props.getProperty(key) || 0);
+    var vkey = 'v_' + body.plan_id;
+    var last = Number(props.getProperty(vkey) || 0);
     var version = Number(body.version || 0);
     if (version && version < last) return json_({ ok: true, skipped: 'stale' });
 
-    applyPlan_(getSheet_(), body);
-    if (body.deleted) props.deleteProperty(key); else props.setProperty(key, String(version));
-    return json_({ ok: true });
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET);
+    if (!sheet) return json_({ ok: false, error: 'tab not found: ' + MASTER_SHEET });
+    var result = applyPlan_(sheet, props, body);
+    if (body.deleted) props.deleteProperty(vkey); else props.setProperty(vkey, String(version));
+    return json_({ ok: true, matched: result.matched, unmatched: result.unmatched, skipped: result.skipped });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally {
@@ -49,76 +52,90 @@ function doPost(e) {
   }
 }
 
-/** Replace (or add / remove) every row belonging to one plan. */
-function applyPlan_(sheet, snap) {
-  var n = HEADERS.length;
-  var last = sheet.getLastRow();
-  var ids = last > 1 ? sheet.getRange(2, ID_COL, last - 1, 1).getValues() : [];
-  var planId = String(snap.plan_id);
-  var first = -1, count = 0;
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === planId) { if (first < 0) first = i + 2; count++; }
+// ---- matching helpers ------------------------------------------------------------------------
+function addrKey_(a) {
+  a = String(a || '').replace(/^\d{3,6}\s*/, '').replace(/臺/g, '台').replace(/台灣/g, '');
+  a = a.replace(/([區鄉鎮市])[一-鿿]{1,3}[里村](?=[一-鿿])/g, '$1');   // drop the village after the district
+  a = a.replace(/之/g, '-').replace(/一段/g, '1段').replace(/二段/g, '2段').replace(/三段/g, '3段')
+       .replace(/四段/g, '4段').replace(/五段/g, '5段').replace(/六段/g, '6段');
+  a = a.replace(/\d+樓.*$|\d+[Ff].*$|[,、].*$|號號/g, function (m) { return m === '號號' ? '號' : ''; });
+  return a.replace(/[\s\-－.]/g, '');
+}
+
+function ymd_(d) {   // Date or 'yyyy-mm-dd' / 'yyyy/mm/dd' text → 'yyyymmdd' (or '' if it isn't a date)
+  if (Object.prototype.toString.call(d) === '[object Date]') {
+    return isNaN(d) ? '' : String(d.getFullYear()) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
   }
-  // A plan's rows are normally one contiguous block; if someone sorted the sheet they may be
-  // scattered — then remove them all (bottom-up) and re-add the plan as a fresh block at the end.
-  if (count > 0) {
-    var contiguous = ids.slice(first - 2, first - 2 + count).every(function (r) { return String(r[0]) === planId; });
-    if (!contiguous) {
-      for (var j = ids.length - 1; j >= 0; j--) if (String(ids[j][0]) === planId) sheet.deleteRow(j + 2);
-      first = -1; count = 0;
+  var m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/.exec(String(d).trim());
+  return m ? m[1] + ('0' + m[2]).slice(-2) + ('0' + m[3]).slice(-2) : '';
+}
+
+function toDate_(y) { return new Date(Number(y.slice(0, 4)), Number(y.slice(4, 6)) - 1, Number(y.slice(6, 8))); }
+
+/**
+ * Apply one plan snapshot to the master tab. `store` is anything with getProperty/setProperty/deleteProperty
+ * (Script Properties in production) — it remembers which cells a plan wrote, so a later snapshot can clear them.
+ */
+function applyPlan_(sheet, store, snap) {
+  var lastRow = sheet.getLastRow(), lastCol = sheet.getLastColumn();
+  var head = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  var cName = head.indexOf(COL_NAME) + 1, cAddr = head.indexOf(COL_ADDRESS) + 1, cDate = head.indexOf(COL_DATE) + 1;
+  if (!cName || !cAddr || !cDate) throw new Error('column not found (need ' + [COL_NAME, COL_ADDRESS, COL_DATE].join(' / ') + ')');
+  var n = Math.max(lastRow - 1, 0);
+  var names = n ? sheet.getRange(2, cName, n, 1).getValues() : [];
+  var addrs = n ? sheet.getRange(2, cAddr, n, 1).getValues() : [];
+  var byAddr = {}, byName = {};
+  for (var i = 0; i < n; i++) {
+    var k = addrKey_(addrs[i][0]);
+    if (k) (byAddr[k] = byAddr[k] || []).push(i + 2);
+    var nm = String(names[i][0]).trim();
+    if (nm) (byName[nm] = byName[nm] || []).push(i + 2);
+  }
+  function findRows(stop) {
+    var rows = byAddr[addrKey_(stop.address)] || [];
+    if (rows.length > 1) {   // several shops share one address → keep the one whose name matches
+      var same = rows.filter(function (r) { return String(names[r - 2][0]).trim() === String(stop.name).trim(); });
+      if (same.length) rows = same;
     }
+    if (!rows.length) rows = (byName[String(stop.name).trim()] || []).length === 1 ? byName[String(stop.name).trim()] : [];
+    return rows;
   }
+  function keyFor(stop) { return addrKey_(stop.address) || ('n:' + String(stop.name).trim()); }
+  function cell(r) { return sheet.getRange(r, cDate); }
 
-  var rows = snap.deleted ? [] : buildRows_(snap);
-  if (count > 0) {
-    if (rows.length > count) sheet.insertRowsAfter(first + count - 1, rows.length - count);
-    else if (rows.length < count) sheet.deleteRows(first + rows.length, count - rows.length);
-  } else {
-    first = sheet.getLastRow() + 1;
-  }
-  if (rows.length) {
-    sheet.getRange(first, 1, rows.length, n).setValues(rows);
-    sheet.getRange(first, 1, rows.length, 1).setNumberFormat('yyyy-mm-dd');
-    sheet.getRange(first, 6, rows.length, 1).setNumberFormat('@');   // keep phone numbers as text
-  }
-}
+  var storeKey = 'plan_' + snap.plan_id;
+  var prev = []; try { prev = JSON.parse(store.getProperty(storeKey) || '[]'); } catch (e) { prev = []; }
+  var date = snap.deleted ? '' : ymd_(snap.plan_date);
+  var next = [];
+  if (!snap.deleted && date) (snap.stops || []).forEach(function (s) { next.push({ k: keyFor(s), y: date, a: s.address, n: s.name }); });
 
-function buildRows_(snap) {
-  var d = String(snap.plan_date || '').split('-');
-  var date = d.length === 3 ? new Date(Number(d[0]), Number(d[1]) - 1, Number(d[2])) : '';
-  var ymd = d.length === 3 ? d.join('') : '';
-  var stops = snap.stops || [];
-  if (!stops.length) {   // an empty plan still shows up, so the day isn't silently missing
-    return [[date, '（尚未加入店家）', '', '', snap.rep || '', '', '', ymd + '-00', snap.plan_notes || '', snap.plan_id]];
-  }
-  return stops.map(function (s) {
-    var order = Number(s.order) || 0;
-    return [date, s.name || '', s.address || '', s.priority || '', snap.rep || '', s.phone || '', s.county || '',
-            ymd + '-' + (order < 10 ? '0' : '') + order, snap.plan_notes || '', snap.plan_id];
+  // 1) clear what an earlier version of this plan wrote and the new one no longer does
+  var keepKey = {}; next.forEach(function (x) { keepKey[x.k + '|' + x.y] = true; });
+  prev.forEach(function (p) {
+    if (keepKey[p.k + '|' + p.y]) return;
+    var rows = findRows({ address: p.a, name: p.n });
+    rows.forEach(function (r) { if (ymd_(cell(r).getValue()) === p.y) cell(r).setValue(''); });
   });
+
+  // 2) write the current plan
+  var matched = [], unmatched = [], skipped = [];
+  (snap.stops || []).forEach(function (s) {
+    if (snap.deleted || !date) return;
+    var rows = findRows(s);
+    if (!rows.length) { unmatched.push(s.name); return; }
+    rows.forEach(function (r) {
+      var cur = cell(r).getValue();
+      if (cur === '' || ymd_(cur)) { cell(r).setValue(toDate_(date)); cell(r).setNumberFormat('yyyy/mm/dd'); matched.push(s.name); }
+      else skipped.push(s.name + '（儲存格已有「' + cur + '」，未覆寫）');
+    });
+  });
+
+  if (next.length) store.setProperty(storeKey, JSON.stringify(next)); else store.deleteProperty(storeKey);
+  return { matched: matched, unmatched: unmatched, skipped: skipped };
 }
 
-function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) { setupSheet(); sheet = ss.getSheetByName(SHEET_NAME); }
-  return sheet;
-}
-
-/** Run once from the editor: creates the tab with the header row. Safe to re-run (headers only). */
-function setupSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
-  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
-       .setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#2B547E').setHorizontalAlignment('center');
-  sheet.setFrozenRows(1);
-  sheet.setColumnWidth(2, 220);
-  sheet.setColumnWidth(3, 300);
-  sheet.hideColumns(ID_COL);   // 計畫ID(系統) is the key the sync uses — keep it, just hidden
-  return 'ready';
-}
-
-/** Run once from the editor after pasting your own secret, then delete the secret from the code. */
+// ---- one-off helpers (run from the editor) ----------------------------------------------------
+/** Run once: stores the shared secret (paste yours below, run, then delete it from the code). */
 function saveSecret() {
   var SECRET = 'PASTE-THE-SAME-SECRET-HERE';
   if (SECRET.indexOf('PASTE') === 0) throw new Error('Edit SECRET first');
@@ -126,8 +143,32 @@ function saveSecret() {
   return 'saved';
 }
 
+/** Sanity check: shows which tab/columns the script will use. */
+function checkSetup() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET);
+  if (!sheet) throw new Error('No tab named ' + MASTER_SHEET);
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim(); });
+  Logger.log([COL_NAME, COL_ADDRESS, COL_DATE].map(function (c) { return c + ' → column ' + (head.indexOf(c) + 1); }).join('\n'));
+  Logger.log('secret saved: ' + !!PropertiesService.getScriptProperties().getProperty('WEBHOOK_SECRET'));
+}
+
+/**
+ * Undo for the first (wrong) version of this script, which appended plan rows to the 拜訪計畫 tab:
+ * deletes the rows that carry a plan id in column J and un-hides column J. Run once, only if you ran that version.
+ */
+function cleanupFirstVersion() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('拜訪計畫');
+  if (!sheet) return 'no 拜訪計畫 tab';
+  var uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  var last = sheet.getLastRow(), removed = 0;
+  var col = last > 3 ? sheet.getRange(1, 10, last, 1).getValues() : [];
+  for (var i = col.length - 1; i >= 3; i--) { if (uuid.test(String(col[i][0]))) { sheet.deleteRow(i + 1); removed++; } }
+  sheet.unhideColumn(sheet.getRange(1, 10));
+  return 'removed ' + removed + ' rows; column J visible again';
+}
+
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, buildRows_: buildRows_, HEADERS: HEADERS };
+if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, addrKey_: addrKey_, ymd_: ymd_ };
