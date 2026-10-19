@@ -55,11 +55,12 @@ function doPost(e) {
     if (MODE === 'list') {
       var tab = ss.getSheetByName(SHEET_NAME);
       if (!tab) return json_({ ok: false, error: 'tab not found: ' + SHEET_NAME + ' — run setupSheet() first' });
+      if (body.type === 'shop_date') return json_({ ok: true, skipped: 'shop dates are not used in list mode' });
       applyListPlan_(tab, body);
     } else {
       var master = ss.getSheetByName(MASTER_SHEET);
       if (!master) return json_({ ok: false, error: 'tab not found: ' + MASTER_SHEET });
-      result = applyPlan_(master, props, body);
+      result = body.type === 'shop_date' ? applyShopDate_(master, body) : applyPlan_(master, props, body);
     }
     if (body.deleted) props.deleteProperty(vkey); else props.setProperty(vkey, String(version));
     return json_({ ok: true, mode: MODE, matched: result.matched, unmatched: result.unmatched, skipped: result.skipped });
@@ -165,7 +166,8 @@ function toDate_(y) { return new Date(Number(y.slice(0, 4)), Number(y.slice(4, 6
  * Apply one plan snapshot to the master tab. `store` is anything with getProperty/setProperty/deleteProperty
  * (Script Properties in production) — it remembers which cells a plan wrote, so a later snapshot can clear them.
  */
-function applyPlan_(sheet, store, snap) {
+/** Locate the master tab's columns and build the address → row lookup once per call. */
+function masterContext_(sheet) {
   var lastRow = sheet.getLastRow(), lastCol = sheet.getLastColumn();
   var head = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
   var cName = head.indexOf(COL_NAME) + 1, cAddr = head.indexOf(COL_ADDRESS) + 1, cDate = head.indexOf(COL_DATE) + 1;
@@ -189,8 +191,33 @@ function applyPlan_(sheet, store, snap) {
     if (!rows.length) rows = (byName[String(stop.name).trim()] || []).length === 1 ? byName[String(stop.name).trim()] : [];
     return rows;
   }
+  return { findRows: findRows, cell: function (r) { return sheet.getRange(r, cDate); } };
+}
+
+/**
+ * A shop's own visit date changed (the map popup's 拜訪日期 field): set / clear that shop's date cell.
+ * Same safety rules as plans — only empty or date cells are written, and a cleared date is only removed
+ * if the cell still holds the old date.
+ */
+function applyShopDate_(sheet, snap) {
+  var ctx = masterContext_(sheet);
+  var rows = ctx.findRows({ name: snap.name, address: snap.address });
+  if (!rows.length) return { matched: [], unmatched: [snap.name], skipped: [] };
+  var nd = ymd_(snap.new_date), od = ymd_(snap.old_date);
+  var matched = [], skipped = [];
+  rows.forEach(function (r) {
+    var cur = ctx.cell(r).getValue();
+    if (nd) {
+      if (cur === '' || ymd_(cur)) { ctx.cell(r).setValue(toDate_(nd)); ctx.cell(r).setNumberFormat('yyyy/mm/dd'); matched.push(snap.name); }
+      else skipped.push(snap.name + '（儲存格已有「' + cur + '」，未覆寫）');
+    } else if (od && ymd_(ctx.cell(r).getValue()) === od) { ctx.cell(r).setValue(''); matched.push(snap.name); }
+  });
+  return { matched: matched, unmatched: [], skipped: skipped };
+}
+
+function applyPlan_(sheet, store, snap) {
+  var ctx = masterContext_(sheet), findRows = ctx.findRows, cell = ctx.cell;
   function keyFor(stop) { return addrKey_(stop.address) || ('n:' + String(stop.name).trim()); }
-  function cell(r) { return sheet.getRange(r, cDate); }
 
   var storeKey = 'plan_' + snap.plan_id;
   var prev = []; try { prev = JSON.parse(store.getProperty(storeKey) || '[]'); } catch (e) { prev = []; }
@@ -260,4 +287,4 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, addrKey_: addrKey_, ymd_: ymd_, applyListPlan_: applyListPlan_, buildRows_: buildRows_, HEADERS: HEADERS };
+if (typeof module !== 'undefined') module.exports = { applyPlan_: applyPlan_, addrKey_: addrKey_, ymd_: ymd_, applyListPlan_: applyListPlan_, applyShopDate_: applyShopDate_, buildRows_: buildRows_, HEADERS: HEADERS };

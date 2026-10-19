@@ -201,6 +201,8 @@ table.sh-table tbody tr:hover{background:var(--accent-light);}
    bounding box (not its actual outline) when a clicked polygon receives focus —
    this looks like a stray selection rectangle over the highlighted county/district. */
 .leaflet-interactive:focus{outline:none;}
+
+.pc-swatch,.layer-color-swatch,.dp-color-swatch{box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);}
 </style>
 </head>
 <body>
@@ -644,7 +646,62 @@ let activeScenarioId=null;
 let clearArmed=false, clearArmTimer=null;
 
 // Layer colors (cycles) — used as a fallback for layers that don't match a known dataset name
-const LAYER_COLORS=['#137ECE','#E08E2C','#3B6FD9','#1FA67A','#8B5CF6','#E0584A','#D97706','#059669'];
+const DEFAULT_LAYER_COLOR='#9CA3AF';   // every newly loaded dataset starts as gray pins
+const LAYER_COLORS=['#9CA3AF','#FFFFFF','#111827','#2563EB','#DC2626','#16A34A','#F59E0B','#7C3AED','#EC4899','#06B6D4'];
+
+/* ══ pin colors ══
+   Each dataset layer has a pin mode (layer.pinMode):
+     'flat'     one color for the whole dataset (default for new datasets: gray; pick another below)
+     'status'   by pipeline status, plus a "visit planned" state when the shop has an upcoming 拜訪日期
+     'priority' by 拜訪優先級 S/A/B/C (and the older P1–P3)
+     'brand'    green Merida / blue Giant / gray other (the old default — kept for datasets saved earlier)
+   A color picked on an individual pin (shop.customColor) always wins. */
+const PLANNED_COLOR='#2563EB';
+const PIN_STATUS_COLORS={
+  '尚未開發':'#9CA3AF','電訪過':'#A855F7','電訪過-拒絕':'#92400E',
+  '拜訪過':'#F59E0B','拜訪過-評估中':'#FACC15','拜訪過-有意願':'#84CC16','拜訪過-拒絕':'#DC2626',
+  '已合作':'#16A34A','已合作-有樣品':'#06B6D4','已合作-流失':'#111827','主動要合作-有意願':'#EC4899'
+};
+const PIN_PRIORITY_COLORS={S:'#EC4899',A:'#FACC15',B:'#F97316',C:'#22C55E',P1:'#DC2626',P2:'#F97316',P3:'#FACC15'};
+const PIN_MODES=[['flat','單色'],['status','依狀態'],['priority','依優先級'],['brand','依品牌']];
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// "planned visit" = has a visit date today or later and is not already a partner
+function isVisitPlanned(shop){return !!(shop.visit_date&&String(shop.visit_date)>=todayStr()&&!String(shop.status||'').startsWith('已合作'));}
+function statusPinColor(shop){
+  if(isVisitPlanned(shop))return PLANNED_COLOR;
+  return PIN_STATUS_COLORS[shop.status]||'#9CA3AF';
+}
+function pinModeOf(layer){
+  if(layer&&layer.pinMode)return layer.pinMode;
+  return layer&&layer.colorByPriority?'priority':(layer&&layer.colorByLayer?'flat':'brand');   // layers saved before pinMode existed
+}
+function pinFillColor(shop,layer){
+  if(shop.customColor)return shop.customColor;
+  switch(pinModeOf(layer)){
+    case'status':return statusPinColor(shop);
+    case'priority':return PIN_PRIORITY_COLORS[shop.priority]||'#9CA3AF';
+    case'brand':return brandColor(shop);
+    default:return(layer&&layer.color)||DEFAULT_LAYER_COLOR;
+  }
+}
+function pinStrokeFor(fill){return String(fill).toUpperCase()==='#FFFFFF'?'#374151':'#fff';}   // a white pin needs a dark outline
+function pinLegendHtml(layer){
+  const dot=c=>`<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);margin-right:3px;vertical-align:-1px;"></i>`;
+  const chip=(c,t)=>`<span style="display:inline-flex;align-items:center;font-size:9.5px;color:var(--soft,#798BA5);margin-right:8px;white-space:nowrap;">${dot(c)}${t}</span>`;
+  const mode=pinModeOf(layer);
+  if(mode==='status')return chip(PLANNED_COLOR,'預計拜訪（有日期）')+Object.keys(PIN_STATUS_COLORS).map(k=>chip(PIN_STATUS_COLORS[k],k)).join('');
+  if(mode==='priority')return['S','A','B','C'].map(k=>chip(PIN_PRIORITY_COLORS[k],k)).join('')+chip('#9CA3AF','未設定');
+  if(mode==='brand')return chip('#0B8E6A','美利達')+chip('#137ECE','捷安特')+chip('#AEB4BD','其他');
+  return'';
+}
+function pinModeControlHtml(layer){
+  const mode=pinModeOf(layer);
+  const btns=PIN_MODES.map(([k,t])=>`<button class="btn layer-pinmode-btn" data-lid="${esc(layer.id)}" data-mode="${k}" style="font-size:9px;padding:2px 7px;${mode===k?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);font-weight:700;':''}">${t}</button>`).join('');
+  const sw=mode==='flat'?`<span style="display:flex;align-items:center;flex-wrap:wrap;gap:1px;">${LAYER_COLORS.map(c=>`<span class="layer-color-swatch" data-lid="${esc(layer.id)}" data-color="${c}" title="${c}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin:1px;cursor:pointer;border:2px solid ${String(layer.color||DEFAULT_LAYER_COLOR).toUpperCase()===c.toUpperCase()?'#282828':'transparent'};"></span>`).join('')}</span>`:'';
+  const legend=pinLegendHtml(layer);
+  return`<span style="font-size:9px;color:var(--soft,#798BA5);">🎨 圖釘顏色</span>${btns}${sw}${legend?`<div style="flex-basis:100%;line-height:1.7;">${legend}</div>`:''}`;
+}
+
 
 /* Fixed identity for the known research/infrastructure datasets imported via tools/bulk-import —
    colors reuse the exact region palette hex values (blue/green/orange/purple) plus one new pink
@@ -1095,7 +1152,7 @@ function setBasemap(mode){
 /* ══ dealer pin icon ══ */
 // Red/orange/yellow are reserved for priority (P1/P2/P3, see PRIORITY_STYLE) so a custom pin
 // color is never visually confusable with a priority-colored pin.
-const PIN_COLORS=['#282828','#137ECE','#3B6FD9','#1FA67A','#8B5CF6','#059669','#DB2777'];
+const PIN_COLORS=['#9CA3AF','#FFFFFF','#111827','#2563EB','#DC2626','#16A34A','#F59E0B','#7C3AED','#EC4899','#06B6D4'];   // per-pin picker: same palette as datasets (incl. gray/white/black)
 function renderDefaultColorSwatches(){
   const el=document.getElementById('defaultColorSwatches');
   if(!el)return;
@@ -1307,13 +1364,9 @@ function rebuildBikeshopMarkers(){
     // brand-name coloring — priority for a P1/P2/P3-focused view, dataset for when the layer
     // split itself (e.g. distinguishing competitor brands) is what matters, not the shop's own
     // Merida/Giant/other name match (which is blind to which uploaded dataset a shop came from).
-    const fillColor=(layerForColor&&layerForColor.colorByPriority)
-      ?(PRIORITY_STYLE[shop.priority]?PRIORITY_STYLE[shop.priority].color:'#AEB4BD')
-      :(layerForColor&&layerForColor.colorByLayer)
-        ?(layerForColor.color||'#AEB4BD')
-        :brandColor(shop);
+    const fillColor=pinFillColor(shop,layerForColor);
     const m=L.circleMarker([shop.lat,shop.lng],{
-      radius:7,color:'#fff',weight:1.8,fillColor:fillColor,fillOpacity:0.9,pane:'shopPane'
+      radius:7,color:pinStrokeFor(fillColor),weight:String(fillColor).toUpperCase()==='#FFFFFF'?2.2:1.8,fillColor:fillColor,fillOpacity:0.9,pane:'shopPane'
     }).addTo(bikeshopGroup);
     bikeshopMarkerRefs.push(m); // same index as shop within bikeshopData — used by the shop search "jump to" feature
     m.bindPopup(buildBikeshopPopup(shop),{maxWidth:230,closeOnClick:false});
@@ -1679,6 +1732,7 @@ function handleCSVUpload(file){
     const layerColor=meta?meta.color:LAYER_COLORS[csvLayers.length % LAYER_COLORS.length];
     const statuses=new Set(result.map(s=>s.status));
     const newLayer={id:layerId,name:layerName,color:layerColor,data:result,statusFilters:statuses,kind:meta?meta.kind:'sales'};
+    newLayer.color=DEFAULT_LAYER_COLOR;newLayer.pinMode='flat';   // new datasets start as gray pins
     csvLayers.push(newLayer);
     activeLayerIds.add(layerId);
     rebuildBikeshopDataFromLayers();
@@ -1928,6 +1982,7 @@ async function loadFromShopDB(datasetFilter='all'){
       ratingFilters:new Set(),
       kind:meta?meta.kind:'sales'
     };
+    newLayer.color=DEFAULT_LAYER_COLOR;newLayer.pinMode='flat';   // new datasets start as gray pins
     csvLayers.push(newLayer);
     activeLayerIds.add(layerId);
     rebuildBikeshopDataFromLayers();
@@ -2358,10 +2413,8 @@ function renderShopsTab(){
         </div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:${filtersOpen?'8px':'0'};">
-        <button class="btn layer-priority-color-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByPriority?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 依優先順序著色</button>
+        ${pinModeControlHtml(layer)}
         <button class="btn layer-xlsx-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;" title="匯出此資料集為 Excel（含拜訪日期）">⬇ 匯出 Excel</button>
-        <button class="btn layer-datasetcolor-btn" data-lid="${esc(layer.id)}" style="font-size:9px;padding:2px 7px;${layer.colorByLayer?'background:var(--accent-light);border-color:var(--accent);color:var(--accent);':''}">🎨 整組同色</button>
-        ${layer.colorByLayer?`<span style="display:flex;align-items:center;gap:1px;">${LAYER_COLORS.map(c=>`<span class="layer-color-swatch" data-lid="${esc(layer.id)}" data-color="${c}" title="${c}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin:1px;cursor:pointer;border:2px solid ${layer.color===c?'#282828':'transparent'};"></span>`).join('')}</span>`:''}
       </div>
       ${filtersOpen?`<div class="layer-filters-panel">${filterGroups}</div>`:''}
     </div>`;
@@ -2485,26 +2538,18 @@ function renderShopsTab(){
   el.querySelectorAll('.layer-xlsx-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(layer)exportLayerExcel(layer);});
   });
-  el.querySelectorAll('.layer-priority-color-btn').forEach(btn=>{
+  el.querySelectorAll('.layer-pinmode-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
-      layer.colorByPriority=!layer.colorByPriority;
-      if(layer.colorByPriority)layer.colorByLayer=false; // mutually exclusive with dataset-color mode
-      persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
-    });
-  });
-  el.querySelectorAll('.layer-datasetcolor-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const layer=csvLayers.find(l=>l.id===btn.dataset.lid);if(!layer)return;
-      layer.colorByLayer=!layer.colorByLayer;
-      if(layer.colorByLayer)layer.colorByPriority=false; // mutually exclusive with priority-color mode
+      layer.pinMode=btn.dataset.mode;
+      layer.colorByPriority=false;layer.colorByLayer=false;   // legacy flags — pinMode replaces them
       persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
     });
   });
   el.querySelectorAll('.layer-color-swatch').forEach(sw=>{
     sw.addEventListener('click',()=>{
       const layer=csvLayers.find(l=>l.id===sw.dataset.lid);if(!layer)return;
-      layer.color=sw.dataset.color;
+      layer.color=sw.dataset.color;layer.pinMode='flat';layer.colorByPriority=false;layer.colorByLayer=false;
       persistBikeshops();rebuildBikeshopMarkers();renderShopsTab();
     });
   });

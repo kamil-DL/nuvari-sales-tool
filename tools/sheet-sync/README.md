@@ -10,6 +10,7 @@ the Sheet. Rows you type yourself (no plan id in the hidden last column) are nev
 - plan saved in NST → each shop in the plan gets the plan's date
 - shop removed / date changed / plan cancelled or deleted → the old date is cleared again (only if the cell still holds it)
 - a cell holding something else (e.g. an `X` or `V` mark) is never overwritten; it is reported back instead
+- a shop's own 拜訪日期 saved in the map popup (migration `0020`) sets/clears the same cell the same way
 - shops are matched to master rows by address (fallback: exact shop name). Shops that aren't in the master are reported, not added.
 
 ## Setup (≈ 10 min, once)

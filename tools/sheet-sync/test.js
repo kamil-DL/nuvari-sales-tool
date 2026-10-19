@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const sandbox = { module: { exports: {} }, console };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'Code.gs'), 'utf8'), sandbox);
-const { applyPlan_, addrKey_, ymd_ } = sandbox.module.exports;
+const { applyPlan_, addrKey_, ymd_, applyShopDate_ } = sandbox.module.exports;
 
 const HEAD = ['編號', '店名', '地址', '預計拜訪日(298)', '已建入系統(298)'];
 class FakeSheet {
@@ -72,4 +72,20 @@ assert.strictEqual(sh.rows[6][3], '', '戊店乙 (same address, other name) not 
 
 assert.strictEqual(addrKey_('241新北市三重區大德里福德北路55之1號1樓'), addrKey_('新北市三重區福德北路55-1號'));
 assert.throws(() => applyPlan_(new FakeSheet([]) && { getLastRow: () => 1, getLastColumn: () => 1, getRange: () => ({ getValues: () => [['x']] }) }, S, plan('Z', '2026-10-20', [])), /column not found/);
+
+// 7) a single shop's own visit date (map popup): set, change, clear, never overwrite an X
+const sh3 = new FakeSheet([[1, '甲店', '106臺北市大安區新生南路3段20號', '', '否'], [2, '乙店', '台北市中山區農安街271巷5號', 'X', '否']]);
+let q = applyShopDate_(sh3, { name: '甲店', address: '台北市大安區新生南路三段20號', old_date: null, new_date: '2026-11-02' });
+assert.strictEqual(ymd_(sh3.rows[1][3]), '20261102'); assert.strictEqual(q.matched.length, 1);
+applyShopDate_(sh3, { name: '甲店', address: '台北市大安區新生南路三段20號', old_date: '2026-11-02', new_date: '2026-11-09' });
+assert.strictEqual(ymd_(sh3.rows[1][3]), '20261109');
+applyShopDate_(sh3, { name: '甲店', address: '台北市大安區新生南路三段20號', old_date: '2026-11-09', new_date: null });
+assert.strictEqual(sh3.rows[1][3], '', 'cleared');
+sh3.rows[1][3] = D(2026, 12, 1);   // someone typed another date → clearing the old popup date must not remove it
+applyShopDate_(sh3, { name: '甲店', address: '台北市大安區新生南路三段20號', old_date: '2026-11-09', new_date: null });
+assert.strictEqual(ymd_(sh3.rows[1][3]), '20261201');
+q = applyShopDate_(sh3, { name: '乙店', address: '台北市中山區農安街271巷5號', old_date: null, new_date: '2026-11-02' });
+assert.strictEqual(sh3.rows[2][3], 'X'); assert.strictEqual(q.skipped.length, 1);
+q = applyShopDate_(sh3, { name: '沒有的店', address: '高雄市某路9號', old_date: null, new_date: '2026-11-02' });
+assert.strictEqual(q.unmatched.length, 1);
 console.log('sheet-sync: all tests passed');
