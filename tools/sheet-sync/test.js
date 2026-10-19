@@ -5,7 +5,7 @@ const sandbox = { module: { exports: {} }, console };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'Code.gs'), 'utf8'), sandbox);
 const { applyPlan_, addrKey_, ymd_, applyShopDate_ } = sandbox.module.exports;
 
-const HEAD = ['編號', '店名', '地址', '預計拜訪日(298)', '已建入系統(298)', '拜訪優先級', '負責業務(298)'];
+const HEAD = ['編號', '店名', '地址', '預計拜訪日(298)', '已建入系統(298)', '拜訪優先級', '負責業務(298)', '電話', '縣市'];
 class FakeSheet {
   constructor(rows) { this.rows = [HEAD.slice(), ...rows]; this.fmt = {}; }
   getLastRow() { return this.rows.length; }
@@ -102,4 +102,11 @@ assert.strictEqual(sh4.rows[1][5], 'A');
 // a plan refreshes priority / rep of its shops and still writes the date
 applyPlan_(sh4, store(), plan('Q', '2026-11-03', [{ name: '乙店', address: '台北市中山區農安街271巷5號', priority: 'B', sales_rep: 'Randy' }]));
 assert.strictEqual(sh4.rows[2][5], 'B'); assert.strictEqual(sh4.rows[2][6], 'Randy'); assert.strictEqual(ymd_(sh4.rows[2][3]), '20261103');
+
+// 9) blanks are completed from the database when a shop is dated; existing values are never overwritten
+const sh5 = new FakeSheet([[1, '新店', '台北市大安區新生南路3段20號', '', '否', '', '', '', ''], [2, '舊店', '台北市中山區農安街271巷5號', '', '否', 'C', 'Devin', '02-1111', '台北市']]);
+applyShopDate_(sh5, { name: '新店', address: '台北市大安區新生南路三段20號', old_date: null, new_date: '2026-11-04', old_priority: 'S', new_priority: 'S', old_rep: 'Rain', new_rep: 'Rain', priority: 'S', sales_rep: 'Rain', phone: '0975 317 956', county: '台北市' });
+assert.strictEqual(sh5.rows[1][5], 'S'); assert.strictEqual(sh5.rows[1][6], 'Rain'); assert.strictEqual(sh5.rows[1][7], '0975 317 956'); assert.strictEqual(sh5.rows[1][8], '台北市');
+applyShopDate_(sh5, { name: '舊店', address: '台北市中山區農安街271巷5號', old_date: null, new_date: '2026-11-04', priority: 'A', sales_rep: 'Randy', phone: '03-9999', county: '新北市' });
+assert.strictEqual(sh5.rows[2][5], 'C'); assert.strictEqual(sh5.rows[2][6], 'Devin'); assert.strictEqual(sh5.rows[2][7], '02-1111'); assert.strictEqual(sh5.rows[2][8], '台北市', 'filled cells untouched');
 console.log('sheet-sync: all tests passed');

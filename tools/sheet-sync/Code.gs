@@ -31,6 +31,8 @@ var COL_ADDRESS = '地址';
 var COL_DATE = '預計拜訪日(298)';
 var COL_PRIORITY = '拜訪優先級';     // optional: kept in step with the shop's priority in NST
 var COL_REP = '負責業務(298)';       // optional: kept in step with the shop's sales rep in NST
+var COL_PHONE = '電話';              // optional: only filled in when empty
+var COL_COUNTY = '縣市';             // optional: only filled in when empty
 
 function doGet() {
   return json_({ ok: true, service: 'nst-sheet-sync' });
@@ -206,13 +208,26 @@ function masterContext_(sheet) {
     return rows;
   }
   var cPrio = head.indexOf(COL_PRIORITY) + 1, cRep = head.indexOf(COL_REP) + 1;
+  var cPhone = head.indexOf(COL_PHONE) + 1, cCounty = head.indexOf(COL_COUNTY) + 1;
   return {
+    phoneCell: cPhone ? function (r) { return sheet.getRange(r, cPhone); } : null,
+    countyCell: cCounty ? function (r) { return sheet.getRange(r, cCounty); } : null,
     findRows: findRows,
     cell: function (r) { return sheet.getRange(r, cDate); },
     // optional columns: undefined when the header isn't there (the sync then just skips that field)
     prioCell: cPrio ? function (r) { return sheet.getRange(r, cPrio); } : null,
     repCell: cRep ? function (r) { return sheet.getRange(r, cRep); } : null
   };
+}
+
+/** Fill a text cell from the database only if it is empty — never overwrites what the team typed. */
+function fillIfEmpty_(cellFn, r, v, asText) {
+  if (!cellFn || !v) return false;
+  var c = cellFn(r);
+  if (String(c.getValue()).trim() !== '') return false;
+  if (asText) c.setNumberFormat('@');   // keep phone numbers like 02-2276-6698 as plain text
+  c.setValue(v);
+  return true;
 }
 
 /** Set a text cell to the DB value; clear it only if it still holds the value we are replacing. */
@@ -246,6 +261,11 @@ function applyShopDate_(sheet, snap) {
     }
     if ((snap.new_priority || '') !== (snap.old_priority || '')) changed = syncText_(ctx.prioCell, r, snap.old_priority, snap.new_priority) || changed;
     if ((snap.new_rep || '') !== (snap.old_rep || '')) changed = syncText_(ctx.repCell, r, snap.old_rep, snap.new_rep) || changed;
+    // fill-in-only: a shop that wasn't in the original sheet has empty priority / rep / phone / county — complete them
+    changed = fillIfEmpty_(ctx.prioCell, r, snap.priority || snap.new_priority) || changed;
+    changed = fillIfEmpty_(ctx.repCell, r, snap.sales_rep || snap.new_rep) || changed;
+    changed = fillIfEmpty_(ctx.phoneCell, r, snap.phone, true) || changed;
+    changed = fillIfEmpty_(ctx.countyCell, r, snap.county) || changed;
     if (changed) matched.push(snap.name);
   });
   return { matched: matched, unmatched: [], skipped: skipped };
@@ -281,6 +301,8 @@ function applyPlan_(sheet, store, snap) {
       else skipped.push(s.name + '（儲存格已有「' + cur + '」，未覆寫）');
       if (s.priority) syncText_(ctx.prioCell, r, null, s.priority);   // keep the master's priority / rep in step with NST
       if (s.sales_rep) syncText_(ctx.repCell, r, null, s.sales_rep);
+      fillIfEmpty_(ctx.phoneCell, r, s.phone, true);
+      fillIfEmpty_(ctx.countyCell, r, s.county);
     });
   });
 
