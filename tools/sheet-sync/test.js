@@ -5,7 +5,7 @@ const sandbox = { module: { exports: {} }, console };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'Code.gs'), 'utf8'), sandbox);
 const { applyPlan_, addrKey_, ymd_, applyShopDate_ } = sandbox.module.exports;
 
-const HEAD = ['編號', '店名', '地址', '預計拜訪日(298)', '已建入系統(298)'];
+const HEAD = ['編號', '店名', '地址', '預計拜訪日(298)', '已建入系統(298)', '拜訪優先級', '負責業務(298)'];
 class FakeSheet {
   constructor(rows) { this.rows = [HEAD.slice(), ...rows]; this.fmt = {}; }
   getLastRow() { return this.rows.length; }
@@ -88,4 +88,18 @@ q = applyShopDate_(sh3, { name: '乙店', address: '台北市中山區農安街2
 assert.strictEqual(sh3.rows[2][3], 'X'); assert.strictEqual(q.skipped.length, 1);
 q = applyShopDate_(sh3, { name: '沒有的店', address: '高雄市某路9號', old_date: null, new_date: '2026-11-02' });
 assert.strictEqual(q.unmatched.length, 1);
+
+// 8) priority + sales rep follow NST (shop edit, and refreshed when a plan is saved)
+const sh4 = new FakeSheet([[1, '甲店', '106臺北市大安區新生南路3段20號', '', '否', 'C', 'Rain/Devin'], [2, '乙店', '台北市中山區農安街271巷5號', '', '否', '', '']]);
+const A1 = '台北市大安區新生南路三段20號';
+let w = applyShopDate_(sh4, { name: '甲店', address: A1, old_date: null, new_date: null, old_priority: 'C', new_priority: 'S', old_rep: 'Rain/Devin', new_rep: 'Rain' });
+assert.strictEqual(sh4.rows[1][5], 'S'); assert.strictEqual(sh4.rows[1][6], 'Rain'); assert.strictEqual(w.matched.length, 1);
+applyShopDate_(sh4, { name: '甲店', address: A1, old_date: null, new_date: null, old_priority: 'S', new_priority: null, old_rep: 'Rain', new_rep: null });
+assert.strictEqual(sh4.rows[1][5], '', 'priority cleared'); assert.strictEqual(sh4.rows[1][6], '', 'rep cleared');
+sh4.rows[1][5] = 'A';   // a person typed something else → an old-value clear must not wipe it
+applyShopDate_(sh4, { name: '甲店', address: A1, old_date: null, new_date: null, old_priority: 'S', new_priority: null });
+assert.strictEqual(sh4.rows[1][5], 'A');
+// a plan refreshes priority / rep of its shops and still writes the date
+applyPlan_(sh4, store(), plan('Q', '2026-11-03', [{ name: '乙店', address: '台北市中山區農安街271巷5號', priority: 'B', sales_rep: 'Randy' }]));
+assert.strictEqual(sh4.rows[2][5], 'B'); assert.strictEqual(sh4.rows[2][6], 'Randy'); assert.strictEqual(ymd_(sh4.rows[2][3]), '20261103');
 console.log('sheet-sync: all tests passed');

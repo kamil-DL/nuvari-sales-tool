@@ -29,6 +29,8 @@ var MASTER_SHEET = '經銷商總表';
 var COL_NAME = '店名';
 var COL_ADDRESS = '地址';
 var COL_DATE = '預計拜訪日(298)';
+var COL_PRIORITY = '拜訪優先級';     // optional: kept in step with the shop's priority in NST
+var COL_REP = '負責業務(298)';       // optional: kept in step with the shop's sales rep in NST
 
 function doGet() {
   return json_({ ok: true, service: 'nst-sheet-sync' });
@@ -203,13 +205,29 @@ function masterContext_(sheet) {
     if (!rows.length) rows = (byName[String(stop.name).trim()] || []).length === 1 ? byName[String(stop.name).trim()] : [];
     return rows;
   }
-  return { findRows: findRows, cell: function (r) { return sheet.getRange(r, cDate); } };
+  var cPrio = head.indexOf(COL_PRIORITY) + 1, cRep = head.indexOf(COL_REP) + 1;
+  return {
+    findRows: findRows,
+    cell: function (r) { return sheet.getRange(r, cDate); },
+    // optional columns: undefined when the header isn't there (the sync then just skips that field)
+    prioCell: cPrio ? function (r) { return sheet.getRange(r, cPrio); } : null,
+    repCell: cRep ? function (r) { return sheet.getRange(r, cRep); } : null
+  };
+}
+
+/** Set a text cell to the DB value; clear it only if it still holds the value we are replacing. */
+function syncText_(cellFn, r, oldV, newV) {
+  if (!cellFn) return false;
+  var c = cellFn(r), cur = String(c.getValue()).trim();
+  if (newV) { if (cur !== String(newV)) { c.setValue(newV); return true; } return false; }
+  if (oldV && cur === String(oldV)) { c.setValue(''); return true; }
+  return false;
 }
 
 /**
- * A shop's own visit date changed (the map popup's 拜訪日期 field): set / clear that shop's date cell.
- * Same safety rules as plans — only empty or date cells are written, and a cleared date is only removed
- * if the cell still holds the old date.
+ * A shop changed in NST / the map popup: its own 拜訪日期, 拜訪優先級 and/or 負責業務 (sales rep).
+ * Same safety rules as plans — a date is only written into an empty/date cell, and anything is only
+ * cleared if the cell still holds the old value.
  */
 function applyShopDate_(sheet, snap) {
   var ctx = masterContext_(sheet);
@@ -218,11 +236,17 @@ function applyShopDate_(sheet, snap) {
   var nd = ymd_(snap.new_date), od = ymd_(snap.old_date);
   var matched = [], skipped = [];
   rows.forEach(function (r) {
-    var cur = ctx.cell(r).getValue();
-    if (nd) {
-      if (cur === '' || ymd_(cur)) { ctx.cell(r).setValue(toDate_(nd)); ctx.cell(r).setNumberFormat('yyyy/mm/dd'); matched.push(snap.name); }
-      else skipped.push(snap.name + '（儲存格已有「' + cur + '」，未覆寫）');
-    } else if (od && ymd_(ctx.cell(r).getValue()) === od) { ctx.cell(r).setValue(''); matched.push(snap.name); }
+    var changed = false;
+    if (nd !== od) {
+      var cur = ctx.cell(r).getValue();
+      if (nd) {
+        if (cur === '' || ymd_(cur)) { ctx.cell(r).setValue(toDate_(nd)); ctx.cell(r).setNumberFormat('yyyy/mm/dd'); changed = true; }
+        else skipped.push(snap.name + '（儲存格已有「' + cur + '」，未覆寫）');
+      } else if (od && ymd_(cur) === od) { ctx.cell(r).setValue(''); changed = true; }
+    }
+    if ((snap.new_priority || '') !== (snap.old_priority || '')) changed = syncText_(ctx.prioCell, r, snap.old_priority, snap.new_priority) || changed;
+    if ((snap.new_rep || '') !== (snap.old_rep || '')) changed = syncText_(ctx.repCell, r, snap.old_rep, snap.new_rep) || changed;
+    if (changed) matched.push(snap.name);
   });
   return { matched: matched, unmatched: [], skipped: skipped };
 }
@@ -255,6 +279,8 @@ function applyPlan_(sheet, store, snap) {
       var cur = cell(r).getValue();
       if (cur === '' || ymd_(cur)) { cell(r).setValue(toDate_(date)); cell(r).setNumberFormat('yyyy/mm/dd'); matched.push(s.name); }
       else skipped.push(s.name + '（儲存格已有「' + cur + '」，未覆寫）');
+      if (s.priority) syncText_(ctx.prioCell, r, null, s.priority);   // keep the master's priority / rep in step with NST
+      if (s.sales_rep) syncText_(ctx.repCell, r, null, s.sales_rep);
     });
   });
 

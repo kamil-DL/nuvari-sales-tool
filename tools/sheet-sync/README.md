@@ -11,6 +11,7 @@ the Sheet. Rows you type yourself (no plan id in the hidden last column) are nev
 - shop removed / date changed / plan cancelled or deleted → the old date is cleared again (only if the cell still holds it)
 - a cell holding something else (e.g. an `X` or `V` mark) is never overwritten; it is reported back instead
 - a shop's own 拜訪日期 saved in the map popup (migration `0020`) sets/clears the same cell the same way
+- a shop's 拜訪優先級 and sales rep (負責業務) changed in NST or the map are copied to the master's `拜訪優先級` and `負責業務(298)` columns, and refreshed whenever a plan containing the shop is saved (migration `0021`)
 - shops are matched to master rows by address (fallback: exact shop name). Shops that aren't in the master are reported, not added.
 
 ## Setup (≈ 10 min, once)
