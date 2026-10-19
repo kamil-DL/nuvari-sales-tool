@@ -107,7 +107,7 @@ function applyListPlan_(sheet, snap) {
 }
 function buildRows_(snap) {
   var d = String(snap.plan_date || '').split('-');
-  var date = d.length === 3 ? new Date(Number(d[0]), Number(d[1]) - 1, Number(d[2])) : '';
+  var date = d.length === 3 ? toDate_(d.join('')) : '';
   var ymd = d.length === 3 ? d.join('') : '';
   var stops = snap.stops || [];
   if (!stops.length) {   // an empty plan still shows up, so the day isn't silently missing
@@ -152,15 +152,27 @@ function addrKey_(a) {
   return a.replace(/[\s\-－.]/g, '');
 }
 
+/** The spreadsheet's own time zone (a script and its sheet can differ — that once shifted every date by a day). */
+var TZ_ = null;
+function sheetTz_() {
+  if (TZ_ === null) TZ_ = (typeof SpreadsheetApp !== 'undefined') ? SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() : '';
+  return TZ_;
+}
+
 function ymd_(d) {   // Date or 'yyyy-mm-dd' / 'yyyy/mm/dd' text → 'yyyymmdd' (or '' if it isn't a date)
   if (Object.prototype.toString.call(d) === '[object Date]') {
-    return isNaN(d) ? '' : String(d.getFullYear()) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+    if (isNaN(d)) return '';
+    if (typeof Utilities !== 'undefined' && sheetTz_()) return Utilities.formatDate(d, sheetTz_(), 'yyyyMMdd');   // read the cell in the sheet's time zone
+    return String(d.getFullYear()) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
   }
   var m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/.exec(String(d).trim());
   return m ? m[1] + ('0' + m[2]).slice(-2) + ('0' + m[3]).slice(-2) : '';
 }
 
-function toDate_(y) { return new Date(Number(y.slice(0, 4)), Number(y.slice(4, 6)) - 1, Number(y.slice(6, 8))); }
+function toDate_(y) {   // midnight of that day in the SHEET's time zone, so the cell shows exactly that date
+  if (typeof Utilities !== 'undefined' && sheetTz_()) return Utilities.parseDate(y.slice(0, 4) + '/' + y.slice(4, 6) + '/' + y.slice(6, 8), sheetTz_(), 'yyyy/MM/dd');
+  return new Date(Number(y.slice(0, 4)), Number(y.slice(4, 6)) - 1, Number(y.slice(6, 8)));
+}
 
 /**
  * Apply one plan snapshot to the master tab. `store` is anything with getProperty/setProperty/deleteProperty
