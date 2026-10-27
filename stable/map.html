@@ -689,8 +689,19 @@ function pinLegendHtml(layer){
   const dot=c=>`<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);margin-right:3px;vertical-align:-1px;"></i>`;
   const chip=(c,t)=>`<span style="display:inline-flex;align-items:center;font-size:9.5px;color:var(--soft,#798BA5);margin-right:8px;white-space:nowrap;">${dot(c)}${t}</span>`;
   const mode=pinModeOf(layer);
-  if(mode==='status')return chip(PLANNED_COLOR,'預計拜訪（有日期）')+Object.keys(PIN_STATUS_COLORS).map(k=>chip(PIN_STATUS_COLORS[k],k)).join('');
-  if(mode==='priority')return['S','A','B','C'].map(k=>chip(PIN_PRIORITY_COLORS[k],k)).join('')+chip('#9CA3AF','未設定');
+  // Only list what is actually in this layer's data (a layer with no 電訪過 shops shouldn't advertise that colour)
+  if(mode==='status'){
+    const data=(layer&&layer.data)||[];
+    const planned=data.some(isVisitPlanned);
+    const used=new Set(data.filter(s=>!isVisitPlanned(s)).map(s=>s.status));
+    const other=[...used].some(k=>!PIN_STATUS_COLORS[k]);
+    return(planned?chip(PLANNED_COLOR,'預計拜訪（有日期）'):'')+Object.keys(PIN_STATUS_COLORS).filter(k=>used.has(k)).map(k=>chip(PIN_STATUS_COLORS[k],k)).join('')+(other?chip('#9CA3AF','其他'):'');
+  }
+  if(mode==='priority'){
+    const data=(layer&&layer.data)||[];
+    const used=new Set(data.map(s=>s.priority));
+    return Object.keys(PIN_PRIORITY_COLORS).filter(k=>used.has(k)).map(k=>chip(PIN_PRIORITY_COLORS[k],k)).join('')+(data.some(s=>!PIN_PRIORITY_COLORS[s.priority])?chip('#9CA3AF','未設定'):'');
+  }
   if(mode==='brand')return chip('#0B8E6A','美利達')+chip('#137ECE','捷安特')+chip('#AEB4BD','其他');
   return'';
 }
